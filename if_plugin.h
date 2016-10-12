@@ -20,6 +20,12 @@ typedef struct _if_plugin {
     RESULT (*init)(struct _if_plugin* this, const char* ifname);
     
     /*
+     * Called by main program when it's exiting.
+     * Can be used to free memory.
+     */
+    void (*shutdown)(struct _if_plugin* this);
+    
+    /*
      * Called by main program when it wants MAC address
      * for a specific network interface into address_buf.
      *
@@ -63,10 +69,22 @@ typedef struct _if_plugin {
     void (*set_frame_handler)(struct _if_plugin* this, void (*handler)(ETH_EAP_FRAME* frame));
     
     /*
+     * Plugin name, to be selected by user
+     */
+    char* name;
+    
+    /*
+     * Description, displayed to user
+     */
+    char* description;
+    
+    /*
      * For plugin private use, a plugin can malloc and save data here.
      * Main program should not touch this pointer.
      */
     void* priv;
 } if_plugin;
 
+void init_if_plugin_list();
+if_plugin* find_if_plugin_by_name(const char* name);
 #endif

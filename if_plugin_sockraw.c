@@ -26,16 +26,8 @@ typedef struct _if_plugin_sockraw_priv {
 } sockraw_priv;
 
 #define PRIV ((sockraw_priv*)(this->priv))
+
 RESULT sockraw_init(struct _if_plugin* this, const char* ifname) {
-    /* The `priv` pointer in `if_plugin.h` is a sockraw_priv* here */
-    this->priv = (sockraw_priv*)malloc(sizeof(sockraw_priv));
-    memset(PRIV, 0, sizeof(sockraw_priv));
-    
-    if (this->priv < 0) {
-        PR_ERRNO("内存分配失败");
-        return FAILURE;
-    }
-    
     if (ifname == NULL) {
         PR_ERR("网卡名未指定，请检查 -n 的设置！");
         return FAILURE;
@@ -66,7 +58,7 @@ RESULT sockraw_obtain_mac(struct _if_plugin* this, uint8_t* adr_buf) {
     return SUCCESS;
 }
 
-RESULT sockraw_set_capture_params(struct _if_plugin* this, short eth_protocol, int promisc) {
+RESULT sockraw_setup_capture_params(struct _if_plugin* this, short eth_protocol, int promisc) {
     struct ifreq ifreq;
     int _curr_proto;
     unsigned int _opt_len = sizeof(int);
@@ -136,4 +128,42 @@ RESULT sockraw_send_frame(struct _if_plugin* this, ETH_EAP_FRAME* frame) {
     if (frame == NULL || frame->content == NULL)
         return FAILURE;
     return send(PRIV->sockfd, frame->content, frame->len, 0) > 0;
+}
+
+void sockraw_set_frame_handler(struct _if_plugin* this, void (*handler)(ETH_EAP_FRAME* frame)) {
+    PRIV->handler = handler;
+}
+
+void sockraw_shutdown(if_plugin* this) {
+    chk_free((void**)&this->priv);
+    chk_free((void**)&this);
+}
+
+if_plugin* sockraw_new() {
+    if_plugin* this = (if_plugin*)malloc(sizeof(if_plugin));
+    if (this->priv < 0) {
+        PR_ERRNO("SOCK_RAW 主结构内存分配失败");
+        return NULL;
+    }
+    memset(this, 0, sizeof(if_plugin));
+    
+    /* The priv pointer in if_plugin.h is a sockraw_priv* here */
+    this->priv = (sockraw_priv*)malloc(sizeof(sockraw_priv));
+    if (this->priv < 0) {
+        PR_ERRNO("SOCK_RAW 私有结构内存分配失败");
+        return NULL;
+    }
+    memset(this->priv, 0, sizeof(sockraw_priv));
+    
+    this->init = sockraw_init;
+    this->shutdown = sockraw_shutdown;
+    this->obtain_mac = sockraw_obtain_mac;
+    this->setup_capture_params = sockraw_setup_capture_params;
+    this->start_capture = sockraw_start_capture;
+    this->stop_capture = sockraw_stop_capture;
+    this->send_frame = sockraw_send_frame;
+    this->set_frame_handler = sockraw_set_frame_handler;
+    this->name = "sockraw";
+    this->description = "采用RAW Socket进行通信的轻量网络接口模块";
+    return this;
 }
