@@ -2,19 +2,40 @@
  * General EAP config center
  */
 
+#include <getopt.h>
+#include <string.h>
+#include <stdlib.h>
+
 #include "config.h"
+#include "logging.h"
+#include "misc.h"
 
 static EAP_CONFIG g_eap_config;
 static PROXY_CONFIG g_proxy_config;
 static PROG_CONFIG g_prog_config;
 
+static void configure_daemon_param(int daemon_mode) {
+    switch (daemon_mode) {
+        case 0:
+            g_prog_config.run_in_background = 0;
+            set_log_destination(LOG_TO_CONSOLE);
+            break;
+        case 1:
+        case 2:
+            g_prog_config.run_in_background = 1;
+            set_log_destination(LOG_TO_CONSOLE);
+            break;
+        case 3:
+            g_prog_config.run_in_background = 1;
+            set_log_destination(LOG_TO_FILE);
+    }
+}
+     
 RESULT parse_cmdline_opts(int argc, char* argv[]) {
     int opt = 0;
     int longIndex = 0;
-    int _save_now = 0; /* 是否立即保存本次的参数 */
     int _arglen = 0; /* 当前参数长度 */
-    int _intbuf = 0; /* atoi */
-    unsigned ver[2]; /* -v buffer */
+    int _daemon_mode = 0; /* 稍后处理 */
     static const char* shortOpts = "hk::wu:p:n:i:m:g:s:o:t:e:r:l:x:a:d:b:"
         "v:f:c:z:j:q:";
     static const struct option longOpts[] = {
@@ -24,11 +45,11 @@ RESULT parse_cmdline_opts(int argc, char* argv[]) {
 	    { "username", required_argument, NULL, 'u' },
 	    { "password", required_argument, NULL, 'p' },
 	    { "nic", required_argument, NULL, 'n' },
-	    { "ip", required_argument, NULL, 'i' },
+	    /*{ "ip", required_argument, NULL, 'i' },
 	    { "mask", required_argument, NULL, 'm' },
 	    { "gateway", required_argument, NULL, 'g' },
 	    { "dns", required_argument, NULL, 's' },
-	    { "ping-host", required_argument, NULL, 'o' },
+	    { "ping-host", required_argument, NULL, 'o' },*/
 	    { "auth-timeout", required_argument, NULL, 't' },
 	    { "heartbeat", required_argument, NULL, 'e' },
 	    { "wait-after-fail", required_argument, NULL, 'r' },
@@ -50,14 +71,14 @@ RESULT parse_cmdline_opts(int argc, char* argv[]) {
 
     opt = getopt_long(argc, argv, shortOpts, longOpts, &longIndex);
 #define COPY_N_ARG_TO(buf, maxlen) \
-        _strlen = strnlen(optarg, maxlen); \
-        chk_free(&buf); \
-        buf = (char*)malloc(_strlen); \
-        strncpy(buf, optarg, _strlen);
+        _arglen = strnlen(optarg, maxlen); \
+        chk_free((void**)&buf); \
+        buf = (char*)malloc(_arglen); \
+        strncpy(buf, optarg, _arglen);
     while (opt != -1) {
         switch (opt) {
             case 'h':
-                print_help(argv[0]); /* 调用本函数将退出程序 */
+                //print_help(argv[0]); /* 调用本函数将退出程序 */
             case 'k':
                 if (optarg == NULL)
                     g_prog_config.kill_type = KILL_ONLY; /* 结束其他实例并退出 */
@@ -65,13 +86,13 @@ RESULT parse_cmdline_opts(int argc, char* argv[]) {
                     g_prog_config.kill_type = KILL_AND_START; /* 结束其他实例，本实例继续运行 */
                 break;
             case 'w':
-                _save_now = 1;
+                g_prog_config.save_now = 1;
                 break;
             case 'u':
                 COPY_N_ARG_TO(g_eap_config.username, USERNAME_MAX_LEN);
                 break;
             case 'p':
-                COPY_N_ARG_TO(g_eap_config.password, PASSWORD_MAN_LEN);
+                COPY_N_ARG_TO(g_eap_config.password, PASSWORD_MAX_LEN);
                 break;
             case 'n':
                 COPY_N_ARG_TO(g_prog_config.ifname, IFNAME_MAX_LEN);
@@ -95,13 +116,13 @@ RESULT parse_cmdline_opts(int argc, char* argv[]) {
                 g_prog_config.stage_timeout = atoi(optarg); /* 此处不设置限制，但原始的代码中有最大99秒的限制 */
                 break;
             case 'e':
-                // TODO RJ plugin specific g_prog_config.stage_timeout = atoi(optarg); /* 同上 */
+                // TODO RJ plugin specific heartbeat = atoi(optarg); /* 同上 */
                 break;
             case 'r':
                 g_prog_config.wait_after_fail_secs = atoi(optarg); /* 同上 */
                 break;
             case 'l':
-                g.prog_config.max_failures = atoi(optarg);
+                g_prog_config.max_failures = atoi(optarg);
                 break;
             case 'x':
                 g_prog_config.restart_on_logoff = atoi(optarg);
@@ -113,21 +134,7 @@ RESULT parse_cmdline_opts(int argc, char* argv[]) {
                 dhcpMode = atoi(optarg) % 4;
                 break; */ // TODO RJ plugin specific
             case 'b':
-                _intbuf = atoi(optarg);
-                switch (_intbuf) {
-                    case 0:
-                        g_prog_config.run_in_background = 0;
-                        set_log_destination(LOG_TO_CONSOLE);
-                        break;
-                    case 1:
-                    case 2:
-                        g_prog_config.run_in_background = 1;
-                        set_log_destination(LOG_TO_CONSOLE);
-                        break;
-                    case 3:
-                        g_prog_config.run_in_background = 1;
-                        set_log_destination(LOG_TO_FILE);
-                }
+                _daemon_mode = atoi(optarg); /* 在循环结束后处理 */
                 break;
             /*case 'v':
                 if (sscanf(optarg, "%u.%u", ver, ver + 1) != EOF) {
@@ -169,4 +176,11 @@ RESULT parse_cmdline_opts(int argc, char* argv[]) {
         }
         opt = getopt_long(argc, argv, shortOpts, longOpts, &longIndex);
     }
+    
+    configure_daemon_param(_daemon_mode);
+    return SUCCESS;
+}
+
+PROG_CONFIG* get_program_config() {
+    return &g_prog_config;
 }

@@ -1,6 +1,8 @@
 #ifndef _MINIEAP_PACKETS_H
 #define _MINIEAP_PACKETS_H
 
+#include <stddef.h>
+
 enum {
 	EAP_REQUEST = 1,
 	EAP_RESPONSE,
@@ -57,7 +59,8 @@ typedef struct _eth_eap_frame {
         uint8_t* content;
         FRAME_HEADER* header; // Easier to use without a cast.
                               // But is this "best practice"?
-    }
+    };
 } ETH_EAP_FRAME;
 
+#endif
         
