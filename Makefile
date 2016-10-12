@@ -1,4 +1,4 @@
-MINIEAP_COMMON_OBJS := config.o logging.o minieap.o misc.o linkedlist.o if_plugin.o
+MINIEAP_COMMON_OBJS := config.o logging.o minieap.o misc.o linkedlist.o if_plugin.o packet_builder.o
 
 MINIEAP_PLUGIN_OBJS := if_plugin_sockraw.o
 

@@ -141,7 +141,7 @@ void sockraw_shutdown(if_plugin* this) {
 
 if_plugin* sockraw_new() {
     if_plugin* this = (if_plugin*)malloc(sizeof(if_plugin));
-    if (this->priv < 0) {
+    if (this < 0) {
         PR_ERRNO("SOCK_RAW 主结构内存分配失败");
         return NULL;
     }

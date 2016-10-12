@@ -9,7 +9,7 @@ if_plugin* sockraw_new();
 
 void init_if_plugin_list() {
     if_plugin* (*list[])() = {
-//#include "if_plugin_list_gen.h"
+//#include "if_plugin_list_gen.h" TODO autogen
         sockraw_new
     };
     int i = 0;

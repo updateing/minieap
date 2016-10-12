@@ -9,6 +9,8 @@
 #ifndef _LOGGING_H
 #define _LOGGING_H
 
+#include <errno.h>
+
 #ifdef DEBUG
 #define FUNC_NAME __func__
 #else
