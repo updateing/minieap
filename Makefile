@@ -2,7 +2,7 @@ MINIEAP_COMMON_OBJS := config.o logging.o minieap.o misc.o
 
 MINIEAP_PLUGIN_OBJS := if_plugin_sockraw.o
 
-CC := cc -Wall
+CC := cc -Wall -DDEBUG
 
 minieap : $(MINIEAP_COMMON_OBJS) $(MINIEAP_PLUGIN_OBJS)
 

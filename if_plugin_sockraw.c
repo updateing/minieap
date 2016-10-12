@@ -32,12 +32,12 @@ RESULT sockraw_init(struct _if_plugin* this, const char* ifname) {
     memset(PRIV, 0, sizeof(sockraw_priv));
     
     if (this->priv < 0) {
-        print_log("ERROR: %s: cannot allocate memory for file descriptor (%d)", __func__, errno);
+        PR_ERRNO("内存分配失败");
         return FAILURE;
     }
     
     if (ifname == NULL) {
-        print_log("ERROR: %s: ifname is null!", __func__);
+        PR_ERR("网卡名未指定，请检查 -n 的设置！");
         return FAILURE;
     }
     
@@ -45,7 +45,7 @@ RESULT sockraw_init(struct _if_plugin* this, const char* ifname) {
     
     /* Default protocol is ETH_P_PAE (0x888e) */
     if ((PRIV->sockfd = socket(PF_PACKET, SOCK_RAW, ETH_P_PAE)) < 0) {
-        print_log("ERROR: %s: socket open failed with %d", __func__, errno);
+        PR_ERRNO("套接字打开失败");
         return FAILURE;
     }
     
@@ -58,7 +58,7 @@ RESULT sockraw_obtain_mac(struct _if_plugin* this, uint8_t* adr_buf) {
     strncpy(ifreq.ifr_name, PRIV->ifname, IFNAMSIZ);
     
     if (ioctl(PRIV->sockfd, SIOCGIFHWADDR, &ifreq) < 0) {
-        print_log("ERROR: %s: ioctl failed with %d", __func__, errno);
+        PR_ERRNO("通过 ioctl 获取 MAC 地址失败");
         return FAILURE;
     }
 
@@ -73,7 +73,7 @@ RESULT sockraw_set_capture_params(struct _if_plugin* this, short eth_protocol, i
     
     /* Handle protocol */
     if (getsockopt(PRIV->sockfd, SOL_SOCKET, SO_PROTOCOL, &_curr_proto, &_opt_len) < 0) {
-        print_log("ERROR: %s: getsockopt failed with %d", __func__, errno);
+        PR_ERRNO("获取套接字参数失败");
         return FAILURE;
     }
     
@@ -82,7 +82,7 @@ RESULT sockraw_set_capture_params(struct _if_plugin* this, short eth_protocol, i
         close(PRIV->sockfd);
         
         if ((PRIV->sockfd = socket(PF_PACKET, SOCK_RAW, eth_protocol)) < 0) {
-            print_log("ERROR: %s: socket open failed with %d", __func__, errno);
+            PR_ERRNO("套接字打开失败");
             return FAILURE;
         }
     }
@@ -91,7 +91,7 @@ RESULT sockraw_set_capture_params(struct _if_plugin* this, short eth_protocol, i
     strncpy(ifreq.ifr_name, PRIV->ifname, IFNAMSIZ);
             
     if (ioctl(PRIV->sockfd, SIOCGIFFLAGS, &ifreq) < 0) {
-        print_log("ERROR: %s: ioctl SIOCGIFFLAGS failed with %d", __func__, errno);
+        PR_ERRNO("获取网络界面参数失败");
         return FAILURE;
     }
     
@@ -101,7 +101,7 @@ RESULT sockraw_set_capture_params(struct _if_plugin* this, short eth_protocol, i
         ifreq.ifr_flags &= ~IFF_PROMISC;
     
     if (ioctl(PRIV->sockfd, SIOCSIFFLAGS, &ifreq) < 0) {
-        print_log("ERROR: %s: ioctl SIOCSIFFLAGS failed with %d", __func__, errno);
+        PR_ERRNO("开启混杂模式失败");
         return FAILURE;
     }
     return SUCCESS;

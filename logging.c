@@ -45,12 +45,28 @@ static void print_raw_line(FILE* log_file, const char* log_format, va_list argpt
 }
 
 /*
- * 打印一行日志并附加时间标记
+ * 打印一行日志并附加时间与调用点信息
  */
-static void print_time_line(FILE* log_file, const char* log_format, va_list argptr) {
+static void print_detail_line(FILE* log_file, const char* log_level,
+                      const char* func_name, const char* log_format, va_list argptr) {
 	char format_buffer[LOG_FORMAT_BUFFER_SIZE];
+    int _strlen;
+    
+    if (func_name != NULL && func_name[0] != 0) {
+	    snprintf(format_buffer, LOG_FORMAT_BUFFER_SIZE, "[%s][%s](%s) %s",
+	            get_formatted_date(), log_level, func_name, log_format);
+	} else {
+	    snprintf(format_buffer, LOG_FORMAT_BUFFER_SIZE, "[%s][%s] %s",
+	             get_formatted_date(), log_level, log_format);
+	}
 
-	snprintf(format_buffer, LOG_FORMAT_BUFFER_SIZE, "[%s] %s", get_formatted_date(), log_format);
+	/* Append a newline if not exist */
+	_strlen = strlen(format_buffer);
+	if (format_buffer[_strlen - 1] != '\n') {
+	    format_buffer[_strlen] = '\n';
+	    format_buffer[_strlen + 1] = 0;
+	}
+	
 	print_raw_line(log_file, format_buffer, argptr);
 }
 
@@ -80,11 +96,11 @@ void set_log_destination(LOG_DEST dst) {
 /*
  * 按之前的目标设置来打印一行日志
  */
-void print_log(const char* log_format, ...) {
+void print_log(const char* log_level, const char* func_name, const char* log_format, ...) {
 	va_list argptr;
 
 	va_start(argptr, log_format);
-	print_time_line(g_log_fp, log_format, argptr);
+	print_detail_line(g_log_fp, log_level, func_name, log_format, argptr);
 	va_end(argptr);
 }
 
