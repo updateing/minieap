@@ -5,6 +5,7 @@
 #include "packet_builder.h"
 #include "eth_frame.h"
 #include "logging.h"
+#include "misc.h"
 
 typedef struct _packet_builder_priv {
     FRAME_HEADER frame_header;
@@ -95,7 +96,7 @@ int builder_build_packet(struct _packet_builder* this, uint8_t* buffer) {
     }
 }
 
-packet_builder* packet_builder_init() {
+packet_builder* packet_builder_new() {
     packet_builder* this = (packet_builder*)malloc(sizeof(packet_builder));
     if (this < 0) {
         PR_ERRNO("数据包生成器主结构内存分配失败");
@@ -115,4 +116,9 @@ packet_builder* packet_builder_init() {
     this->set_eap_field = builder_set_eap_field;
     this->build_packet = builder_build_packet;
     return this;
+}
+
+void packet_builder_destroy(struct _packet_builder* this) {
+    chk_free((void**)&this->priv);
+    chk_free((void**)&this);
 }

@@ -27,7 +27,7 @@ typedef struct _if_plugin_sockraw_priv {
 
 #define PRIV ((sockraw_priv*)(this->priv))
 
-RESULT sockraw_init(struct _if_plugin* this, const char* ifname) {
+RESULT sockraw_set_ifname(struct _if_plugin* this, const char* ifname) {
     if (ifname == NULL) {
         PR_ERR("网卡名未指定，请检查 -n 的设置！");
         return FAILURE;
@@ -134,7 +134,7 @@ void sockraw_set_frame_handler(struct _if_plugin* this, void (*handler)(ETH_EAP_
     PRIV->handler = handler;
 }
 
-void sockraw_shutdown(if_plugin* this) {
+void sockraw_destroy(if_plugin* this) {
     chk_free((void**)&this->priv);
     chk_free((void**)&this);
 }
@@ -155,8 +155,8 @@ if_plugin* sockraw_new() {
     }
     memset(this->priv, 0, sizeof(sockraw_priv));
     
-    this->init = sockraw_init;
-    this->shutdown = sockraw_shutdown;
+    this->set_ifname = sockraw_set_ifname;
+    this->destroy = sockraw_destroy;
     this->obtain_mac = sockraw_obtain_mac;
     this->setup_capture_params = sockraw_setup_capture_params;
     this->start_capture = sockraw_start_capture;

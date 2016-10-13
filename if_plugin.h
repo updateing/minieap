@@ -12,18 +12,17 @@
 typedef struct _if_plugin {
     /*
      * Called by main program when it's starting.
-     * Can be used to open the interface, initialize
-     * the `priv` pointer and set function pointers in `this`.
+     * Can be used to open the interface.
      *
      * Return: if the initialization succeeds
      */
-    RESULT (*init)(struct _if_plugin* this, const char* ifname);
+    RESULT (*set_ifname)(struct _if_plugin* this, const char* ifname);
     
     /*
      * Called by main program when it's exiting.
      * Can be used to free memory.
      */
-    void (*shutdown)(struct _if_plugin* this);
+    void (*destroy)(struct _if_plugin* this);
     
     /*
      * Called by main program when it wants MAC address
@@ -85,6 +84,11 @@ typedef struct _if_plugin {
     void* priv;
 } if_plugin;
 
-void init_if_plugin_list();
+/*
+ * Initialize the network interface plugin/driver list.
+ *
+ * Return: number of plugins loaded
+ */
+int init_if_plugin_list();
 if_plugin* find_if_plugin_by_name(const char* name);
 #endif

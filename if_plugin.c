@@ -7,7 +7,7 @@ static list_element* g_if_plugin_list;
 
 if_plugin* sockraw_new();
 
-void init_if_plugin_list() {
+int init_if_plugin_list() {
     if_plugin* (*list[])() = {
 //#include "if_plugin_list_gen.h" TODO autogen
         sockraw_new
@@ -17,6 +17,7 @@ void init_if_plugin_list() {
         if_plugin* (*func)() = list[i];
         insert_data(&g_if_plugin_list, (*func)());
     }
+    return i;
 }
 
 static int plugin_name_cmp(void* to_find, void* curr) {

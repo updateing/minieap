@@ -59,11 +59,11 @@ typedef struct _packet_builder {
  *
  * Return: an instance of this struct, with all methods above set up
  */
-packet_builder* packet_builder_init();
+packet_builder* packet_builder_new();
 
 /*
  * Destory an instance
  * Can be used to free memory
  */
-void packet_builder_shutdown();
+void packet_builder_shutdown(struct _packet_builder* this);
 #endif
