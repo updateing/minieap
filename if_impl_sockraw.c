@@ -2,7 +2,7 @@
  * Implement packet sending/receiving by native socket,
  * so libpcap could be left out in the build.
  */
-#include "if_plugin.h"
+#include "if_impl.h"
 #include "minieap_common.h"
 #include "logging.h"
 #include "misc.h"
@@ -18,7 +18,7 @@
 #include <errno.h>
 #include <malloc.h>
 
-typedef struct _if_plugin_sockraw_priv {
+typedef struct _if_impl_sockraw_priv {
     int sockfd; /* Internal use */
     char ifname[IFNAMSIZ];
     int stop_flag; /* Set to break out of recv loop */
@@ -27,7 +27,7 @@ typedef struct _if_plugin_sockraw_priv {
 
 #define PRIV ((sockraw_priv*)(this->priv))
 
-RESULT sockraw_set_ifname(struct _if_plugin* this, const char* ifname) {
+RESULT sockraw_set_ifname(struct _if_impl* this, const char* ifname) {
     if (ifname == NULL) {
         PR_ERR("网卡名未指定，请检查 -n 的设置！");
         return FAILURE;
@@ -44,7 +44,7 @@ RESULT sockraw_set_ifname(struct _if_plugin* this, const char* ifname) {
     return SUCCESS;
 }
 
-RESULT sockraw_obtain_mac(struct _if_plugin* this, uint8_t* adr_buf) {
+RESULT sockraw_obtain_mac(struct _if_impl* this, uint8_t* adr_buf) {
     struct ifreq ifreq;
 
     strncpy(ifreq.ifr_name, PRIV->ifname, IFNAMSIZ);
@@ -58,7 +58,7 @@ RESULT sockraw_obtain_mac(struct _if_plugin* this, uint8_t* adr_buf) {
     return SUCCESS;
 }
 
-RESULT sockraw_setup_capture_params(struct _if_plugin* this, short eth_protocol, int promisc) {
+RESULT sockraw_setup_capture_params(struct _if_impl* this, short eth_protocol, int promisc) {
     struct ifreq ifreq;
     int _curr_proto;
     unsigned int _opt_len = sizeof(int);
@@ -99,7 +99,7 @@ RESULT sockraw_setup_capture_params(struct _if_plugin* this, short eth_protocol,
     return SUCCESS;
 }
 
-RESULT sockraw_start_capture(struct _if_plugin* this) {
+RESULT sockraw_start_capture(struct _if_impl* this) {
     uint8_t buf[1512]; /* Max length of ethernet packet */
     int recvlen = 0;
     ETH_EAP_FRAME frame;
@@ -119,35 +119,35 @@ RESULT sockraw_start_capture(struct _if_plugin* this) {
     return SUCCESS; /* No use if it's blocking... */
 }
 
-RESULT sockraw_stop_capture(struct _if_plugin* this) {
+RESULT sockraw_stop_capture(struct _if_impl* this) {
     PRIV->stop_flag = 1;
     return SUCCESS;
 }
 
-RESULT sockraw_send_frame(struct _if_plugin* this, ETH_EAP_FRAME* frame) {
+RESULT sockraw_send_frame(struct _if_impl* this, ETH_EAP_FRAME* frame) {
     if (frame == NULL || frame->content == NULL)
         return FAILURE;
     return send(PRIV->sockfd, frame->content, frame->len, 0) > 0;
 }
 
-void sockraw_set_frame_handler(struct _if_plugin* this, void (*handler)(ETH_EAP_FRAME* frame)) {
+void sockraw_set_frame_handler(struct _if_impl* this, void (*handler)(ETH_EAP_FRAME* frame)) {
     PRIV->handler = handler;
 }
 
-void sockraw_destroy(if_plugin* this) {
+void sockraw_destroy(if_impl* this) {
     chk_free((void**)&this->priv);
     chk_free((void**)&this);
 }
 
-if_plugin* sockraw_new() {
-    if_plugin* this = (if_plugin*)malloc(sizeof(if_plugin));
+if_impl* sockraw_new() {
+    if_impl* this = (if_impl*)malloc(sizeof(if_impl));
     if (this < 0) {
         PR_ERRNO("SOCK_RAW 主结构内存分配失败");
         return NULL;
     }
-    memset(this, 0, sizeof(if_plugin));
+    memset(this, 0, sizeof(if_impl));
     
-    /* The priv pointer in if_plugin.h is a sockraw_priv* here */
+    /* The priv pointer in if_impl.h is a sockraw_priv* here */
     this->priv = (sockraw_priv*)malloc(sizeof(sockraw_priv));
     if (this->priv < 0) {
         PR_ERRNO("SOCK_RAW 私有结构内存分配失败");

@@ -1,5 +1,5 @@
 #include "config.h"
-#include "if_plugin.h"
+#include "if_impl.h"
 #include "linkedlist.h"
 
 int main(int argc, char* argv[]) {
@@ -7,8 +7,8 @@ int main(int argc, char* argv[]) {
     unsigned char mac[6];
     parse_cmdline_opts(argc, argv);
     
-    init_if_plugin_list();
-    if_plugin* if_plug = find_if_plugin_by_name("sockraw");
+    init_if_impl_list();
+    if_impl* if_plug = find_if_impl_by_name("sockraw");
     
     if_plug->set_ifname(if_plug,cfg->ifname);
     if_plug->obtain_mac(if_plug, mac);
