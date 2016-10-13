@@ -7,20 +7,19 @@
 #include "logging.h"
 #include "misc.h"
 
+#include <linux/if_ether.h>
+#include <linux/if_packet.h>
+#include <net/if.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
-#include <netinet/in.h>
-#include <net/if.h>
-#include <linux/if_ether.h>
 #include <string.h>
-#include <stdint.h>
 #include <unistd.h>
-#include <errno.h>
 #include <malloc.h>
 
 typedef struct _if_impl_sockraw_priv {
-    int sockfd; /* Internal use */
     char ifname[IFNAMSIZ];
+    int sockfd; /* Internal use */
+    int if_index; /* Index of this interface */
     int stop_flag; /* Set to break out of recv loop */
     void (*handler)(ETH_EAP_FRAME* frame); /* Packet handler */
 } sockraw_priv;
@@ -28,12 +27,13 @@ typedef struct _if_impl_sockraw_priv {
 #define PRIV ((sockraw_priv*)(this->priv))
 
 RESULT sockraw_set_ifname(struct _if_impl* this, const char* ifname) {
+    struct ifreq ifreq;
+    
+    // TODO do this in main program
     if (ifname == NULL) {
         PR_ERR("网卡名未指定，请检查 -n 的设置！");
         return FAILURE;
     }
-    
-    strncpy(PRIV->ifname, ifname, IFNAMSIZ);
     
     /* Default protocol is ETH_P_PAE (0x888e) */
     if ((PRIV->sockfd = socket(PF_PACKET, SOCK_RAW, ETH_P_PAE)) < 0) {
@@ -41,12 +41,22 @@ RESULT sockraw_set_ifname(struct _if_impl* this, const char* ifname) {
         return FAILURE;
     }
     
+    memset(&ifreq, 0, sizeof(struct ifreq));
+    strncpy(ifreq.ifr_name, ifname, IFNAMSIZ);
+    if (ioctl(PRIV->sockfd, SIOCGIFINDEX, &ifreq) < 0) {
+        PR_ERRNO("网络界面 ID 获取失败");
+        return FAILURE;
+    }
+    PRIV->if_index = ifreq.ifr_ifindex;
+    
+    strncpy(PRIV->ifname, ifname, IFNAMSIZ);
     return SUCCESS;
 }
 
 RESULT sockraw_obtain_mac(struct _if_impl* this, uint8_t* adr_buf) {
     struct ifreq ifreq;
 
+    memset(&ifreq, 0, sizeof(struct ifreq));
     strncpy(ifreq.ifr_name, PRIV->ifname, IFNAMSIZ);
     
     if (ioctl(PRIV->sockfd, SIOCGIFHWADDR, &ifreq) < 0) {
@@ -79,11 +89,12 @@ RESULT sockraw_setup_capture_params(struct _if_impl* this, short eth_protocol, i
         }
     }
     
-    /* Handle promisc */    
+    /* Handle promisc */
+    memset(&ifreq, 0, sizeof(struct ifreq));
     strncpy(ifreq.ifr_name, PRIV->ifname, IFNAMSIZ);
             
     if (ioctl(PRIV->sockfd, SIOCGIFFLAGS, &ifreq) < 0) {
-        PR_ERRNO("获取网络界面参数失败");
+        PR_ERRNO("获取网络界面标志信息失败");
         return FAILURE;
     }
     
@@ -125,9 +136,18 @@ RESULT sockraw_stop_capture(struct _if_impl* this) {
 }
 
 RESULT sockraw_send_frame(struct _if_impl* this, ETH_EAP_FRAME* frame) {
+    struct sockaddr_ll socket_address;
     if (frame == NULL || frame->content == NULL)
         return FAILURE;
-    return send(PRIV->sockfd, frame->content, frame->len, 0) > 0;
+    
+    /* Send via this interface */
+    memset(&socket_address, 0, sizeof(struct sockaddr_ll));
+    socket_address.sll_ifindex = PRIV->if_index;
+    socket_address.sll_halen = ETH_ALEN;
+    memmove(socket_address.sll_addr, frame->header->eth_hdr.dest_mac, 6);
+    
+    return sendto(PRIV->sockfd, frame->content, frame->len, 0,
+                    (struct sockaddr*)&socket_address, sizeof(struct sockaddr_ll)) > 0;
 }
 
 void sockraw_set_frame_handler(struct _if_impl* this, void (*handler)(ETH_EAP_FRAME* frame)) {
