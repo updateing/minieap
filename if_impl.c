@@ -3,7 +3,7 @@
 #include <string.h>
 
 /* content of this list is IF_IMPL* */
-static list_element* g_if_impl_list;
+static LIST_ELEMENT* g_if_impl_list;
 static IF_IMPL* g_selected_impl;
 
 IF_IMPL* sockraw_new();

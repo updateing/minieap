@@ -62,11 +62,6 @@ typedef struct _prog_config {
     // char* logfile;
     
     /*
-     * Run this when auth succeeds.
-     */
-    char* dhcp_script;
-    
-    /*
      * Whether to restart after being forced offline by server.
      * Mostly due to same account being used elsewhere (classroom)
      * and timed access control.

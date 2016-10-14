@@ -1,6 +1,7 @@
-MINIEAP_COMMON_OBJS := config.o logging.o minieap.o misc.o linkedlist.o if_impl.o packet_builder.o
+MINIEAP_COMMON_OBJS := config.o logging.o minieap.o misc.o linkedlist.o if_impl.o packet_builder.o packet_util.o
 
 MINIEAP_PLUGIN_OBJS := if_impl_sockraw.o
+MINIEAP_PLUGIN_OBJS += packet_plugin_rjv3.o packet_plugin_rjv3_prop.o
 
 CC := cc -Wall -DDEBUG
 

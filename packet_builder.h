@@ -12,6 +12,8 @@
  * A Packet Builder
  *
  * I don't want to make this pluggable since it's the standard EAP implementation.
+ * This builder does not provide general manipulation for packets, either.
+ *
  * If you want to alter things, make an auth_plugin.
  */
 typedef struct _packet_builder {

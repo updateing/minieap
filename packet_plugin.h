@@ -11,20 +11,30 @@ typedef struct _packet_plugin {
      *
      * Return: if there is any error during the process (malformed value, etc)
      */
-    RESULT (*process_cmdline_opts)(int argc, char* argv[]);
+    RESULT (*process_cmdline_opts)(struct _packet_plugin* this, int argc, char* argv[]);
     
     /*
      * Called by main program when printing help for command line options.
      */
-    void (*print_cmdline_opts_help)();
+    void (*print_cmdline_help)(struct _packet_plugin* this);
     
     /*
      * Called by main program when the main program finishes filling
      * the standard ethernet and EAP(OL) fields in a ready-to-send frame.
      * Can be used to append custom padding or alter standard fields.
+     *
+     * Return: if the maniputation completed successfully
      */
-    RESULT (*prepare_frame)(ETH_EAP_FRAME* frame);
+    RESULT (*prepare_frame)(struct _packet_plugin* this, ETH_EAP_FRAME* frame);
 
+    /*
+     * Called by main program when we received a packet.
+     * Can be used to process proprietary field.
+     *
+     * Return: if the frame is processed successfully
+     */
+    RESULT (*on_frame_received)(struct _packet_plugin* this, ETH_EAP_FRAME* frame);
+    
     /*
      * Packet plugin internal use
      */

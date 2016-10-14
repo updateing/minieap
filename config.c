@@ -60,7 +60,6 @@ RESULT parse_cmdline_opts(int argc, char* argv[]) {
 	    { "daemonize", required_argument, NULL, 'b' },
 	    { "fake-version", required_argument, NULL, 'v' },
 	    { "template-file", required_argument, NULL, 'f' },
-	    { "dhcp-script", required_argument, NULL, 'c' },
 	    { "proxy-lan-iface", required_argument, NULL, 'z' },
 	    { "proxy-require-success", required_argument, NULL, 'j' },
 	    { "decode-config", required_argument, NULL, 'q' },
@@ -149,10 +148,10 @@ RESULT parse_cmdline_opts(int argc, char* argv[]) {
                 break; TODO RJ specific
             case 'f':
                 COPY_ARG_TO(dataFile);
-                break; */
+                break; 
             case 'c':
                 COPY_N_ARG_TO(g_prog_config.dhcp_script, MAX_PATH);
-                break;
+                break;*/
             case 'z':
                 g_proxy_config.proxy_on = 1;
                 COPY_N_ARG_TO(g_proxy_config.lan_ifname, IFNAME_MAX_LEN);

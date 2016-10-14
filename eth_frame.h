@@ -2,6 +2,7 @@
 #define _MINIEAP_PACKETS_H
 
 #include <stddef.h>
+#include <stdint.h>
 
 typedef enum _eap_code{
 	EAP_REQUEST = 1,
@@ -54,7 +55,8 @@ typedef struct _frame_header {
 } FRAME_HEADER; // Skip the 8021x header manually!
 
 typedef struct _eth_eap_frame {
-    size_t len;
+    size_t actual_len; // Effective length of data in buffer
+    size_t buffer_len; // Current buffer length, do not write more than this
     union {
         uint8_t* content;
         FRAME_HEADER* header; // Easier to use without a cast.

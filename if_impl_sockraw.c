@@ -116,12 +116,12 @@ RESULT sockraw_start_capture(struct _if_impl* this) {
     ETH_EAP_FRAME frame;
     
     memset(buf, 0, 1512);
-    frame.len = 0;
+    frame.actual_len = 0;
     frame.content = buf;
     // TODO will ctrl-c break recv first or call signal handler first?
     while ((recvlen = recv(PRIV->sockfd, (void*)buf, 1512, 0)) > 0
                 && PRIV->stop_flag == 0) {
-        frame.len = recvlen;
+        frame.actual_len = recvlen;
         PRIV->handler(&frame);
         memset(buf, 0, 1512);
     }
@@ -146,7 +146,7 @@ RESULT sockraw_send_frame(struct _if_impl* this, ETH_EAP_FRAME* frame) {
     socket_address.sll_halen = ETH_ALEN;
     memmove(socket_address.sll_addr, frame->header->eth_hdr.dest_mac, 6);
     
-    return sendto(PRIV->sockfd, frame->content, frame->len, 0,
+    return sendto(PRIV->sockfd, frame->content, frame->actual_len, 0,
                     (struct sockaddr*)&socket_address, sizeof(struct sockaddr_ll)) > 0;
 }
 
@@ -171,6 +171,7 @@ IF_IMPL* sockraw_new() {
     this->priv = (sockraw_priv*)malloc(sizeof(sockraw_priv));
     if (this->priv < 0) {
         PR_ERRNO("SOCK_RAW 私有结构内存分配失败");
+        free(this);
         return NULL;
     }
     memset(this->priv, 0, sizeof(sockraw_priv));

@@ -9,6 +9,7 @@
 #ifndef _LOGGING_H
 #define _LOGGING_H
 
+#include <string.h>
 #include <errno.h>
 
 #ifdef DEBUG
