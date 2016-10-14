@@ -2,29 +2,32 @@
 #include "if_impl.h"
 #include <string.h>
 
-/* content of this list is if_impl* */
+/* content of this list is IF_IMPL* */
 static list_element* g_if_impl_list;
+static IF_IMPL* g_selected_impl;
 
-if_impl* sockraw_new();
+IF_IMPL* sockraw_new();
 
 int init_if_impl_list() {
-    if_impl* (*list[])() = {
+    IF_IMPL* (*list[])() = {
 //#include "if_impl_list_gen.h" TODO autogen
         sockraw_new
     };
     int i = 0;
-    for (; i < sizeof(list) / sizeof(if_impl*); ++i) {
-        if_impl* (*func)() = list[i];
+    for (; i < sizeof(list) / sizeof(IF_IMPL*); ++i) {
+        IF_IMPL* (*func)() = list[i];
         insert_data(&g_if_impl_list, (*func)());
     }
     return i;
 }
 
 static int impl_name_cmp(void* to_find, void* curr) {
-    return memcmp(to_find, ((if_impl*)curr)->name, strlen(curr));
+    return memcmp(to_find, ((IF_IMPL*)curr)->name, strlen(curr));
 }
 
-if_impl* find_if_impl_by_name(const char* name) {
-    return (if_impl*)lookup_data(g_if_impl_list, (void*)name, impl_name_cmp);
+RESULT select_if_impl(const char* name) {
+    g_selected_impl = (IF_IMPL*)lookup_data(g_if_impl_list, (void*)name, impl_name_cmp);
+    return g_selected_impl == NULL;
 }
 
+IF_IMPL* get_if_impl() { return g_selected_impl; }

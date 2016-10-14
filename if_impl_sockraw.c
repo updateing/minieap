@@ -154,18 +154,18 @@ void sockraw_set_frame_handler(struct _if_impl* this, void (*handler)(ETH_EAP_FR
     PRIV->handler = handler;
 }
 
-void sockraw_destroy(if_impl* this) {
+void sockraw_destroy(IF_IMPL* this) {
     chk_free((void**)&this->priv);
     chk_free((void**)&this);
 }
 
-if_impl* sockraw_new() {
-    if_impl* this = (if_impl*)malloc(sizeof(if_impl));
+IF_IMPL* sockraw_new() {
+    IF_IMPL* this = (IF_IMPL*)malloc(sizeof(IF_IMPL));
     if (this < 0) {
         PR_ERRNO("SOCK_RAW 主结构内存分配失败");
         return NULL;
     }
-    memset(this, 0, sizeof(if_impl));
+    memset(this, 0, sizeof(IF_IMPL));
     
     /* The priv pointer in if_impl.h is a sockraw_priv* here */
     this->priv = (sockraw_priv*)malloc(sizeof(sockraw_priv));

@@ -82,7 +82,7 @@ typedef struct _if_impl {
      * Main program should not touch this pointer.
      */
     void* priv;
-} if_impl;
+} IF_IMPL;
 
 /*
  * Initialize the network interface plugin/driver list.
@@ -90,5 +90,15 @@ typedef struct _if_impl {
  * Return: number of plugins loaded
  */
 int init_if_impl_list();
-if_impl* find_if_impl_by_name(const char* name);
+
+/*
+ * Select one implementation with given name for usage.
+ *
+ * Return: if the specific implementation was found.
+ */
+RESULT select_if_impl(const char* name);
+/*
+ * Get selected implementation
+ */
+IF_IMPL* get_if_impl();
 #endif

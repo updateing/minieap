@@ -2,7 +2,7 @@
 #define _MINIEAP_MINIEAP_COMMON_H
 
 typedef enum _function_result {
-    SUCCESS,
+    SUCCESS = 0,
     FAILURE
 } RESULT;
 

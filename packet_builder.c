@@ -96,13 +96,13 @@ int builder_build_packet(struct _packet_builder* this, uint8_t* buffer) {
     }
 }
 
-packet_builder* packet_builder_new() {
-    packet_builder* this = (packet_builder*)malloc(sizeof(packet_builder));
+PACKET_BUILDER* packet_builder_new() {
+    PACKET_BUILDER* this = (PACKET_BUILDER*)malloc(sizeof(PACKET_BUILDER));
     if (this < 0) {
         PR_ERRNO("数据包生成器主结构内存分配失败");
         return NULL;
     }
-    memset(this, 0, sizeof(packet_builder));
+    memset(this, 0, sizeof(PACKET_BUILDER));
     
     /* The priv pointer in packet_builder.h is a packet_builder_priv* here */
     this->priv = (packet_builder_priv*)malloc(sizeof(packet_builder_priv));

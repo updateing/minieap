@@ -51,7 +51,7 @@ typedef struct _packet_builder {
      * Can be used to save information
      */
     void* priv;
-} packet_builder;
+} PACKET_BUILDER;
 
 /*
  * Create a new instance
@@ -59,7 +59,7 @@ typedef struct _packet_builder {
  *
  * Return: an instance of this struct, with all methods above set up
  */
-packet_builder* packet_builder_new();
+PACKET_BUILDER* packet_builder_new();
 
 /*
  * Destory an instance

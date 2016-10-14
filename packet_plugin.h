@@ -29,6 +29,6 @@ typedef struct _packet_plugin {
      * Packet plugin internal use
      */
     void* priv;
-} packet_plugin;
+} PACKET_PLUGIN;
 
 #endif
