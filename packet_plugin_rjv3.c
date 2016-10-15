@@ -19,8 +19,7 @@
 typedef struct _packet_plugin_rjv3_priv {
     struct { // Cmdline options
         int heartbeat_interval;
-        char* dhcp_script; // All pointers can be freed since they are created by COPY_N_ARG_TO
-        char* service_name;
+        char* service_name; // All pointers can be freed since they are created by COPY_N_ARG_TO
         char* ver_str;
         char* fake_dns;
         char* fake_serial;
@@ -30,6 +29,7 @@ typedef struct _packet_plugin_rjv3_priv {
         LIST_ELEMENT* cmd_prop_list; // Destroy!
     };
     // Internal state variables
+    int auth_round;
     ETH_EAP_FRAME* last_recv_packet;
 } rjv3_priv;
 
@@ -77,7 +77,6 @@ static const uint8_t pkt_md5_priv_header[] = {
 };
 
 void rjv3_destroy(struct _packet_plugin* this) {
-    chk_free((void**)&PRIV->dhcp_script);
     chk_free((void**)&PRIV->service_name);
     chk_free((void**)&PRIV->ver_str);
     chk_free((void**)&PRIV->fake_dns);
@@ -145,7 +144,6 @@ RESULT rjv3_process_cmdline_opts(struct _packet_plugin* this, int argc, char* ar
 	    { "eap-bcast-addr", required_argument, NULL, 'a' },
 	    { "dhcp-type", required_argument, NULL, 'd' },
 	    { "fake-version", required_argument, NULL, 'v' },
-	    { "dhcp-script", required_argument, NULL, 'c' }, // An EAP client should not do this
 	    { "decode-config", required_argument, NULL, 'q' },
 	    { "rj-option", required_argument, NULL, 0 },
 	    { "service", required_argument, NULL, 0 },
@@ -177,9 +175,6 @@ RESULT rjv3_process_cmdline_opts(struct _packet_plugin* this, int argc, char* ar
                     PRIV->fake_ver[0] = ver[0];
                     PRIV->fake_ver[1] = ver[1];
                 }
-                break;
-            case 'c':
-                COPY_N_ARG_TO(PRIV->dhcp_script, MAX_PATH);
                 break;
             case 'q':
                 // printSuConfig(optarg); TODO
@@ -226,7 +221,6 @@ static int rjv3_append_common_fields(PACKET_PLUGIN* this, LIST_ELEMENT* list, ET
     uint8_t _misc_7[RJV3_SIZE_MISC_7] = {0};
     uint8_t _misc_8[RJV3_SIZE_MISC_8] = {0x40};
     char* _ver_str = PRIV->ver_str ? PRIV->ver_str : "RG-SU For Linux V1.0";
-
 
     rjv3_set_dhcp_en(_dhcp_en, PRIV->dhcp_type);
 
@@ -325,6 +319,10 @@ RESULT rjv3_on_frame_received(struct _packet_plugin* this, ETH_EAP_FRAME* frame)
     return SUCCESS; // TODO
 }
 
+void rjv3_set_auth_round(struct _packet_plugin* this, int round) {
+    PRIV->auth_round = round;
+}
+
 PACKET_PLUGIN* packet_plugin_rjv3_new() {
     PACKET_PLUGIN* this = (PACKET_PLUGIN*)malloc(sizeof(PACKET_PLUGIN));
     if (this < 0) {
@@ -344,6 +342,7 @@ PACKET_PLUGIN* packet_plugin_rjv3_new() {
     this->name = "rjv3";
     this->description = "来自 hyrathb@GitHub 的 Ruijie V3 验证算法";
     this->destroy = rjv3_destroy;
+    this->set_auth_round = rjv3_set_auth_round;
     this->process_cmdline_opts = rjv3_process_cmdline_opts;
     this->print_cmdline_help = rjv3_print_cmdline_help;
     this->prepare_frame = rjv3_prepare_frame;

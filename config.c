@@ -51,17 +51,15 @@ RESULT parse_cmdline_opts(int argc, char* argv[]) {
 	    { "dns", required_argument, NULL, 's' },
 	    { "ping-host", required_argument, NULL, 'o' },*/
 	    { "auth-timeout", required_argument, NULL, 't' },
-	    { "heartbeat", required_argument, NULL, 'e' },
 	    { "wait-after-fail", required_argument, NULL, 'r' },
 	    { "max-fail", required_argument, NULL, 'l' },
 	    { "no-auto-reauth", required_argument, NULL, 'x' },
-	    { "eap-bcast-addr", required_argument, NULL, 'a' },
 	    { "dhcp-type", required_argument, NULL, 'd' },
 	    { "daemonize", required_argument, NULL, 'b' },
-	    { "fake-version", required_argument, NULL, 'v' },
-	    { "template-file", required_argument, NULL, 'f' },
+	    { "run-on-success", required_argument, NULL, 'c' }, /* They are */
+	    { "dhcp-script", required_argument, NULL, 'c' },    /* both 'c' */
 	    { "proxy-lan-iface", required_argument, NULL, 'z' },
-	    { "proxy-require-success", required_argument, NULL, 'j' },
+	    { "require-success", required_argument, NULL, 'j' },
 	    { "decode-config", required_argument, NULL, 'q' },
 	    { "max-retries", required_argument, NULL, 0},
 	    { "pid-file", required_argument, NULL, 0},
@@ -114,9 +112,6 @@ RESULT parse_cmdline_opts(int argc, char* argv[]) {
             case 't':
                 g_prog_config.stage_timeout = atoi(optarg); /* 此处不设置限制，但原始的代码中有最大99秒的限制 */
                 break;
-            case 'e':
-                // TODO RJ plugin specific heartbeat = atoi(optarg); /* 同上 */
-                break;
             case 'r':
                 g_prog_config.wait_after_fail_secs = atoi(optarg); /* 同上 */
                 break;
@@ -126,42 +121,19 @@ RESULT parse_cmdline_opts(int argc, char* argv[]) {
             case 'x':
                 g_prog_config.restart_on_logoff = atoi(optarg);
                 break;
-            /* case 'a':
-                startMode = atoi(optarg) % 3;
-                break;
-            case 'd':
-                dhcpMode = atoi(optarg) % 4;
-                break; */ // TODO RJ plugin specific
             case 'b':
                 _daemon_mode = atoi(optarg); /* 在循环结束后处理 */
                 break;
-            /*case 'v':
-                if (sscanf(optarg, "%u.%u", ver, ver + 1) != EOF) {
-                    if (ver[0] == 0) {
-                        bufType = 0;
-                    } else {
-                        version[0] = ver[0];
-                        version[1] = ver[1];
-                        bufType = 1;
-                    }
-                }
-                break; TODO RJ specific
-            case 'f':
-                COPY_ARG_TO(dataFile);
-                break; 
             case 'c':
-                COPY_N_ARG_TO(g_prog_config.dhcp_script, MAX_PATH);
-                break;*/
+                COPY_N_ARG_TO(g_prog_config.run_on_success, MAX_PATH);
+                break;
             case 'z':
                 g_proxy_config.proxy_on = 1;
                 COPY_N_ARG_TO(g_proxy_config.lan_ifname, IFNAME_MAX_LEN);
                 break;
             case 'j':
-                g_proxy_config.require_successes = atoi(optarg);
+                g_prog_config.require_successes = atoi(optarg);
                 break;
-            /* case 'q':
-                printSuConfig(optarg);
-                exit(EXIT_SUCCESS); TODO RJ specific */
             case 0: /* 超出26个字母的选项，没有短选项与其对应 */
 #define IF_ARG(arg_name) (strcmp(longOpts[longIndex].name, arg_name) == 0)
                 if (IF_ARG("max-retries")) {
@@ -186,4 +158,8 @@ PROG_CONFIG* get_program_config() {
 
 EAP_CONFIG* get_eap_config() {
     return &g_eap_config;
+}
+
+PROXY_CONFIG* get_proxy_config() {
+    return &g_proxy_config;
 }

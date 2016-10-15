@@ -22,12 +22,6 @@ typedef struct _eap_config {
 typedef struct _proxy_config {
     int proxy_on;
     char* lan_ifname;
-    /*
-     * Turn off proxy after this number of success'es
-     * Official RJ supplicant needs 2 success'es to enter
-     * correct state.
-     */
-    int require_successes;
 } PROXY_CONFIG;
 
 /*
@@ -60,6 +54,12 @@ typedef struct _prog_config {
      * Logging config is applied in logging.c
      */
     // char* logfile;
+    
+    /*
+     * Run this after authentication succeeds.
+     * We have no other way to inform the system about the result...
+     */
+    char* run_on_success;
     
     /*
      * Whether to restart after being forced offline by server.
@@ -99,6 +99,12 @@ typedef struct _prog_config {
     int save_now;
     
     /*
+     * How many auths it takes to finish the actual authentication process.
+     * This is non-standard - but you can leave it alone.
+     */
+    int require_successes;
+    
+    /*
      * How to kill other instances
      */
     KILL_TYPE kill_type;
@@ -109,4 +115,6 @@ RESULT parse_config_file(const char* filename);
 
 PROG_CONFIG* get_program_config();
 EAP_CONFIG* get_eap_config();
+PROXY_CONFIG* get_proxy_config();
+
 #endif

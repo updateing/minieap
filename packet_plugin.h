@@ -42,6 +42,13 @@ typedef struct _packet_plugin {
     RESULT (*on_frame_received)(struct _packet_plugin* this, ETH_EAP_FRAME* frame);
     
     /*
+     * Sets the round number we are currently in.
+     * This is useful in double authentication, where frames in round 1 and round 2
+     * require different fields.
+     */
+    void (*set_auth_round)(struct _packet_plugin* this, int round);
+    
+    /*
      * Plugin name, to be selected by user
      */
     char* name;
