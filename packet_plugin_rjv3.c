@@ -5,8 +5,6 @@
 #include "logging.h"
 #include "packet_plugin_rjv3_priv.h"
 #include "packet_plugin_rjv3_prop.h"
-#include "if_impl.h"
-#include "checkV4.h"
 
 #include <stdint.h>
 #include <getopt.h>
@@ -14,7 +12,6 @@
 #include <string.h>
 #include <stdlib.h>
 #include <netinet/in.h>
-#include <arpa/inet.h>
 
 typedef struct _packet_plugin_rjv3_priv {
     struct { // Cmdline options
