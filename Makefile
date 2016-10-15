@@ -1,7 +1,8 @@
 MINIEAP_COMMON_OBJS := config.o logging.o minieap.o misc.o linkedlist.o if_impl.o packet_builder.o packet_util.o
 
 MINIEAP_PLUGIN_OBJS := if_impl_sockraw.o
-MINIEAP_PLUGIN_OBJS += packet_plugin_rjv3.o packet_plugin_rjv3_prop.o
+MINIEAP_PLUGIN_OBJS += packet_plugin_rjv3.o packet_plugin_rjv3_prop.o packet_plugin_rjv3_priv.o \
+    checkV4.o byte_order.o md5.o rjmd5.o rjripemd128.o rjsha1.o rjtiger.o rjtiger_sbox.o rjwhirlpool.o rjwhirlpool_sbox.o
 
 CC := cc -Wall -DDEBUG
 
