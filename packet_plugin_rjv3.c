@@ -178,7 +178,7 @@ RESULT rjv3_process_cmdline_opts(struct _packet_plugin* this, int argc, char* ar
 }
 
 static int rjv3_append_common_fields(LIST_ELEMENT* list, ETH_EAP_FRAME* frame) {
-    int _len = 0;
+    int _len = 0, _this_len = -1;
     uint8_t _dhcp_en[RJV3_SIZE_DHCP] = {0x00, 0x00, 0x00, 0x01};
     uint8_t _local_mac[RJV3_SIZE_MAC];
     /* misc 1 */
@@ -196,22 +196,29 @@ static int rjv3_append_common_fields(LIST_ELEMENT* list, ETH_EAP_FRAME* frame) {
     char* _ver_str = "RG-SU For Linux V1.0";
     
     // TODO Customize!
+#define CHK_ADD(x) \
+    _this_len = x; \
+    if (_this_len < 0) { \
+        return -1; \
+    } else { \
+        _len += _this_len; \
+    }
     
-    _len += append_rjv3_prop(&list, RJV3_TYPE_DHCP,     _dhcp_en,               sizeof(_dhcp_en));
-    _len += append_rjv3_prop(&list, RJV3_TYPE_MAC,      _local_mac,             sizeof(_local_mac));
-    _len += append_rjv3_prop(&list, RJV3_TYPE_MISC_1,   NULL,                   0);
-    _len += append_rjv3_prop(&list, RJV3_TYPE_IP,       (uint8_t*)_local_ip,   strlen(_local_ip));
-    _len += append_rjv3_prop(&list, RJV3_TYPE_MISC_2,   _misc_2,                sizeof(_misc_2));
-    _len += append_rjv3_prop(&list, RJV3_TYPE_MISC_3,   _misc_3,                sizeof(_misc_3));
-    _len += append_rjv3_prop(&list, RJV3_TYPE_LL_IPV6,  _ll_ipv6,               sizeof(_ll_ipv6));
-    _len += append_rjv3_prop(&list, RJV3_TYPE_GLB_IPV6, _glb_ipv6,              sizeof(_glb_ipv6));
-    _len += append_rjv3_prop(&list, RJV3_TYPE_V3_HASH,  _v3_hash,               sizeof(_v3_hash));
-    _len += append_rjv3_prop(&list, RJV3_TYPE_SERVICE,  (uint8_t*)_service,    sizeof(_service));
-    _len += append_rjv3_prop(&list, RJV3_TYPE_HDD_SER,  _hdd_ser,               sizeof(_hdd_ser));
-    _len += append_rjv3_prop(&list, RJV3_TYPE_MISC_6,   NULL,                   0);
-    _len += append_rjv3_prop(&list, RJV3_TYPE_MISC_7,   _misc_7,                sizeof(_misc_7));
-    _len += append_rjv3_prop(&list, RJV3_TYPE_MISC_8,   _misc_8,                sizeof(_misc_8));
-    _len += append_rjv3_prop(&list, RJV3_TYPE_VER_STR,  (uint8_t*)_ver_str,    sizeof(_ver_str));
+    CHK_ADD(append_rjv3_prop(&list, RJV3_TYPE_DHCP,     _dhcp_en,               sizeof(_dhcp_en)));
+    CHK_ADD(append_rjv3_prop(&list, RJV3_TYPE_MAC,      _local_mac,             sizeof(_local_mac)));
+    CHK_ADD(append_rjv3_prop(&list, RJV3_TYPE_MISC_1,   NULL,                   0));
+    CHK_ADD(append_rjv3_prop(&list, RJV3_TYPE_IP,       (uint8_t*)_local_ip,   strlen(_local_ip)));
+    CHK_ADD(append_rjv3_prop(&list, RJV3_TYPE_MISC_2,   _misc_2,                sizeof(_misc_2)));
+    CHK_ADD(append_rjv3_prop(&list, RJV3_TYPE_MISC_3,   _misc_3,                sizeof(_misc_3)));
+    CHK_ADD(append_rjv3_prop(&list, RJV3_TYPE_LL_IPV6,  _ll_ipv6,               sizeof(_ll_ipv6)));
+    CHK_ADD(append_rjv3_prop(&list, RJV3_TYPE_GLB_IPV6, _glb_ipv6,              sizeof(_glb_ipv6)));
+    CHK_ADD(append_rjv3_prop(&list, RJV3_TYPE_V3_HASH,  _v3_hash,               sizeof(_v3_hash)));
+    CHK_ADD(append_rjv3_prop(&list, RJV3_TYPE_SERVICE,  (uint8_t*)_service,    sizeof(_service)));
+    CHK_ADD(append_rjv3_prop(&list, RJV3_TYPE_HDD_SER,  _hdd_ser,               sizeof(_hdd_ser)));
+    CHK_ADD(append_rjv3_prop(&list, RJV3_TYPE_MISC_6,   NULL,                   0));
+    CHK_ADD(append_rjv3_prop(&list, RJV3_TYPE_MISC_7,   _misc_7,                sizeof(_misc_7)));
+    CHK_ADD(append_rjv3_prop(&list, RJV3_TYPE_MISC_8,   _misc_8,                sizeof(_misc_8)));
+    CHK_ADD(append_rjv3_prop(&list, RJV3_TYPE_VER_STR,  (uint8_t*)_ver_str,    sizeof(_ver_str)));
     
     return _len;
 }
