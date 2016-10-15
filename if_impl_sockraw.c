@@ -7,6 +7,7 @@
 #include "logging.h"
 #include "misc.h"
 
+#include <netinet/in.h>
 #include <linux/if_ether.h>
 #include <linux/if_packet.h>
 #include <net/if.h>
@@ -15,6 +16,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <malloc.h>
+#include <ifaddrs.h>
 
 typedef struct _if_impl_sockraw_priv {
     char ifname[IFNAMSIZ];
@@ -53,6 +55,11 @@ RESULT sockraw_set_ifname(struct _if_impl* this, const char* ifname) {
     return SUCCESS;
 }
 
+/*
+ * Even if we develop another interface implementation using libpcap,
+ * these obtain_* methods would be the same.
+ * Shall we extract them?
+ */
 RESULT sockraw_obtain_mac(struct _if_impl* this, uint8_t* adr_buf) {
     struct ifreq ifreq;
 
@@ -65,6 +72,30 @@ RESULT sockraw_obtain_mac(struct _if_impl* this, uint8_t* adr_buf) {
     }
 
     memcpy(adr_buf, ifreq.ifr_hwaddr.sa_data, 6);
+    return SUCCESS;
+}
+
+RESULT sockraw_obtain_ip(struct _if_impl* this, LIST_ELEMENT** list) {
+    struct ifaddrs *ifaddrs, *if_curr;
+    IP_ADDR *addr;
+    if (getifaddrs(&ifaddrs) < 0) {
+        PR_ERRNO("通过 getifaddrs 获取 IP 地址失败");
+        return FAILURE;
+    }
+    
+    if_curr = ifaddrs;
+    do {
+        if (strcmp(if_curr->ifa_name, PRIV->ifname) == 0) {
+            addr = (IP_ADDR*)malloc(sizeof(IP_ADDR));
+            memset(addr, 0, sizeof(IP_ADDR));
+            addr->family = if_curr->ifa_addr->sa_family;
+            if (addr->family == AF_INET)
+                memmove(addr->ip, &((struct sockaddr_in*)if_curr->ifa_addr)->sin_addr, 4);
+            else if (addr->family == AF_INET6)
+                memmove(addr->ip, &((struct sockaddr_in6*)if_curr->ifa_addr)->sin6_addr, 16);
+            insert_data(list, addr);
+        }
+    } while ((if_curr = if_curr->ifa_next));
     return SUCCESS;
 }
 
@@ -179,6 +210,7 @@ IF_IMPL* sockraw_new() {
     this->set_ifname = sockraw_set_ifname;
     this->destroy = sockraw_destroy;
     this->obtain_mac = sockraw_obtain_mac;
+    this->obtain_ip = sockraw_obtain_ip;
     this->setup_capture_params = sockraw_setup_capture_params;
     this->start_capture = sockraw_start_capture;
     this->stop_capture = sockraw_stop_capture;

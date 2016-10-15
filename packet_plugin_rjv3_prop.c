@@ -28,10 +28,22 @@ int append_rjv3_prop(LIST_ELEMENT** list, uint8_t type, uint8_t* content, int le
     RJ_PROP* _prop = new_rjv3_prop();
     if (_prop == NULL) return -1;
     
+    uint8_t* buf;
+    if (len > 0) {
+        buf = (uint8_t*)malloc(len);
+        if (buf < 0) {
+            free(_prop);
+            return -1;
+        }
+        memmove(buf, content, len);
+    } else {
+        buf = NULL;
+    }
+    
     _prop->header1.header_len = len + sizeof(RJ_PROP_HEADER1) + sizeof(RJ_PROP_HEADER2);
     _prop->header2.type = type;
     _prop->header2.len = len + sizeof(RJ_PROP_HEADER2);
-    _prop->content = content;
+    _prop->content = buf;
     insert_data(list, _prop);
     return _prop->header1.header_len;
 }

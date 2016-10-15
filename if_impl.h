@@ -4,6 +4,12 @@
 #include <stdint.h>
 #include "minieap_common.h"
 #include "eth_frame.h"
+#include "linkedlist.h"
+
+typedef struct _ip_addr {
+    unsigned short family;
+    uint8_t ip[16]; /* IPv4 and IPv6. IPv4 takes first 4 bytes */
+} IP_ADDR;
 
 /*
  * Representing an interface driver plugin.
@@ -31,6 +37,14 @@ typedef struct _if_impl {
      * Return: if the MAC address was successfully retrived
      */
     RESULT (*obtain_mac)(struct _if_impl* this, uint8_t* address_buf);
+    
+    /*
+     * Get all IPv4v6 address on the interface. List content would be
+     * struct IP_ADDR.
+     *
+     * Return: if the operation was successful
+     */
+    RESULT (*obtain_ip)(struct _if_impl* this, LIST_ELEMENT** list);
      
      /*
       * Called by main program when capturing parameters are ready.
@@ -68,7 +82,7 @@ typedef struct _if_impl {
     void (*set_frame_handler)(struct _if_impl* this, void (*handler)(ETH_EAP_FRAME* frame));
     
     /*
-     * Plugin name, to be selected by user
+     * Implementation name, to be selected by user
      */
     char* name;
     

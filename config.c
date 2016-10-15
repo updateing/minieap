@@ -183,3 +183,7 @@ RESULT parse_cmdline_opts(int argc, char* argv[]) {
 PROG_CONFIG* get_program_config() {
     return &g_prog_config;
 }
+
+EAP_CONFIG* get_eap_config() {
+    return &g_eap_config;
+}

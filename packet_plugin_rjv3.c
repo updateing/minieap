@@ -5,23 +5,30 @@
 #include "logging.h"
 #include "packet_plugin_rjv3_priv.h"
 #include "packet_plugin_rjv3_prop.h"
+#include "if_impl.h"
+#include "checkV4.h"
 
 #include <stdint.h>
 #include <getopt.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
 typedef struct _packet_plugin_rjv3_priv {
-    int heartbeat_interval;
-    int echo_key; // Used in Keep-Alive packets
-    int packet_id; // Corresponding to request
-    char* dhcp_script; // Remember to free this
-    char* service_name;
-    uint8_t fake_ver[2];
-    DOT1X_BCAST_ADDR bcast_addr;
-    DHCP_TYPE dhcp_type;
-    LIST_ELEMENT* cmd_prop_list; // Free!
+    struct { // Cmdline options
+        int heartbeat_interval;
+        char* dhcp_script; // All pointers can be freed since they are created by COPY_N_ARG_TO
+        char* service_name;
+        char* ver_str;
+        uint8_t fake_ver[2];
+        DOT1X_BCAST_ADDR bcast_addr;
+        DHCP_TYPE dhcp_type;
+        LIST_ELEMENT* cmd_prop_list; // Destroy!
+    };
+    // Internal state variables
+    ETH_EAP_FRAME* last_recv_packet;
 } rjv3_priv;
 
 #define PRIV ((rjv3_priv*)(this->priv))
@@ -68,6 +75,14 @@ static const uint8_t pkt_md5_priv_header[] = {
 //    0x02, 0x00, 0x00, 0x00, 0x13, 0x11, 0x01, 0xc1, /* ........ */
 };
 
+void rjv3_destroy(struct _packet_plugin* this) {
+    chk_free((void**)&PRIV->dhcp_script);
+    chk_free((void**)&PRIV->service_name);
+    list_destroy(PRIV->cmd_prop_list);
+    free(this->priv);
+    free(this);
+}
+
 static RESULT append_rj_cmdline_opt(struct _packet_plugin* this, const char* opt) {
     // e.g. 6f:52472d535520466f72204c696e75782056312e3000
     //      type:content
@@ -103,6 +118,7 @@ static RESULT append_rj_cmdline_opt(struct _packet_plugin* this, const char* opt
     append_rjv3_prop(&PRIV->cmd_prop_list, _type, _content_buf, _content_len);
 
     free(_arg);
+    free(_content_buf);
     return SUCCESS;
 
 malformat:
@@ -128,6 +144,8 @@ RESULT rjv3_process_cmdline_opts(struct _packet_plugin* this, int argc, char* ar
 	    { "dhcp-script", required_argument, NULL, 'c' }, // An EAP client should not do this
 	    { "decode-config", required_argument, NULL, 'q' },
 	    { "rj-option", required_argument, NULL, 0 },
+	    { "service", required_argument, NULL, 0 },
+	    { "version-str", required_argument, NULL, 0 },
 	    { NULL, no_argument, NULL, 0 }
     };
 
@@ -166,6 +184,10 @@ RESULT rjv3_process_cmdline_opts(struct _packet_plugin* this, int argc, char* ar
                 if (IF_ARG("rj-option")) {
                     /* Allow mulitple rj-options */
                     append_rj_cmdline_opt(this, optarg);
+                } else if (IF_ARG("service")) {
+                    COPY_N_ARG_TO(PRIV->service_name, RJV3_SIZE_SERVICE);
+                } else if (IF_ARG("version-str")) {
+                    COPY_N_ARG_TO(PRIV->ver_str, MAX_PROP_LEN);
                 }
                 break;
             default:
@@ -177,25 +199,40 @@ RESULT rjv3_process_cmdline_opts(struct _packet_plugin* this, int argc, char* ar
     return SUCCESS;
 }
 
-static int rjv3_append_common_fields(LIST_ELEMENT* list, ETH_EAP_FRAME* frame) {
+static int rjv3_append_common_fields(PACKET_PLUGIN* this, LIST_ELEMENT* list, ETH_EAP_FRAME* frame) {
     int _len = 0, _this_len = -1;
     uint8_t _dhcp_en[RJV3_SIZE_DHCP] = {0x00, 0x00, 0x00, 0x01};
     uint8_t _local_mac[RJV3_SIZE_MAC];
-    /* misc 1 */
-    char* _local_ip;
+    uint8_t _pwd_hash[RJV3_SIZE_PWD_HASH] = {0};
+    char _sec_dns[INET_ADDRSTRLEN] = {0};
     uint8_t _misc_2[RJV3_SIZE_MISC_2] = {0x01};
-    uint8_t _misc_3[RJV3_SIZE_MISC_3] = {0};
     uint8_t _ll_ipv6[RJV3_SIZE_LL_IPV6] = {0};
+    uint8_t _ll_ipv6_tmp[RJV3_SIZE_LL_IPV6_T] = {0};
     uint8_t _glb_ipv6[RJV3_SIZE_GLB_IPV6] = {0};
     uint8_t _v3_hash[RJV3_SIZE_V3_HASH] = {0};
-    char* _service = "internet";
+    uint8_t _service[RJV3_SIZE_SERVICE] = {0};
     uint8_t _hdd_ser[RJV3_SIZE_HDD_SER] = {0};
     /* misc 6 */
     uint8_t _misc_7[RJV3_SIZE_MISC_7] = {0};
     uint8_t _misc_8[RJV3_SIZE_MISC_8] = {0x40};
-    char* _ver_str = "RG-SU For Linux V1.0";
+    char* _ver_str = PRIV->ver_str ? PRIV->ver_str : "RG-SU For Linux V1.0";
+
+
+    rjv3_set_dhcp_en(_dhcp_en, PRIV->dhcp_type);
+
+    rjv3_set_local_mac(_local_mac);
+
+    rjv3_set_pwd_hash(_pwd_hash, PRIV->last_recv_packet);
     
-    // TODO Customize!
+    // TODO DNS
+
+    rjv3_set_ipv6_addr(_ll_ipv6, _ll_ipv6_tmp, _glb_ipv6);
+
+    rjv3_set_v3_hash(_v3_hash, PRIV->last_recv_packet);
+
+    rjv3_set_service_name(_service, PRIV->service_name);
+    
+    // TODO HDD ser
 #define CHK_ADD(x) \
     _this_len = x; \
     if (_this_len < 0) { \
@@ -206,19 +243,25 @@ static int rjv3_append_common_fields(LIST_ELEMENT* list, ETH_EAP_FRAME* frame) {
     
     CHK_ADD(append_rjv3_prop(&list, RJV3_TYPE_DHCP,     _dhcp_en,               sizeof(_dhcp_en)));
     CHK_ADD(append_rjv3_prop(&list, RJV3_TYPE_MAC,      _local_mac,             sizeof(_local_mac)));
-    CHK_ADD(append_rjv3_prop(&list, RJV3_TYPE_MISC_1,   NULL,                   0));
-    CHK_ADD(append_rjv3_prop(&list, RJV3_TYPE_IP,       (uint8_t*)_local_ip,   strlen(_local_ip)));
+    
+    if (frame->header->eapol_hdr.type[0] == EAP_PACKET && frame->header->eap_hdr.type[0] == MD5_CHALLENGE) {
+        CHK_ADD(append_rjv3_prop(&list, RJV3_TYPE_PWD_HASH, _pwd_hash,          sizeof(_pwd_hash)));
+    } else {
+        CHK_ADD(append_rjv3_prop(&list, RJV3_TYPE_PWD_HASH, NULL,               0));
+    }
+    
+    CHK_ADD(append_rjv3_prop(&list, RJV3_TYPE_SEC_DNS,  (uint8_t*)_sec_dns,    strlen(_sec_dns)));
     CHK_ADD(append_rjv3_prop(&list, RJV3_TYPE_MISC_2,   _misc_2,                sizeof(_misc_2)));
-    CHK_ADD(append_rjv3_prop(&list, RJV3_TYPE_MISC_3,   _misc_3,                sizeof(_misc_3)));
     CHK_ADD(append_rjv3_prop(&list, RJV3_TYPE_LL_IPV6,  _ll_ipv6,               sizeof(_ll_ipv6)));
+    CHK_ADD(append_rjv3_prop(&list, RJV3_TYPE_LL_IPV6_T,_ll_ipv6_tmp,           sizeof(_ll_ipv6_tmp)));
     CHK_ADD(append_rjv3_prop(&list, RJV3_TYPE_GLB_IPV6, _glb_ipv6,              sizeof(_glb_ipv6)));
     CHK_ADD(append_rjv3_prop(&list, RJV3_TYPE_V3_HASH,  _v3_hash,               sizeof(_v3_hash)));
-    CHK_ADD(append_rjv3_prop(&list, RJV3_TYPE_SERVICE,  (uint8_t*)_service,    sizeof(_service)));
+    CHK_ADD(append_rjv3_prop(&list, RJV3_TYPE_SERVICE,  _service,               sizeof(_service)));
     CHK_ADD(append_rjv3_prop(&list, RJV3_TYPE_HDD_SER,  _hdd_ser,               sizeof(_hdd_ser)));
     CHK_ADD(append_rjv3_prop(&list, RJV3_TYPE_MISC_6,   NULL,                   0));
     CHK_ADD(append_rjv3_prop(&list, RJV3_TYPE_MISC_7,   _misc_7,                sizeof(_misc_7)));
     CHK_ADD(append_rjv3_prop(&list, RJV3_TYPE_MISC_8,   _misc_8,                sizeof(_misc_8)));
-    CHK_ADD(append_rjv3_prop(&list, RJV3_TYPE_VER_STR,  (uint8_t*)_ver_str,    sizeof(_ver_str)));
+    CHK_ADD(append_rjv3_prop(&list, RJV3_TYPE_VER_STR,  (uint8_t*)_ver_str,    strlen(_ver_str)));
     
     return _len;
 }
@@ -250,7 +293,7 @@ RESULT rjv3_prepare_frame(struct _packet_plugin* this, ETH_EAP_FRAME* frame) {
     insert_data(&_prop_list, _size_prop);
     
     /* Let's do the huge project! */
-    _props_len = rjv3_append_common_fields(_prop_list, frame);
+    _props_len = rjv3_append_common_fields(this, _prop_list, frame);
 
     /* Now correct the size, note the format is different */
     _size_prop->header2.type = (_props_len >> 4 & 0xf);
@@ -267,6 +310,7 @@ RESULT rjv3_prepare_frame(struct _packet_plugin* this, ETH_EAP_FRAME* frame) {
 }
 
 RESULT rjv3_on_frame_received(struct _packet_plugin* this, ETH_EAP_FRAME* frame) {
+    PRIV->last_recv_packet = frame;
     return SUCCESS; // TODO
 }
 
@@ -285,7 +329,10 @@ PACKET_PLUGIN* packet_plugin_rjv3_new() {
         return NULL;
     }
     memset(this->priv, 0, sizeof(rjv3_priv));
-    
+        
+    this->name = "rjv3";
+    this->description = "来自 hyrathb@GitHub 的 Ruijie V3 验证算法";
+    this->destroy = rjv3_destroy;
     this->process_cmdline_opts = rjv3_process_cmdline_opts;
     this->print_cmdline_help = rjv3_print_cmdline_help;
     this->prepare_frame = rjv3_prepare_frame;

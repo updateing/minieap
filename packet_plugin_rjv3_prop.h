@@ -13,8 +13,11 @@
  */
 
 /*
- * `insert_rjv3_prop` does not check if there is an existing field with same type/header_type,
+ * `append_rjv3_prop` does not check if there is an existing field with same type/header_type,
  * thus may lead to duplicated entries.
+ *
+ * `append_rjv3_prop` will create a new buffer of content. This buffer should be freed
+ * by destroying the list.
  */
 int append_rjv3_prop(LIST_ELEMENT** list, uint8_t type, uint8_t* content, int len);
 int modify_rjv3_prop(LIST_ELEMENT* list, uint8_t type, uint8_t* content, int len);

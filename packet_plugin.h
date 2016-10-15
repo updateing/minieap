@@ -6,6 +6,12 @@
 
 typedef struct _packet_plugin {
     /*
+     * Called by main program when it's exiting.
+     * Can be used to free memory.
+     */
+    void (*destroy)(struct _packet_plugin* this);
+    
+    /*
      * Called by main program when command line options are available.
      * Can be used to initialize custom options.
      *
@@ -34,6 +40,16 @@ typedef struct _packet_plugin {
      * Return: if the frame is processed successfully
      */
     RESULT (*on_frame_received)(struct _packet_plugin* this, ETH_EAP_FRAME* frame);
+    
+    /*
+     * Plugin name, to be selected by user
+     */
+    char* name;
+    
+    /*
+     * Description, displayed to user
+     */
+    char* description;
     
     /*
      * Packet plugin internal use

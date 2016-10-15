@@ -106,4 +106,7 @@ typedef struct _prog_config {
 
 RESULT parse_cmdline_opts(int argc, char* argv[]);
 RESULT parse_config_file(const char* filename);
+
+PROG_CONFIG* get_program_config();
+EAP_CONFIG* get_eap_config();
 #endif
