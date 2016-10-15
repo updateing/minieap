@@ -1,17 +1,25 @@
 #include "packet_plugin_rjv3_priv.h"
+#include "packet_plugin_rjv3_prop.h"
 #include "eth_frame.h"
 #include "if_impl.h"
 #include "checkV4.h"
 #include "config.h"
+#include "linkedlist.h"
+#include "logging.h"
 
 #include <stdint.h>
 #include <string.h>
 #include <netinet/in.h>
+#include <linux/hdreg.h>
+#include <sys/ioctl.h>
+#include <stdio.h>
+#include <fcntl.h>
 
 #define IS_MD5_FRAME(frame) \
     (frame->header->eapol_hdr.type[0] == EAP_PACKET \
         && frame->header->eap_hdr.type[0] == MD5_CHALLENGE)
-        
+#define MAX_LINE_LEN 100
+
 void rjv3_set_dhcp_en(uint8_t* dhcp_en_arr, DHCP_TYPE dhcp_type) {
     dhcp_en_arr[3] = (dhcp_type != DHCP_NONE);
 }
@@ -82,3 +90,83 @@ void rjv3_set_service_name(uint8_t* name_buf, char* cmd_opt) {
     }
     memmove(name_buf, cmd_opt, strlen(cmd_opt));
 };
+
+void rjv3_set_secondary_dns(char* dns_ascii_buf, char* fake_dns) {
+    if (fake_dns != NULL) memmove(dns_ascii_buf, fake_dns, strnlen(fake_dns, INET6_ADDRSTRLEN));
+    
+    FILE* _fp = fopen("/etc/resolv.conf", "r");
+    char _line_buf[MAX_LINE_LEN] = {0};
+    char* _line_buf_1;
+    char* _ret;
+    int _lines_read = 0;
+    
+    if (_fp <= 0) {
+        goto info_err;
+    }
+
+    while ((_ret = fgets(_line_buf, MAX_LINE_LEN, _fp))) {
+        if (_line_buf[0] != '#') {
+            _line_buf_1 = strtok(_line_buf, " ");
+            if (_line_buf == NULL) continue;
+            _line_buf_1 = strtok(NULL, " ");
+            if (_line_buf != NULL) {
+                memmove(dns_ascii_buf, _line_buf_1, strnlen(fake_dns, INET6_ADDRSTRLEN));
+                if (++_lines_read == 2) goto close_return;
+            }
+        }
+    }
+    
+    /* Only one DNS entry or file error */
+info_err:
+    PR_ERRNO("无法从 /etc/resolv.conf 获取第二 DNS 信息，请使用 --fake-dns 选项手动指定 DNS 地址。");
+close_return:
+    if (_fp > 0) fclose(_fp);
+    return;
+}
+
+void rjv3_set_hdd_serial(uint8_t* serial_buf, char* fake_serial) {
+    if (fake_serial != NULL) memmove(serial_buf, fake_serial, strnlen(fake_serial, MAX_PROP_LEN));
+    
+    FILE* _fp = fopen("/etc/mtab", "r");
+    char _line_buf[MAX_LINE_LEN] = {0};
+    char* _line_buf_1;
+    char* _line_buf_2;
+    char* _root_dev = NULL;
+    char* _ret;
+    
+    if (_fp <= 0) {
+        goto info_err;
+    }
+
+    /* Find the root device */
+    while ((_ret = fgets(_line_buf, MAX_LINE_LEN, _fp))) {
+        _line_buf_1 = strtok(_line_buf, " ");
+        if (_line_buf_1 == NULL) continue;
+        _line_buf_2 = strtok(NULL, " ");
+        if (_line_buf_2 != NULL && strncmp(_line_buf_2, "/", 1) == 0) {
+            _root_dev = _line_buf_1;
+        }
+    }
+    
+    /* Query the serial no */
+    if (_root_dev != NULL) {
+        int devfd;
+        struct hd_driveid hd;
+        if ((devfd = open(_root_dev, O_RDONLY|O_NONBLOCK)) < 0) {
+            goto info_err;
+        }
+
+        if (!ioctl(devfd, HDIO_GET_IDENTITY, &hd)) {
+            memmove(serial_buf, hd.serial_no, strlen((char*)hd.serial_no));
+            goto close_return;
+        } else {
+            goto info_err;
+        }
+    }
+
+info_err:
+    PR_ERRNO("无法从 /etc/mtab 获取根分区挂载设备信息，请使用 --fake-serial 选项手动指定硬盘序列号。");
+close_return:
+    if (_fp > 0) fclose(_fp);
+    return;
+}

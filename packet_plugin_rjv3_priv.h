@@ -88,6 +88,8 @@ void rjv3_set_pwd_hash(uint8_t* hash_buf, ETH_EAP_FRAME* request);
 void rjv3_set_ipv6_addr(uint8_t* ll_slaac, uint8_t* ll_temp, uint8_t* global);
 void rjv3_set_v3_hash(uint8_t* hash_buf, ETH_EAP_FRAME* request);
 void rjv3_set_service_name(uint8_t* name_buf, char* cmd_opt);
+void rjv3_set_secondary_dns(char* dns_ascii_buf, char* fake_dns);
+void rjv3_set_hdd_serial(uint8_t* serial_buf, char* fake_serial);
 
 #endif
 

@@ -2,7 +2,11 @@
 #define _MINIEAP_PACKET_PLUGIN_RJV3_PROP_H
 
 #include "packet_plugin_rjv3_priv.h"
+#include "linkedlist.h"
+
 #include <stdint.h>
+
+#define MAX_PROP_LEN 200 // Assumed
 
 /*
  * CRUD methods for lists

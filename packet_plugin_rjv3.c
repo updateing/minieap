@@ -22,6 +22,8 @@ typedef struct _packet_plugin_rjv3_priv {
         char* dhcp_script; // All pointers can be freed since they are created by COPY_N_ARG_TO
         char* service_name;
         char* ver_str;
+        char* fake_dns;
+        char* fake_serial;
         uint8_t fake_ver[2];
         DOT1X_BCAST_ADDR bcast_addr;
         DHCP_TYPE dhcp_type;
@@ -34,7 +36,6 @@ typedef struct _packet_plugin_rjv3_priv {
 #define PRIV ((rjv3_priv*)(this->priv))
 
 #define MAX_PATH 260 // TODO move to common
-#define MAX_PROP_LEN 200 // Assumed
 
 /*
  * Headers before the fields
@@ -78,6 +79,9 @@ static const uint8_t pkt_md5_priv_header[] = {
 void rjv3_destroy(struct _packet_plugin* this) {
     chk_free((void**)&PRIV->dhcp_script);
     chk_free((void**)&PRIV->service_name);
+    chk_free((void**)&PRIV->ver_str);
+    chk_free((void**)&PRIV->fake_dns);
+    chk_free((void**)&PRIV->fake_serial);
     list_destroy(PRIV->cmd_prop_list);
     free(this->priv);
     free(this);
@@ -146,6 +150,8 @@ RESULT rjv3_process_cmdline_opts(struct _packet_plugin* this, int argc, char* ar
 	    { "rj-option", required_argument, NULL, 0 },
 	    { "service", required_argument, NULL, 0 },
 	    { "version-str", required_argument, NULL, 0 },
+	    { "fake-dns", required_argument, NULL, 0 },
+	    { "fake-serial", required_argument, NULL, 0 },
 	    { NULL, no_argument, NULL, 0 }
     };
 
@@ -188,6 +194,10 @@ RESULT rjv3_process_cmdline_opts(struct _packet_plugin* this, int argc, char* ar
                     COPY_N_ARG_TO(PRIV->service_name, RJV3_SIZE_SERVICE);
                 } else if (IF_ARG("version-str")) {
                     COPY_N_ARG_TO(PRIV->ver_str, MAX_PROP_LEN);
+                } else if (IF_ARG("fake-dns")) {
+                    COPY_N_ARG_TO(PRIV->fake_dns, INET6_ADDRSTRLEN);
+                } else if (IF_ARG("fake-serial")) {
+                    COPY_N_ARG_TO(PRIV->fake_serial, MAX_PROP_LEN);
                 }
                 break;
             default:
@@ -224,7 +234,7 @@ static int rjv3_append_common_fields(PACKET_PLUGIN* this, LIST_ELEMENT* list, ET
 
     rjv3_set_pwd_hash(_pwd_hash, PRIV->last_recv_packet);
     
-    // TODO DNS
+    rjv3_set_secondary_dns(_sec_dns, PRIV->fake_dns);
 
     rjv3_set_ipv6_addr(_ll_ipv6, _ll_ipv6_tmp, _glb_ipv6);
 
@@ -232,7 +242,8 @@ static int rjv3_append_common_fields(PACKET_PLUGIN* this, LIST_ELEMENT* list, ET
 
     rjv3_set_service_name(_service, PRIV->service_name);
     
-    // TODO HDD ser
+    rjv3_set_hdd_serial(_hdd_ser, PRIV->fake_serial);
+    
 #define CHK_ADD(x) \
     _this_len = x; \
     if (_this_len < 0) { \
