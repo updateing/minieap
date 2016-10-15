@@ -5,7 +5,7 @@
 #include <stdint.h>
 
 /*
- * CRUD methods
+ * CRUD methods for lists
  *
  * All `header_type` can be set to 0xFF to ignore, except `insert_rjv3_prop`.
  *
@@ -27,4 +27,9 @@ void remove_rjv3_prop(LIST_ELEMENT* list, uint8_t type);
  */
 RJ_PROP* find_rjv3_prop(LIST_ELEMENT* list, uint8_t type);
 RJ_PROP* new_rjv3_prop();
+
+/*
+ * RAW operation on the frames
+ */
+void append_rjv3_prop_to_frame(void* prop, void* frame);
 #endif

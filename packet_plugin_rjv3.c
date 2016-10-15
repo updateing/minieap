@@ -1,6 +1,4 @@
 #include "linkedlist.h"
-#include "eth_frame.h"
-#include "packet_util.h"
 #include "minieap_common.h"
 #include "packet_plugin.h"
 #include "misc.h"
@@ -35,7 +33,7 @@ typedef struct _packet_plugin_rjv3_priv {
  * Headers before the fields
  */
 static const uint8_t pkt_start_priv_header[] = {
-                0xff, 0xff, 0x37, 0x77, 0x7f, 0xff, /*   ..7w.. */
+                0xff, 0xff, 0x37, 0x77, 0x7f, 0xff, /*   ..7w.. */ /* Would be different in second auth */
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, /* ........ */
     0xff, 0xff, 0xff, 0xac, 0xb1, 0xff, 0xb0, 0xb0, /* ........ */
     0x2d, 0x00, 0x00, 0x13, 0x11, 0x38, 0x30, 0x32, /* -....802 */
@@ -47,7 +45,7 @@ static const uint8_t pkt_start_priv_header[] = {
 };
 
 static const uint8_t pkt_identity_priv_header[] = {
-                0xff, 0xff, 0x37, 0x77, 0x7f, 0xff, /*   ..7w.. */
+                0xff, 0xff, 0x37, 0x77, 0x7f, 0xff, /*   ..7w.. */ /* Would be different in second auth */
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, /* ........ */
     0xff, 0xff, 0xff, 0xac, 0xb1, 0xff, 0xb0, 0xb0, /* ........ */
     0x2d, 0x00, 0x00, 0x13, 0x11, 0x38, 0x30, 0x32, /* -....802 */
@@ -59,7 +57,7 @@ static const uint8_t pkt_identity_priv_header[] = {
 };
 
 static const uint8_t pkt_md5_priv_header[] = {
-                0xff, 0xff, 0x37, 0x77, 0x7f, 0xff, /*   ..7w.. */
+                0xff, 0xff, 0x37, 0x77, 0x7f, 0xff, /*   ..7w.. */ /* Would be different in second auth */
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, /* ........ */
     0xff, 0xff, 0xff, 0xac, 0xb1, 0xff, 0xb0, 0xb0, /* ........ */
     0x2d, 0x00, 0x00, 0x13, 0x11, 0x38, 0x30, 0x32, /* -....802 */
@@ -69,16 +67,6 @@ static const uint8_t pkt_md5_priv_header[] = {
     0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x01, 0x01, /* ........ */
 //    0x02, 0x00, 0x00, 0x00, 0x13, 0x11, 0x01, 0xc1, /* ........ */
 };
-
-static void append_prop_to_frame(void* prop, void* frame) {
-    ETH_EAP_FRAME* _frame = (ETH_EAP_FRAME*)frame;
-    RJ_PROP* _prop = (RJ_PROP*)prop;
-    int _content_len = _prop->header2.len - sizeof(RJ_PROP_HEADER2);
-    
-    append_to_frame(_frame, (uint8_t*)&_prop->header1, sizeof(RJ_PROP_HEADER1));
-    append_to_frame(_frame, (uint8_t*)&_prop->header2, sizeof(RJ_PROP_HEADER2));
-    append_to_frame(_frame, _prop->content, _content_len);
-}
 
 static RESULT append_rj_cmdline_opt(struct _packet_plugin* this, const char* opt) {
     // e.g. 6f:52472d535520466f72204c696e75782056312e3000
@@ -235,7 +223,7 @@ RESULT rjv3_prepare_frame(struct _packet_plugin* this, ETH_EAP_FRAME* frame) {
      */
     /*
         struct _size_field {
-            RJ_PROP_HEADER1 header1;
+            RJ_PROP_HEADER1 header1; // TODO Different in 2nd packet
             uint8_t whole_trailer_len[2]; // First 0x1a prop to end
         }
      */
@@ -262,10 +250,10 @@ RESULT rjv3_prepare_frame(struct _packet_plugin* this, ETH_EAP_FRAME* frame) {
     _size_prop->header2.len = (_props_len & 0xf);
     
     /* Actually read from sparse nodes into a unite buffer */
-    list_traverse(_prop_list, append_prop_to_frame, (void*)frame);
+    list_traverse(_prop_list, append_rjv3_prop_to_frame, (void*)frame);
     
     /* And those from cmdline */
-    list_traverse(PRIV->cmd_prop_list, append_prop_to_frame, (void*)frame);
+    list_traverse(PRIV->cmd_prop_list, append_rjv3_prop_to_frame, (void*)frame);
 
     list_destroy(_prop_list);
     return SUCCESS;

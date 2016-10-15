@@ -3,6 +3,8 @@
 #include "packet_plugin_rjv3_priv.h"
 #include "misc.h"
 #include "logging.h"
+#include "eth_frame.h"
+#include "packet_util.h"
 
 #include <stdint.h>
 #include <malloc.h>
@@ -56,3 +58,14 @@ void remove_rjv3_prop(LIST_ELEMENT* list, uint8_t type) {
     RJ_PROP _exp = { .header2 = { .type = type }};
     remove_data(list, &_exp, rjv3_prop_compare);
 }
+
+void append_rjv3_prop_to_frame(void* prop, void* frame) {
+    ETH_EAP_FRAME* _frame = (ETH_EAP_FRAME*)frame;
+    RJ_PROP* _prop = (RJ_PROP*)prop;
+    int _content_len = _prop->header2.len - sizeof(RJ_PROP_HEADER2);
+    
+    append_to_frame(_frame, (uint8_t*)&_prop->header1, sizeof(RJ_PROP_HEADER1));
+    append_to_frame(_frame, (uint8_t*)&_prop->header2, sizeof(RJ_PROP_HEADER2));
+    append_to_frame(_frame, _prop->content, _content_len);
+}
+
