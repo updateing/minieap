@@ -64,4 +64,17 @@ typedef struct _packet_plugin {
     void* priv;
 } PACKET_PLUGIN;
 
+/* Call the right start of program */
+int init_packet_plugin_list();
+/* Add this plugin to the active plugin list. May add one plugin twice */
+RESULT select_packet_plugin(const char* name);
+/*
+ * The event dispatchers! They will notify all active plugins about these events
+ */
+void packet_plugin_destroy();
+void packet_plugin_process_cmdline_opts(int argc, char* argv[]);
+void packet_plugin_print_cmdline_help();
+void packet_plugin_prepare_frame(ETH_EAP_FRAME* frame);
+void packet_plugin_on_frame_received(ETH_EAP_FRAME* frame);
+void packet_plugin_set_auth_round(int round);
 #endif

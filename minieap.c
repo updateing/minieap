@@ -6,10 +6,15 @@ int main(int argc, char* argv[]) {
     PROG_CONFIG* cfg = get_program_config();
     unsigned char mac[6];
     IF_IMPL* if_impl;
-    parse_cmdline_opts(argc, argv);
     
+    /* Do these two first */
     init_if_impl_list();
+    init_packet_plugin_list();
+    
+    
+    parse_cmdline_opts(argc, argv);
     select_if_impl("sockraw");
+    select_packet_plugin("rjv3");
     
     if_impl = get_if_impl();
     if_impl->set_ifname(if_impl,cfg->ifname);
