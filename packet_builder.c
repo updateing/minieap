@@ -6,13 +6,30 @@
 #include "eth_frame.h"
 #include "logging.h"
 #include "misc.h"
+#include "md5.h"
 
 typedef struct _packet_builder_priv {
     FRAME_HEADER frame_header;
     EAP_CONFIG* eap_config;
+    uint8_t* md5_seed;
+    int seed_len;
 } packet_builder_priv;
 
 #define PRIV ((packet_builder_priv*)(this->priv))
+
+/* Original MentoHUST flavor, with function name changed */
+static uint8_t* hash_md5_pwd(uint8_t id, const uint8_t *md5Seed, int seedLen, const char* password)
+{
+	uint8_t md5Src[80];
+	int md5Len = strlen(password);
+	md5Src[0] = id;
+	memcpy(md5Src + 1, password, md5Len);
+	md5Len++;
+	memcpy(md5Src + md5Len, md5Seed, seedLen);
+	md5Len += seedLen;
+	return ComputeHash(md5Src, md5Len);
+}
+
 void builder_set_eth_field(struct _packet_builder* this, int field, uint8_t* val) {
     switch (field) {
         case FIELD_DST_MAC:
@@ -27,7 +44,7 @@ void builder_set_eth_field(struct _packet_builder* this, int field, uint8_t* val
     }
 }
 
-void builder_set_eap_field(struct _packet_builder* this,
+void builder_set_eap_fields(struct _packet_builder* this,
                        EAPOL_PACKET_TYPE eapol_type, EAP_CODE code, 
                        EAP_TYPE eap_type, int id, EAP_CONFIG* config) {
     PRIV->frame_header.eapol_hdr.version[0] = 1; // Force EAPOL version = 1
@@ -59,6 +76,19 @@ void builder_set_eap_field(struct _packet_builder* this,
     }
 }
 
+void builder_set_eap_md5_seed(struct _packet_builder* this, uint8_t* md5_seed, int seed_len) {
+    if (seed_len <= 0) return;
+    
+    PRIV->md5_seed = (uint8_t*)malloc(seed_len);
+    if (PRIV->md5_seed < 0) {
+        PR_ERRNO("无法为 MD5 种子分配内存空间");
+        return;
+    }
+    
+    memmove(PRIV->md5_seed, md5_seed, seed_len);
+    PRIV->seed_len = seed_len;
+}
+
 int builder_build_packet(struct _packet_builder* this, uint8_t* buffer) {
     int _eapol_type = PRIV->frame_header.eapol_hdr.type[0];
     int _copied_bytes = sizeof(ETHERNET_HEADER) + sizeof(EAPOL_HEADER);
@@ -78,7 +108,14 @@ int builder_build_packet(struct _packet_builder* this, uint8_t* buffer) {
         if (_eap_type == MD5_CHALLENGE) {
             uint8_t _challenge[MD5_CHALLENGE_DIGEST_SIZE];
             
-            //TODO calculate it
+            if (PRIV->md5_seed == NULL || PRIV->seed_len == 0 || PRIV->eap_config == NULL) {
+                PR_ERR("构建 Challenge Response 的参数不齐全，请检查是否出现丢包");
+                return -1;
+            }
+            
+            memmove(_challenge, hash_md5_pwd(PRIV->frame_header.eap_hdr.id[0], PRIV->md5_seed,
+                                             PRIV->seed_len, PRIV->eap_config->password),
+                    MD5_CHALLENGE_DIGEST_SIZE);
             /* Extra field: MD5-Value-Size (1 byte) */
             buffer[_copied_bytes] = MD5_CHALLENGE_DIGEST_SIZE;
             _copied_bytes += 1;
@@ -113,7 +150,8 @@ PACKET_BUILDER* packet_builder_new() {
     memset(this->priv, 0, sizeof(packet_builder_priv));
     
     this->set_eth_field = builder_set_eth_field;
-    this->set_eap_field = builder_set_eap_field;
+    this->set_eap_fields = builder_set_eap_fields;
+    this->set_eap_md5_seed = builder_set_eap_md5_seed;
     this->build_packet = builder_build_packet;
     return this;
 }

@@ -36,9 +36,16 @@ typedef struct _packet_builder {
      *   1. EAP_CODE and EAP_CONFIG are not used in EAPOL Start and Logoff packets
      *   2. ID needs to match the corresponging EAP-Request packet
      */
-    void (*set_eap_field)(struct _packet_builder* this,
+    void (*set_eap_fields)(struct _packet_builder* this,
                        EAPOL_PACKET_TYPE eapol_type, EAP_CODE code, 
                        EAP_TYPE eap_type, int id, EAP_CONFIG* config);
+                       
+    /*
+     * Sets the MD5 seed required for EAP-Response-MD5-Challenge
+     *
+     * MUST BE CALLED before building a challenge response!
+     */
+    void (*set_eap_md5_seed)(struct _packet_builder* this, uint8_t* md5_seed, int seed_len);
                        
     /*
      * Build the packet into buffer based on information given previously
