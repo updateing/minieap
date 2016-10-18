@@ -15,6 +15,8 @@ typedef struct _packet_builder_priv {
     int seed_len;
 } packet_builder_priv;
 
+static PACKET_BUILDER* g_builder = NULL;
+
 #define PRIV ((packet_builder_priv*)(this->priv))
 
 /* Original MentoHUST flavor, with function name changed */
@@ -133,7 +135,7 @@ int builder_build_packet(struct _packet_builder* this, uint8_t* buffer) {
     }
 }
 
-PACKET_BUILDER* packet_builder_new() {
+static PACKET_BUILDER* packet_builder_new() {
     PACKET_BUILDER* this = (PACKET_BUILDER*)malloc(sizeof(PACKET_BUILDER));
     if (this < 0) {
         PR_ERRNO("数据包生成器主结构内存分配失败");
@@ -153,7 +155,13 @@ PACKET_BUILDER* packet_builder_new() {
     this->set_eap_fields = builder_set_eap_fields;
     this->set_eap_md5_seed = builder_set_eap_md5_seed;
     this->build_packet = builder_build_packet;
+    
+    g_builder = this;
     return this;
+}
+
+PACKET_BUILDER* packet_builder_get() {
+    return g_builder == NULL ? packet_builder_new() : g_builder;
 }
 
 void packet_builder_destroy(struct _packet_builder* this) {

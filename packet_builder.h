@@ -63,12 +63,11 @@ typedef struct _packet_builder {
 } PACKET_BUILDER;
 
 /*
- * Create a new instance
- * Can be used to initialize the priv pointer
+ * Get an instance of packet builder
  *
  * Return: an instance of this struct, with all methods above set up
  */
-PACKET_BUILDER* packet_builder_new();
+PACKET_BUILDER* packet_builder_get();
 
 /*
  * Destory an instance
