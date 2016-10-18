@@ -3,6 +3,7 @@
 
 #include "minieap_common.h"
 #include "linkedlist.h"
+#include "if_impl.h"
 
 #include <net/if.h>
 
@@ -26,6 +27,7 @@ typedef struct _eap_config {
 typedef struct _proxy_config {
     int proxy_on;
     char* lan_ifname;
+    IF_IMPL* if_impl;
 } PROXY_CONFIG;
 
 /*

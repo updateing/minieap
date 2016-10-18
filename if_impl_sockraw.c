@@ -28,6 +28,14 @@ typedef struct _if_impl_sockraw_priv {
 
 #define PRIV ((sockraw_priv*)(this->priv))
 
+static void sockraw_bind_to_if(struct _if_impl* this, short protocol) {
+    struct sockaddr_ll sll;
+    sll.sll_family = AF_PACKET;
+    sll.sll_ifindex = PRIV->if_index;
+    sll.sll_protocol = protocol;
+    bind(PRIV->sockfd, (struct sockaddr*)&sll, sizeof(sll));
+}
+
 RESULT sockraw_set_ifname(struct _if_impl* this, const char* ifname) {
     struct ifreq ifreq;
     
@@ -38,7 +46,7 @@ RESULT sockraw_set_ifname(struct _if_impl* this, const char* ifname) {
     }
     
     /* Default protocol is ETH_P_PAE (0x888e) */
-    if ((PRIV->sockfd = socket(PF_PACKET, SOCK_RAW, ETH_P_PAE)) < 0) {
+    if ((PRIV->sockfd = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_PAE))) < 0) {
         PR_ERRNO("套接字打开失败");
         return FAILURE;
     }
@@ -50,8 +58,10 @@ RESULT sockraw_set_ifname(struct _if_impl* this, const char* ifname) {
         return FAILURE;
     }
     PRIV->if_index = ifreq.ifr_ifindex;
-    
+
     strncpy(PRIV->ifname, ifname, IFNAMSIZ);
+
+    sockraw_bind_to_if(this, htons(ETH_P_PAE));
     return SUCCESS;
 }
 
@@ -109,15 +119,16 @@ RESULT sockraw_setup_capture_params(struct _if_impl* this, short eth_protocol, i
         PR_ERRNO("获取套接字参数失败");
         return FAILURE;
     }
-    
+
     if (_curr_proto != eth_protocol) {
         /* Socket protocol is not what we want. Reopen it. */
         close(PRIV->sockfd);
-        
-        if ((PRIV->sockfd = socket(PF_PACKET, SOCK_RAW, eth_protocol)) < 0) {
+
+        if ((PRIV->sockfd = socket(AF_PACKET, SOCK_RAW, eth_protocol)) < 0) {
             PR_ERRNO("套接字打开失败");
             return FAILURE;
         }
+        sockraw_bind_to_if(this, eth_protocol);
     }
     
     /* Handle promisc */
@@ -145,7 +156,7 @@ RESULT sockraw_start_capture(struct _if_impl* this) {
     uint8_t buf[1512]; /* Max length of ethernet packet */
     int recvlen = 0;
     ETH_EAP_FRAME frame;
-    
+
     memset(buf, 0, 1512);
     frame.actual_len = 0;
     frame.content = buf;
@@ -186,6 +197,8 @@ void sockraw_set_frame_handler(struct _if_impl* this, void (*handler)(ETH_EAP_FR
 }
 
 void sockraw_destroy(IF_IMPL* this) {
+    if (PRIV->sockfd > 0)
+        close(PRIV->sockfd);
     chk_free((void**)&this->priv);
     chk_free((void**)&this);
 }
