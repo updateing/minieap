@@ -58,7 +58,7 @@ void load_default_config() {
 RESULT parse_cmdline_conf_file(int argc, char* argv[]) {
     int i = 1;
     for (; i < argc; ++i) {
-        if (strcmp(argv[i], "conf-file") == 0) {
+        if (strcmp(argv[i], "--conf-file") == 0) {
             if (i + 1 >= argc) {
                 PR_ERR("--conf-file必须有一个参数");
                 return FAILURE;
@@ -80,7 +80,7 @@ RESULT parse_cmdline_opts(int argc, char* argv[]) {
     int opt = 0;
     int longIndex = 0;
     int _arglen = 0; /* 当前参数长度 */
-    static const char* shortOpts = "hk::wu:p:n:t:e:r:l:x:a:d:b:"
+    static const char* shortOpts = ":hk::wu:p:n:t:e:r:l:x:a:d:b:"
         "v:f:c:z:j:q:";
     static const struct option longOpts[] = {
 	    { "help", no_argument, NULL, 'h' },
@@ -173,6 +173,10 @@ RESULT parse_cmdline_opts(int argc, char* argv[]) {
                 } else if (IF_ARG("pkt-plugin") || IF_ARG("module")) {
                     insert_data(&g_prog_config.packet_plugin_list, optarg);
                 }
+                break;
+            case ':':
+                PR_ERR("缺少参数：%s", argv[optind - 1]);
+                return FAILURE;
                 break;
             default:
                 break;

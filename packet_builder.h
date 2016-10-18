@@ -73,5 +73,5 @@ PACKET_BUILDER* packet_builder_get();
  * Destory an instance
  * Can be used to free memory
  */
-void packet_builder_shutdown(struct _packet_builder* this);
+void packet_builder_destroy(struct _packet_builder* this);
 #endif

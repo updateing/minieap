@@ -32,7 +32,7 @@ RESULT select_if_impl(const char* name) {
 
 IF_IMPL* get_if_impl() { return g_selected_impl; }
 
-static free_one_impl(void* impl, void* unused) {
+static void free_one_impl(void* impl, void* unused) {
     ((IF_IMPL*)impl)->destroy((IF_IMPL*)impl);
 }
 

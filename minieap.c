@@ -61,6 +61,9 @@ static void packet_plugin_list_traverse(void* name, void* unused) {
  */
 int init_env(int argc, char* argv[]) {
     PROG_CONFIG* cfg = get_program_config();
+    
+    set_log_destination(LOG_TO_CONSOLE);
+    
     init_if_impl_list();
     init_packet_plugin_list();
     
