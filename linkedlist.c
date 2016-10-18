@@ -53,7 +53,6 @@ void list_destroy(LIST_ELEMENT* start) {
     LIST_ELEMENT *curr, *next = start;
     while ((curr = next)) {
         next = curr->next;
-        chk_free(&curr->content);
         free(curr);
     }
 }
@@ -66,7 +65,6 @@ void remove_data(LIST_ELEMENT* start, void* elem_to_remove, int(*cmpfunc)(void*,
         node->prev->next = node->next;
     if (node->next != NULL)
         node->next->prev = node->prev;
-    chk_free(node->content);
     free(node);
 }
 
