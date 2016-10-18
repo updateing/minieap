@@ -5,6 +5,7 @@
 #include "packet_builder.h"
 #include "logging.h"
 #include <stdlib.h>
+#include <errno.h>
 
 /*
  * Initialize the settings.
@@ -51,12 +52,44 @@ err:
     return FAILURE;
 }
 
+static void packet_plugin_list_traverse(void* name, void* unused) {
+    select_packet_plugin((const char* )name);
+}
+
+/*
+ * Do all the initialization tasks
+ */
+int init_env(int argc, char* argv[]) {
+    PROG_CONFIG* cfg = get_program_config();
+    init_if_impl_list();
+    init_packet_plugin_list();
+    
+    if (IS_FAIL(init_program_config(argc, argv))) {
+        PR_ERR("参数初始化错误");
+        return FAILURE;
+    }
+
+    if (IS_FAIL(select_if_impl(cfg->if_impl))) {
+        PR_ERR("网络驱动插件启用失败，请检查插件名称是否拼写正确");
+        return FAILURE;
+    }
+    
+    list_traverse(cfg->packet_plugin_list, packet_plugin_list_traverse, NULL);
+
+    if (IS_FAIL(init_plugin_config(argc, argv))) {
+        PR_ERR("插件初始化错误");
+        return FAILURE;
+    }
+    return SUCCESS;
+}
+ 
 void exit_handler() {
     free_config();
-    (get_if_impl())->destroy(get_if_impl());
+    free_if_impl();
     packet_builder_destroy(packet_builder_get());
     packet_plugin_destroy();
     PR_INFO("MiniEAP 已退出");
+    close_log();
 };
 
 int main(int argc, char* argv[]) {
@@ -66,15 +99,10 @@ int main(int argc, char* argv[]) {
     
     atexit(exit_handler);
     
-    /* Do these two first */
-    init_if_impl_list();
-    init_packet_plugin_list();
-    if (IS_FAIL(init_program_config(argc, argv))) {}
-        
-    
-    select_if_impl("sockraw");
-    select_packet_plugin("rjv3");
-    
+    if (IS_FAIL(init_env(argc, argv))) {
+        PR_ERR("环境初始化失败");
+        return FAILURE;
+    }
     if_impl = get_if_impl();
     if_impl->set_ifname(if_impl,cfg->ifname);
     if_impl->obtain_mac(if_impl, mac);

@@ -5,10 +5,13 @@
 #include <getopt.h>
 #include <string.h>
 #include <stdlib.h>
+#include <net/if.h>
 
 #include "config.h"
 #include "logging.h"
 #include "misc.h"
+#include "if_impl.h"
+#include "packet_plugin.h"
 
 static EAP_CONFIG g_eap_config;
 static PROXY_CONFIG g_proxy_config;
@@ -38,7 +41,7 @@ static void configure_daemon_param(int daemon_mode) {
 void load_default_config() {
 #define PCFG g_prog_config
     PCFG.pidfile = strdup(DEFAULT_PIDFILE);
-    PCFG.conffile = strdup(DEFAULT_CONFFILE);
+    PCFG.if_impl = strdup(DEFAULT_IF_IMPL);
     PCFG.restart_on_logoff = DEFAULT_RESTART_ON_LOGOFF;
     PCFG.wait_after_fail_secs = DEFAULT_WAIT_AFTER_FAIL_SECS;
     PCFG.run_in_background = DEFAULT_RUN_IN_BACKGROUND;
@@ -77,7 +80,7 @@ RESULT parse_cmdline_opts(int argc, char* argv[]) {
     int opt = 0;
     int longIndex = 0;
     int _arglen = 0; /* 当前参数长度 */
-    static const char* shortOpts = "hk::wu:p:n:i:m:g:s:o:t:e:r:l:x:a:d:b:"
+    static const char* shortOpts = "hk::wu:p:n:t:e:r:l:x:a:d:b:"
         "v:f:c:z:j:q:";
     static const struct option longOpts[] = {
 	    { "help", no_argument, NULL, 'h' },
@@ -99,6 +102,9 @@ RESULT parse_cmdline_opts(int argc, char* argv[]) {
 	    { "decode-config", required_argument, NULL, 'q' },
 	    { "max-retries", required_argument, NULL, 0},
 	    { "pid-file", required_argument, NULL, 0},
+	    { "if-impl", required_argument, NULL, 0},
+	    { "pkt-plugin", required_argument, NULL, 0},
+	    { "module", required_argument, NULL, 0},
 	    { NULL, no_argument, NULL, 0 }
     };
 
@@ -129,7 +135,7 @@ RESULT parse_cmdline_opts(int argc, char* argv[]) {
                 COPY_N_ARG_TO(g_eap_config.password, PASSWORD_MAX_LEN);
                 break;
             case 'n':
-                COPY_N_ARG_TO(g_prog_config.ifname, IFNAME_MAX_LEN);
+                COPY_N_ARG_TO(g_prog_config.ifname, IFNAMSIZ);
                 break;
             case 't':
                 g_prog_config.stage_timeout = atoi(optarg); /* 此处不设置限制，但原始的代码中有最大99秒的限制 */
@@ -151,7 +157,7 @@ RESULT parse_cmdline_opts(int argc, char* argv[]) {
                 break;
             case 'z':
                 g_proxy_config.proxy_on = 1;
-                COPY_N_ARG_TO(g_proxy_config.lan_ifname, IFNAME_MAX_LEN);
+                COPY_N_ARG_TO(g_proxy_config.lan_ifname, IFNAMSIZ);
                 break;
             case 'j':
                 g_prog_config.require_successes = atoi(optarg);
@@ -162,6 +168,10 @@ RESULT parse_cmdline_opts(int argc, char* argv[]) {
                     g_prog_config.max_retries = atoi(optarg);
                 } else if (IF_ARG("pid-file")) {
                     COPY_N_ARG_TO(g_prog_config.pidfile, MAX_PATH);
+                } else if (IF_ARG("if-impl")) {
+                    COPY_N_ARG_TO(g_prog_config.if_impl, IFNAMSIZ);
+                } else if (IF_ARG("pkt-plugin") || IF_ARG("module")) {
+                    insert_data(&g_prog_config.packet_plugin_list, optarg);
                 }
                 break;
             default:
@@ -182,6 +192,8 @@ void free_config() {
     chk_free((void**)&g_prog_config.ifname);
     chk_free((void**)&g_prog_config.pidfile);
     chk_free((void**)&g_prog_config.conffile);
+    chk_free((void**)&g_prog_config.if_impl);
+    list_destroy(g_prog_config.packet_plugin_list);
     
     chk_free((void**)&g_eap_config.username);
     chk_free((void**)&g_eap_config.password);

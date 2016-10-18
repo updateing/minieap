@@ -41,5 +41,6 @@ typedef enum _LOG_DESTINATION {
 void set_log_destination(LOG_DEST dst);
 void print_log_raw(const char* log_format, ...);
 void print_log(const char* log_level, const char* func, const char* log_format, ...);
+void close_log();
 
 #endif

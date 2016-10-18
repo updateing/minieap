@@ -115,4 +115,8 @@ RESULT select_if_impl(const char* name);
  * Get selected implementation
  */
 IF_IMPL* get_if_impl();
+/*
+ * Free!
+ */
+void free_if_impl();
 #endif

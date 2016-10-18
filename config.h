@@ -2,10 +2,12 @@
 #define _MINIEAP_CONFIG_H
 
 #include "minieap_common.h"
+#include "linkedlist.h"
+
+#include <net/if.h>
 
 #define USERNAME_MAX_LEN 64
 #define PASSWORD_MAX_LEN 64
-#define IFNAME_MAX_LEN 16
 #define MAX_PATH 260
 #define TRUE 1
 #define FALSE 0
@@ -75,6 +77,17 @@ typedef struct _prog_config {
      */
     char* run_on_success;
     //#define DEFAULT_RUN_ON_SUCCESS NULL
+    
+    /*
+     * Selected interface implementation: how to drive network adapters?
+     */
+    char* if_impl;
+    #define DEFAULT_IF_IMPL "sockraw"
+    
+    /*
+     * Selected packet plugins: how you want to alter the packets?
+     */
+    LIST_ELEMENT* packet_plugin_list;
     
     /*
      * Whether to restart after being forced offline by server.

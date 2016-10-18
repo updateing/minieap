@@ -114,3 +114,9 @@ void print_log_raw(const char* log_format, ...) {
 	print_raw_line(g_log_fp, log_format, argptr);
 	va_end(argptr);
 }
+
+void close_log() {
+    if (g_log_fp)
+        fclose(g_log_fp);
+}
+

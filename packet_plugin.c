@@ -52,16 +52,18 @@ RESULT select_packet_plugin(const char* name) {
  */
 #define PLUGIN ((PACKET_PLUGIN*)(plugin_info->content))
 void packet_plugin_destroy() {
-    LIST_ELEMENT *plugin_info = g_active_packet_plugin_list;
+    LIST_ELEMENT *plugin_info = g_packet_plugin_list; // Different from below
+    if (g_packet_plugin_list == NULL) return;
     do {
         PLUGIN->destroy(PLUGIN);
     } while ((plugin_info = plugin_info->next));
     list_destroy(g_packet_plugin_list);
-    // Can not destroy g_active_plugin_list since it's duplicate of g_packet_plugin_list
+    list_destroy(g_active_packet_plugin_list);
 }
 
 RESULT packet_plugin_process_cmdline_opts(int argc, char* argv[]) {
     LIST_ELEMENT *plugin_info = g_active_packet_plugin_list;
+    if (g_active_packet_plugin_list == NULL) return SUCCESS;
     do {
         if (PLUGIN->process_cmdline_opts(PLUGIN, argc, argv) == FAILURE)
             return FAILURE;
@@ -71,6 +73,7 @@ RESULT packet_plugin_process_cmdline_opts(int argc, char* argv[]) {
 
 RESULT packet_plugin_process_config_file(char* filepath) {
     LIST_ELEMENT *plugin_info = g_active_packet_plugin_list;
+    if (g_active_packet_plugin_list == NULL) return SUCCESS;
     do {
         if (PLUGIN->process_config_file(PLUGIN, filepath) == FAILURE)
             return FAILURE;
@@ -80,6 +83,7 @@ RESULT packet_plugin_process_config_file(char* filepath) {
 
 void packet_plugin_print_cmdline_help() {
     LIST_ELEMENT *plugin_info = g_active_packet_plugin_list;
+    if (g_active_packet_plugin_list == NULL) return;
     do {
         PLUGIN->print_cmdline_help(PLUGIN);
     } while ((plugin_info = plugin_info->next));
@@ -87,6 +91,7 @@ void packet_plugin_print_cmdline_help() {
 
 RESULT packet_plugin_prepare_frame(ETH_EAP_FRAME* frame) {
     LIST_ELEMENT *plugin_info = g_active_packet_plugin_list;
+    if (g_active_packet_plugin_list == NULL) return SUCCESS;
     do {
         if (PLUGIN->prepare_frame(PLUGIN, frame) == FAILURE)
             return FAILURE;
@@ -96,6 +101,7 @@ RESULT packet_plugin_prepare_frame(ETH_EAP_FRAME* frame) {
 
 RESULT packet_plugin_on_frame_received(ETH_EAP_FRAME* frame) {
     LIST_ELEMENT *plugin_info = g_active_packet_plugin_list;
+    if (g_active_packet_plugin_list == NULL) return SUCCESS;
     do {
         if (PLUGIN->on_frame_received(PLUGIN, frame) == FAILURE)
             return FAILURE;
@@ -105,6 +111,7 @@ RESULT packet_plugin_on_frame_received(ETH_EAP_FRAME* frame) {
 
 void packet_plugin_set_auth_round(int round) {
     LIST_ELEMENT *plugin_info = g_active_packet_plugin_list;
+    if (g_active_packet_plugin_list == NULL) return;
     do {
         PLUGIN->set_auth_round(PLUGIN, round);
     } while ((plugin_info = plugin_info->next));
