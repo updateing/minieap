@@ -14,6 +14,10 @@ static EAP_CONFIG g_eap_config;
 static PROXY_CONFIG g_proxy_config;
 static PROG_CONFIG g_prog_config;
 
+/*
+ * We don't have a "daemon_mode" parameter, so translate
+ * it to what we have.
+ */
 static void configure_daemon_param(int daemon_mode) {
     switch (daemon_mode) {
         case 0:
@@ -30,12 +34,49 @@ static void configure_daemon_param(int daemon_mode) {
             set_log_destination(LOG_TO_FILE);
     }
 }
-     
+
+void load_default_config() {
+#define PCFG g_prog_config
+    PCFG.pidfile = strdup(DEFAULT_PIDFILE);
+    PCFG.conffile = strdup(DEFAULT_CONFFILE);
+    PCFG.restart_on_logoff = DEFAULT_RESTART_ON_LOGOFF;
+    PCFG.wait_after_fail_secs = DEFAULT_WAIT_AFTER_FAIL_SECS;
+    PCFG.run_in_background = DEFAULT_RUN_IN_BACKGROUND;
+    PCFG.max_retries = DEFAULT_MAX_RETRIES;
+    PCFG.max_failures = DEFAULT_MAX_FAILURES;
+    PCFG.stage_timeout = DEFAULT_STAGE_TIMEOUT;
+    PCFG.save_now = DEFAULT_STAGE_TIMEOUT;
+    PCFG.require_successes = DEFAULT_REQUIRE_SUCCESSES;
+    PCFG.kill_type = DEFAULT_KILL_TYPE;
+    
+    configure_daemon_param(0); // No run in bg + log to console
+}
+
+RESULT parse_cmdline_conf_file(int argc, char* argv[]) {
+    int i = 1;
+    for (; i < argc; ++i) {
+        if (strcmp(argv[i], "conf-file") == 0) {
+            if (i + 1 >= argc) {
+                PR_ERR("--conf-file必须有一个参数");
+                return FAILURE;
+            } else {
+                int _len = strnlen(argv[i + 1], MAX_PATH);
+                g_prog_config.conffile = (char*)malloc(_len);
+                strncpy(g_prog_config.conffile, argv[i + 1], _len);
+            }
+        }
+    }
+    
+    if (g_prog_config.conffile == NULL)
+        g_prog_config.conffile = strdup(DEFAULT_CONFFILE);
+        
+    return SUCCESS;
+}
+
 RESULT parse_cmdline_opts(int argc, char* argv[]) {
     int opt = 0;
     int longIndex = 0;
     int _arglen = 0; /* 当前参数长度 */
-    int _daemon_mode = 0; /* 稍后处理 */
     static const char* shortOpts = "hk::wu:p:n:i:m:g:s:o:t:e:r:l:x:a:d:b:"
         "v:f:c:z:j:q:";
     static const struct option longOpts[] = {
@@ -45,11 +86,6 @@ RESULT parse_cmdline_opts(int argc, char* argv[]) {
 	    { "username", required_argument, NULL, 'u' },
 	    { "password", required_argument, NULL, 'p' },
 	    { "nic", required_argument, NULL, 'n' },
-	    /*{ "ip", required_argument, NULL, 'i' },
-	    { "mask", required_argument, NULL, 'm' },
-	    { "gateway", required_argument, NULL, 'g' },
-	    { "dns", required_argument, NULL, 's' },
-	    { "ping-host", required_argument, NULL, 'o' },*/
 	    { "auth-timeout", required_argument, NULL, 't' },
 	    { "wait-after-fail", required_argument, NULL, 'r' },
 	    { "max-fail", required_argument, NULL, 'l' },
@@ -66,6 +102,7 @@ RESULT parse_cmdline_opts(int argc, char* argv[]) {
 	    { NULL, no_argument, NULL, 0 }
     };
 
+    load_default_config();
     opt = getopt_long(argc, argv, shortOpts, longOpts, &longIndex);
 #define COPY_N_ARG_TO(buf, maxlen) \
         _arglen = strnlen(optarg, maxlen); \
@@ -94,21 +131,6 @@ RESULT parse_cmdline_opts(int argc, char* argv[]) {
             case 'n':
                 COPY_N_ARG_TO(g_prog_config.ifname, IFNAME_MAX_LEN);
                 break;
-            /*case 'i':
-                ip = inet_addr(optarg);
-                break;
-            case 'm':
-                mask = inet_addr(optarg);
-                break;
-            case 'g':
-                gateway = inet_addr(optarg);
-                break;
-            case 's':
-                dns = inet_addr(optarg);
-                break;
-            case 'o':
-                pingHost = inet_addr(optarg);
-                break; TODO why is this needed*/
             case 't':
                 g_prog_config.stage_timeout = atoi(optarg); /* 此处不设置限制，但原始的代码中有最大99秒的限制 */
                 break;
@@ -122,7 +144,7 @@ RESULT parse_cmdline_opts(int argc, char* argv[]) {
                 g_prog_config.restart_on_logoff = atoi(optarg);
                 break;
             case 'b':
-                _daemon_mode = atoi(optarg); /* 在循环结束后处理 */
+                configure_daemon_param(atoi(optarg) % 4);
                 break;
             case 'c':
                 COPY_N_ARG_TO(g_prog_config.run_on_success, MAX_PATH);
@@ -147,9 +169,24 @@ RESULT parse_cmdline_opts(int argc, char* argv[]) {
         }
         opt = getopt_long(argc, argv, shortOpts, longOpts, &longIndex);
     }
-    
-    configure_daemon_param(_daemon_mode);
+
     return SUCCESS;
+}
+
+RESULT parse_config_file(const char* filepath) {
+    return SUCCESS; // TODO
+}
+
+void free_config() {
+    chk_free((void**)&g_prog_config.run_on_success);
+    chk_free((void**)&g_prog_config.ifname);
+    chk_free((void**)&g_prog_config.pidfile);
+    chk_free((void**)&g_prog_config.conffile);
+    
+    chk_free((void**)&g_eap_config.username);
+    chk_free((void**)&g_eap_config.password);
+    
+    chk_free((void**)&g_proxy_config.lan_ifname);
 }
 
 PROG_CONFIG* get_program_config() {

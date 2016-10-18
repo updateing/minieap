@@ -20,6 +20,18 @@ typedef struct _packet_plugin {
     RESULT (*process_cmdline_opts)(struct _packet_plugin* this, int argc, char* argv[]);
     
     /*
+     * Called by main program when it knows the config file path.
+     * Can be used to read from config file.
+     * The file is the same as main program's config file. Better use a prefix
+     * for plugin-specific options.
+     *
+     * Note: this file may not exist at the moment.
+     *
+     * Return: if there is any error during the process (malformed value, etc)
+     */
+    RESULT (*process_config_file)(struct _packet_plugin* this, const char* filepath);
+    
+    /*
      * Called by main program when printing help for command line options.
      */
     void (*print_cmdline_help)(struct _packet_plugin* this);
@@ -72,9 +84,10 @@ RESULT select_packet_plugin(const char* name);
  * The event dispatchers! They will notify all active plugins about these events
  */
 void packet_plugin_destroy();
-void packet_plugin_process_cmdline_opts(int argc, char* argv[]);
+RESULT packet_plugin_process_cmdline_opts(int argc, char* argv[]);
+RESULT packet_plugin_process_config_file(char* filepath);
 void packet_plugin_print_cmdline_help();
-void packet_plugin_prepare_frame(ETH_EAP_FRAME* frame);
-void packet_plugin_on_frame_received(ETH_EAP_FRAME* frame);
+RESULT packet_plugin_prepare_frame(ETH_EAP_FRAME* frame);
+RESULT packet_plugin_on_frame_received(ETH_EAP_FRAME* frame);
 void packet_plugin_set_auth_round(int round);
 #endif

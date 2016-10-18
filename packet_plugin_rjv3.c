@@ -79,8 +79,8 @@ void rjv3_destroy(struct _packet_plugin* this) {
     chk_free((void**)&PRIV->fake_dns);
     chk_free((void**)&PRIV->fake_serial);
     list_destroy(PRIV->cmd_prop_list);
-    free(this->priv);
-    free(this);
+    chk_free((void**)&this->priv);
+    chk_free((void**)&this);
 }
 
 static RESULT append_rj_cmdline_opt(struct _packet_plugin* this, const char* opt) {
@@ -320,6 +320,10 @@ void rjv3_set_auth_round(struct _packet_plugin* this, int round) {
     PRIV->auth_round = round;
 }
 
+RESULT rjv3_process_config_file(struct _packet_plugin* this, const char* filepath) {
+    return SUCCESS; // TODO
+}
+
 PACKET_PLUGIN* packet_plugin_rjv3_new() {
     PACKET_PLUGIN* this = (PACKET_PLUGIN*)malloc(sizeof(PACKET_PLUGIN));
     if (this < 0) {
@@ -344,6 +348,7 @@ PACKET_PLUGIN* packet_plugin_rjv3_new() {
     this->print_cmdline_help = rjv3_print_cmdline_help;
     this->prepare_frame = rjv3_prepare_frame;
     this->on_frame_received = rjv3_on_frame_received;
+    this->process_config_file = rjv3_process_config_file;
     return this;
 }
 

@@ -7,6 +7,8 @@
 #define PASSWORD_MAX_LEN 64
 #define IFNAME_MAX_LEN 16
 #define MAX_PATH 260
+#define TRUE 1
+#define FALSE 0
 
 /*
  * EAP credentials
@@ -28,6 +30,8 @@ typedef struct _proxy_config {
  * Behavior of `-k`
  */
 typedef enum _kill_type {
+    /* Do not kill anyone */
+    KILL_NONE,
     /* Kill other instances and exit */
     KILL_ONLY,
     /* Kill others and start */
@@ -43,13 +47,23 @@ typedef struct _prog_config {
      * WAN interface when proxy mode on.
      */
     char* ifname;
+    //#define DEFAULT_IFNAME NULL
     
     /*
      * PID file, avoid multiple instances.
      * "none" to disable.
      */
     char* pidfile;
+    #define DEFAULT_PIDFILE "/var/run/mentohust.pid"
     
+    /*
+     * Config file path
+     * Will read everything from the file, 
+     * but cmdline opts may override it.
+     */
+    char* conffile;
+    #define DEFAULT_CONFFILE "/etc/mentohust.conf"
+
     /*
      * Logging config is applied in logging.c
      */
@@ -60,6 +74,7 @@ typedef struct _prog_config {
      * We have no other way to inform the system about the result...
      */
     char* run_on_success;
+    //#define DEFAULT_RUN_ON_SUCCESS NULL
     
     /*
      * Whether to restart after being forced offline by server.
@@ -67,51 +82,78 @@ typedef struct _prog_config {
      * and timed access control.
      */
     int restart_on_logoff;
+    #define DEFAULT_RESTART_ON_LOGOFF FALSE
     
     /*
      * Wait seconds after failure before next try.
      */
     int wait_after_fail_secs;
+    #define DEFAULT_WAIT_AFTER_FAIL_SECS 30
     
     /*
      * Whether to daemonize.
      */
     int run_in_background;
+    #define DEFAULT_RUN_IN_BACKGROUND FALSE
     
     /*
      * Max number of retries(timeouts) before we have a result, success or failure.
      */
     int max_retries;
+    #define DEFAULT_MAX_RETRIES 3
     
     /*
      * Max number of CONTINOUS failures before we exit.
      */
     int max_failures;
+    #define DEFAULT_MAX_FAILURES 3
     
     /*
-     * Timeout waiting for server reply in each stage
+     * Timeout (seconds) waiting for server reply in each stage
      */
     int stage_timeout;
+    #define DEFAULT_STAGE_TIMEOUT 5
     
     /*
      * Whether to save parameters to file
      */
     int save_now;
+    #define DEFAULT_SAVE_NOW FALSE
     
     /*
      * How many auths it takes to finish the actual authentication process.
      * This is non-standard - but you can leave it alone.
      */
     int require_successes;
+    #define DEFAULT_REQUIRE_SUCCESSES 1
     
     /*
      * How to kill other instances
      */
     KILL_TYPE kill_type;
+    #define DEFAULT_KILL_TYPE KILL_NONE
 } PROG_CONFIG;
 
+/*
+ * Fill in the PROG_CONFIG->conffile field only.
+ * Used to implement cmdline option overriding.
+ */
+RESULT parse_cmdline_conf_file(int argc, char* argv[]);
+
+/*
+ * Parse command line parameters
+ */
 RESULT parse_cmdline_opts(int argc, char* argv[]);
+
+/*
+ * Read from config file
+ */
 RESULT parse_config_file(const char* filename);
+
+/*
+ * Atexit
+ */
+void free_config();
 
 PROG_CONFIG* get_program_config();
 EAP_CONFIG* get_eap_config();

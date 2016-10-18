@@ -3,7 +3,8 @@
 
 typedef enum _function_result {
     SUCCESS = 0,
-    FAILURE
+    FAILURE = -1
 } RESULT;
 
+#define IS_FAIL(x) ((x) == FAILURE)
 #endif
