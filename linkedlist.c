@@ -57,28 +57,16 @@ void list_destroy(LIST_ELEMENT** start) {
 }
 
 void remove_data(LIST_ELEMENT** start, void* elem_to_remove, int(*cmpfunc)(void*, void*)) {
-    LIST_ELEMENT *curr = NULL, *last = NULL;
-    if (start == NULL) return;
+    LIST_ELEMENT *curr = NULL, **curr_ref = start;
+    if (curr_ref == NULL) return;
     
-    curr = *start;
-    do {
+    while ((curr = *curr_ref)) {
         if (cmpfunc(curr, elem_to_remove) == 0) {
-            if (last) {
-                last->next = curr->next;
-            } else {
-                /* This means the 1st item is to be removed.
-                 * We can not use **curr and chk_free (no this else branch) here, since
-                 * **curr will hold reference to last->next, zeroing it will destory the
-                 * last node.
-                 * Thus, only zero out the reference to current node when the node is the
-                 * first one.
-                 */
-                *start = NULL;
-            }
-            free(curr)
+            *curr_ref = curr->next;
+            free(curr);
             return;
         }
-        last = curr;
-    } while ((curr = curr->next));
+        curr_ref = &curr->next;
+    }
 }
 
