@@ -4,6 +4,8 @@
 #include "packet_plugin.h"
 #include "packet_builder.h"
 #include "logging.h"
+#include "eap_state_machine.h"
+
 #include <stdlib.h>
 #include <errno.h>
 #include <arpa/inet.h>
@@ -81,11 +83,12 @@ static int init_env(int argc, char* argv[]) {
         PR_ERR("插件初始化错误");
         return FAILURE;
     }
+    
+    if (IS_FAIL(eap_state_machine_init())) {
+        PR_ERR("包生成器初始化错误");
+        return FAILURE;
+    }
     return SUCCESS;
-}
-
-static void recv_frame_handler(ETH_EAP_FRAME *frame) {
-    packet_plugin_on_frame_received(frame);
 }
 
 static int init_if() {
@@ -108,7 +111,7 @@ static int init_if() {
         return FAILURE;
     }
     
-    if_impl->set_frame_handler(if_impl, recv_frame_handler);
+    if_impl->set_frame_handler(if_impl, eap_state_machine_recv_handler);
     
     return SUCCESS;
 }
@@ -130,8 +133,6 @@ static void signal_handler(int signal) {
  * Detailed errors are printed where they happen, not here ...
  */
 int main(int argc, char* argv[]) {
-    IF_IMPL* if_impl;
-    
     atexit(exit_handler);
 	signal(SIGALRM, signal_handler);
 	signal(SIGHUP, signal_handler);
@@ -146,13 +147,8 @@ int main(int argc, char* argv[]) {
         return FAILURE;
     }
     
-    if_impl = get_if_impl();
-    if_impl->start_capture(if_impl);
-    
-    /*
-    if_impl->obtain_mac(if_impl, mac);
-    printf("%02x%02x%02x%02x%02x%02x\n", mac[0], mac[1],mac[2],mac[3],mac[4],mac[5]);
-*/
+    switch_to_state(EAP_STATE_PREPARING, NULL);
+
     return 0;
 }
 

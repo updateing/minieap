@@ -15,4 +15,8 @@
  */
 int append_to_frame(ETH_EAP_FRAME* frame, uint8_t* data, int len);
 
+/*
+ * Stringify
+ */
+char* str_eapol_type(EAPOL_TYPE type);
 #endif

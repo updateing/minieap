@@ -25,7 +25,7 @@ typedef struct _packet_builder {
      * We know the length, thus no length param
      * Can be used to set up internal structure
      */
-    void (*set_eth_field)(struct _packet_builder* this, int field, uint8_t* val);
+    void (*set_eth_field)(struct _packet_builder* this, int field, const uint8_t* val);
 
     /*
      * Sets EAP(OL) related fields
@@ -37,7 +37,7 @@ typedef struct _packet_builder {
      *   2. ID needs to match the corresponging EAP-Request packet
      */
     void (*set_eap_fields)(struct _packet_builder* this,
-                       EAPOL_PACKET_TYPE eapol_type, EAP_CODE code, 
+                       EAPOL_TYPE eapol_type, EAP_CODE code, 
                        EAP_TYPE eap_type, int id, EAP_CONFIG* config);
                        
     /*
@@ -70,8 +70,8 @@ typedef struct _packet_builder {
 PACKET_BUILDER* packet_builder_get();
 
 /*
- * Destory an instance
+ * Destory the instance
  * Can be used to free memory
  */
-void packet_builder_destroy(struct _packet_builder* this);
+void packet_builder_destroy();
 #endif

@@ -32,7 +32,7 @@ static uint8_t* hash_md5_pwd(uint8_t id, const uint8_t *md5Seed, int seedLen, co
 	return ComputeHash(md5Src, md5Len);
 }
 
-void builder_set_eth_field(struct _packet_builder* this, int field, uint8_t* val) {
+void builder_set_eth_field(struct _packet_builder* this, int field, const uint8_t* val) {
     switch (field) {
         case FIELD_DST_MAC:
             memmove(PRIV->frame_header.eth_hdr.dest_mac, val, 6);
@@ -47,7 +47,7 @@ void builder_set_eth_field(struct _packet_builder* this, int field, uint8_t* val
 }
 
 void builder_set_eap_fields(struct _packet_builder* this,
-                       EAPOL_PACKET_TYPE eapol_type, EAP_CODE code, 
+                       EAPOL_TYPE eapol_type, EAP_CODE code, 
                        EAP_TYPE eap_type, int id, EAP_CONFIG* config) {
     PRIV->frame_header.eapol_hdr.version[0] = 1; // Force EAPOL version = 1
     PRIV->frame_header.eapol_hdr.type[0] = (unsigned char)eapol_type;
@@ -164,7 +164,10 @@ PACKET_BUILDER* packet_builder_get() {
     return g_builder == NULL ? packet_builder_new() : g_builder;
 }
 
-void packet_builder_destroy(struct _packet_builder* this) {
-    chk_free((void**)&this->priv);
-    chk_free((void**)&this);
+void packet_builder_destroy() {
+    if (g_builder) {
+        chk_free((void**)&g_builder->priv);
+        chk_free((void**)&g_builder);
+    }
 }
+
