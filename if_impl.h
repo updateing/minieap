@@ -6,6 +6,8 @@
 #include "eth_frame.h"
 #include "linkedlist.h"
 
+#define FRAME_BUF_SIZE 1512
+
 typedef struct _ip_addr {
     unsigned short family;
     uint8_t ip[16]; /* IPv4 and IPv6. IPv4 takes first 4 bytes */
@@ -78,6 +80,9 @@ typedef struct _if_impl {
      * a network frame.
      * Can be used to obtain the callback function (and call it when
      * a frame arrives)
+     *
+     * Note: the frame object does not guarantee to be valid after this
+     * handler returns. If you want to use afterwards, make a copy yourselves.
      */
     void (*set_frame_handler)(struct _if_impl* this, void (*handler)(ETH_EAP_FRAME* frame));
     

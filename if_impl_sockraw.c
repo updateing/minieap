@@ -153,12 +153,13 @@ RESULT sockraw_setup_capture_params(struct _if_impl* this, short eth_protocol, i
 }
 
 RESULT sockraw_start_capture(struct _if_impl* this) {
-    uint8_t buf[1512]; /* Max length of ethernet packet */
+    uint8_t buf[FRAME_BUF_SIZE]; /* Max length of ethernet packet */
     int recvlen = 0;
     ETH_EAP_FRAME frame;
 
-    memset(buf, 0, 1512);
+    memset(buf, 0, FRAME_BUF_SIZE);
     frame.actual_len = 0;
+    frame.buffer_len = FRAME_BUF_SIZE;
     frame.content = buf;
     // TODO will ctrl-c break recv first or call signal handler first?
     while ((recvlen = recv(PRIV->sockfd, (void*)buf, 1512, 0)) > 0
