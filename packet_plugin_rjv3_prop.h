@@ -25,7 +25,7 @@
  */
 int append_rjv3_prop(LIST_ELEMENT** list, uint8_t type, uint8_t* content, int len);
 int modify_rjv3_prop(LIST_ELEMENT* list, uint8_t type, uint8_t* content, int len);
-void remove_rjv3_prop(LIST_ELEMENT* list, uint8_t type);
+void remove_rjv3_prop(LIST_ELEMENT** list, uint8_t type);
 
 /*
  * Find prop by type

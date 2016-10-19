@@ -57,8 +57,8 @@ void packet_plugin_destroy() {
     do {
         PLUGIN->destroy(PLUGIN);
     } while ((plugin_info = plugin_info->next));
-    list_destroy(g_packet_plugin_list);
-    list_destroy(g_active_packet_plugin_list);
+    list_destroy(&g_packet_plugin_list);
+    list_destroy(&g_active_packet_plugin_list);
 }
 
 RESULT packet_plugin_process_cmdline_opts(int argc, char* argv[]) {

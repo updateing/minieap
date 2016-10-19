@@ -66,7 +66,7 @@ RESULT modify_rjv3_prop(LIST_ELEMENT* list, uint8_t type, uint8_t* content, int 
     return _prop->header1.header_len;
 }
 
-void remove_rjv3_prop(LIST_ELEMENT* list, uint8_t type) {
+void remove_rjv3_prop(LIST_ELEMENT** list, uint8_t type) {
     RJ_PROP _exp = { .header2 = { .type = type }};
     remove_data(list, &_exp, rjv3_prop_compare);
 }

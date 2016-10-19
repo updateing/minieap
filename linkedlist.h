@@ -3,7 +3,6 @@
 
 typedef struct _element {
     struct _element* next;
-    struct _element* prev;
     void* content;
 } LIST_ELEMENT;
 
@@ -23,12 +22,12 @@ void* lookup_data(LIST_ELEMENT* start, void* elem_to_find, int(*cmpfunc)(void*, 
 void list_traverse(LIST_ELEMENT* start, void(*func)(void*, void*), void* user);
 
 /*
- * Destroy a list, freeing all the memory all nodes take up
+ * Destroy a list, freeing all the memory all nodes take up, zeroing its reference
  */
-void list_destroy(LIST_ELEMENT* start);
+void list_destroy(LIST_ELEMENT** start);
 
 /*
- * Remove specific data using custom comprator
+ * Remove specific data using custom comprator, zeroing its reference
  */
-void remove_data(LIST_ELEMENT* start, void* elem_to_remove, int(*cmpfunc)(void*, void*));
+void remove_data(LIST_ELEMENT** start, void* elem_to_remove, int(*cmpfunc)(void*, void*));
 #endif

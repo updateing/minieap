@@ -16,7 +16,6 @@ static void insert_node(LIST_ELEMENT** start, LIST_ELEMENT* new_node) {
         *start = new_node;
     } else {
         LIST_ELEMENT* last = find_last_node(*start);
-        new_node->prev = last;
         last->next = new_node;
     }
 }
@@ -24,7 +23,6 @@ static void insert_node(LIST_ELEMENT** start, LIST_ELEMENT* new_node) {
 void insert_data(LIST_ELEMENT** start, void* data) {
     LIST_ELEMENT* new_node = (LIST_ELEMENT*)malloc(sizeof(LIST_ELEMENT));
     new_node->next = NULL;
-    new_node->prev = NULL;
     new_node->content = data;
     insert_node(start, new_node);
 }
@@ -49,22 +47,38 @@ void list_traverse(LIST_ELEMENT* start, void(*func)(void*, void*), void* user) {
     } while ((node = node->next));
 }
 
-void list_destroy(LIST_ELEMENT* start) {
-    LIST_ELEMENT *curr, *next = start;
+void list_destroy(LIST_ELEMENT** start) {
+    LIST_ELEMENT *curr, *next = *start;
     while ((curr = next)) {
         next = curr->next;
         free(curr);
     }
+    *start = NULL;
 }
 
-void remove_data(LIST_ELEMENT* start, void* elem_to_remove, int(*cmpfunc)(void*, void*)) {
-    LIST_ELEMENT* node = lookup_data(start, elem_to_remove, cmpfunc);
-    if (node == NULL) return;
+void remove_data(LIST_ELEMENT** start, void* elem_to_remove, int(*cmpfunc)(void*, void*)) {
+    LIST_ELEMENT *curr = NULL, *last = NULL;
+    if (start == NULL) return;
     
-    if (node->prev != NULL)
-        node->prev->next = node->next;
-    if (node->next != NULL)
-        node->next->prev = node->prev;
-    free(node);
+    curr = *start;
+    do {
+        if (cmpfunc(curr, elem_to_remove) == 0) {
+            if (last) {
+                last->next = curr->next;
+            } else {
+                /* This means the 1st item is to be removed.
+                 * We can not use **curr and chk_free (no this else branch) here, since
+                 * **curr will hold reference to last->next, zeroing it will destory the
+                 * last node.
+                 * Thus, only zero out the reference to current node when the node is the
+                 * first one.
+                 */
+                *start = NULL;
+            }
+            free(curr)
+            return;
+        }
+        last = curr;
+    } while ((curr = curr->next));
 }
 

@@ -67,7 +67,7 @@ void rjv3_set_ipv6_addr(uint8_t* ll_slaac, uint8_t* ll_temp, uint8_t* global) {
             }
         }
     } while ((_ip_curr = _ip_curr->next));
-    list_destroy(_ip_list);
+    list_destroy(&_ip_list);
 }
 
 void rjv3_set_v3_hash(uint8_t* hash_buf, ETH_EAP_FRAME* request) {

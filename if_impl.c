@@ -38,5 +38,5 @@ static void free_one_impl(void* impl, void* unused) {
 
 void free_if_impl() {
     list_traverse(g_if_impl_list, free_one_impl, NULL);
-    list_destroy(g_if_impl_list);
+    list_destroy(&g_if_impl_list);
 }

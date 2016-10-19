@@ -78,7 +78,7 @@ void rjv3_destroy(struct _packet_plugin* this) {
     chk_free((void**)&PRIV->ver_str);
     chk_free((void**)&PRIV->fake_dns);
     chk_free((void**)&PRIV->fake_serial);
-    list_destroy(PRIV->cmd_prop_list);
+    list_destroy(&PRIV->cmd_prop_list);
     chk_free((void**)&this->priv);
     chk_free((void**)&this);
 }
@@ -307,7 +307,7 @@ RESULT rjv3_prepare_frame(struct _packet_plugin* this, ETH_EAP_FRAME* frame) {
     /* And those from cmdline */
     list_traverse(PRIV->cmd_prop_list, append_rjv3_prop_to_frame, (void*)frame);
 
-    list_destroy(_prop_list);
+    list_destroy(&_prop_list);
     return SUCCESS;
 }
 
