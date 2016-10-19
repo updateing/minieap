@@ -11,7 +11,6 @@
 #include <signal.h>
 
 void recv_frame_handler(ETH_EAP_FRAME *frame) {
-    printf("We had one! %d %d\n", frame->actual_len,frame->buffer_len);
     packet_plugin_on_frame_received(frame);
 }
 

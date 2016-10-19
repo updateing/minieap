@@ -30,6 +30,7 @@ typedef struct _if_impl_sockraw_priv {
 
 static void sockraw_bind_to_if(struct _if_impl* this, short protocol) {
     struct sockaddr_ll sll;
+    memset(&sll, 0, sizeof(sll));
     sll.sll_family = AF_PACKET;
     sll.sll_ifindex = PRIV->if_index;
     sll.sll_protocol = protocol;

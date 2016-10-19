@@ -14,11 +14,13 @@ static LIST_ELEMENT* g_packet_plugin_list;
 static LIST_ELEMENT* g_active_packet_plugin_list;
 
 PACKET_PLUGIN* packet_plugin_rjv3_new();
+PACKET_PLUGIN* packet_plugin_printer_new();
 
 int init_packet_plugin_list() {
     PACKET_PLUGIN* (*list[])() = {
 //#include "packet_pluginl_list_gen.h" TODO autogen
-        packet_plugin_rjv3_new
+        packet_plugin_rjv3_new,
+        packet_plugin_printer_new
     };
     int i = 0;
     for (; i < sizeof(list) / sizeof(PACKET_PLUGIN*); ++i) {
