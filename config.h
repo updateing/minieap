@@ -166,6 +166,11 @@ RESULT parse_cmdline_opts(int argc, char* argv[]);
 RESULT parse_config_file(const char* filename);
 
 /*
+ * If everything is given
+ */
+RESULT validate_params();
+
+/*
  * Atexit
  */
 void free_config();

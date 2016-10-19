@@ -40,12 +40,6 @@ static void sockraw_bind_to_if(struct _if_impl* this, short protocol) {
 RESULT sockraw_set_ifname(struct _if_impl* this, const char* ifname) {
     struct ifreq ifreq;
     
-    // TODO do this in main program
-    if (ifname == NULL) {
-        PR_ERR("网卡名未指定，请检查 -n 的设置！");
-        return FAILURE;
-    }
-    
     /* Default protocol is ETH_P_PAE (0x888e) */
     if ((PRIV->sockfd = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_PAE))) < 0) {
         PR_ERRNO("套接字打开失败");

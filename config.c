@@ -38,7 +38,7 @@ static void configure_daemon_param(int daemon_mode) {
     }
 }
 
-void load_default_config() {
+static void load_default_config() {
 #define PCFG g_prog_config
     PCFG.pidfile = strdup(DEFAULT_PIDFILE);
     PCFG.if_impl = strdup(DEFAULT_IF_IMPL);
@@ -189,6 +189,23 @@ RESULT parse_cmdline_opts(int argc, char* argv[]) {
 
 RESULT parse_config_file(const char* filepath) {
     return SUCCESS; // TODO
+}
+
+RESULT validate_params() {
+#define ASSERT_NOTIFY(x, msg) \
+    if (x) { \
+        PR_ERR(msg); \
+        return FAILURE; \
+    }
+    
+#ifndef DEBUG
+    ASSERT_NOTIFY(!g_proxy_config.proxy_on && !g_eap_config.username, "用户名不能为空");
+    ASSERT_NOTIFY(!g_proxy_config.proxy_on && !g_eap_config.password, "密码不能为空");
+#endif
+    ASSERT_NOTIFY(g_proxy_config.proxy_on && !g_proxy_config.lan_ifname,
+                        "代理认证开启时，LAN 侧网卡名不能为空");
+    ASSERT_NOTIFY(!g_prog_config.ifname, "网卡名不能为空");
+    return SUCCESS;
 }
 
 void free_config() {

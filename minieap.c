@@ -10,15 +10,11 @@
 #include <linux/if_ether.h>
 #include <signal.h>
 
-void recv_frame_handler(ETH_EAP_FRAME *frame) {
-    packet_plugin_on_frame_received(frame);
-}
-
 /*
  * Initialize the settings.
  * Note: Override values in config file with cmdline.
  */
-int init_program_config(int argc, char* argv[]) {
+static int init_program_config(int argc, char* argv[]) {
     PROG_CONFIG* cfg;
     if (IS_FAIL(parse_cmdline_conf_file(argc, argv))) {
         PR_ERR("配置文件路径解析出错");
@@ -35,7 +31,7 @@ int init_program_config(int argc, char* argv[]) {
         goto err;
     }
 
-    return SUCCESS;
+    return validate_params();
 err:
     return FAILURE;
 }
@@ -44,7 +40,7 @@ err:
  * Initialize the settings. Called after plugins being selected.
  * Note: Override values in config file with cmdline.
  */
-int init_plugin_config(int argc, char* argv[]) {
+static int init_plugin_config(int argc, char* argv[]) {
     PROG_CONFIG *cfg = get_program_config();
     if (IS_FAIL(packet_plugin_process_config_file(cfg->conffile))) {
         PR_ERR("插件配置文件内容解析出错");
@@ -54,19 +50,19 @@ int init_plugin_config(int argc, char* argv[]) {
         PR_ERR("插件配置文件内容解析出错");
         goto err;
     }
-    return SUCCESS;
+    return packet_plugin_validate_params();
 err:
     return FAILURE;
 }
 
-static void packet_plugin_list_traverse(void* name, void* unused) {
+static void packet_plugin_list_select(void* name, void* unused) {
     select_packet_plugin((const char* )name);
 }
 
 /*
  * Do all the initialization tasks
  */
-int init_env(int argc, char* argv[]) {
+static int init_env(int argc, char* argv[]) {
     PROG_CONFIG* cfg = get_program_config();
     
     set_log_destination(LOG_TO_CONSOLE);
@@ -79,7 +75,7 @@ int init_env(int argc, char* argv[]) {
         return FAILURE;
     }
 
-    list_traverse(cfg->packet_plugin_list, packet_plugin_list_traverse, NULL);
+    list_traverse(cfg->packet_plugin_list, packet_plugin_list_select, NULL);
 
     if (IS_FAIL(init_plugin_config(argc, argv))) {
         PR_ERR("插件初始化错误");
@@ -88,7 +84,11 @@ int init_env(int argc, char* argv[]) {
     return SUCCESS;
 }
 
-int init_if() {
+static void recv_frame_handler(ETH_EAP_FRAME *frame) {
+    packet_plugin_on_frame_received(frame);
+}
+
+static int init_if() {
     PROG_CONFIG* cfg = get_program_config();
     IF_IMPL* if_impl;
     
@@ -113,7 +113,7 @@ int init_if() {
     return SUCCESS;
 }
 
-void exit_handler() {
+static void exit_handler() {
     free_config();
     free_if_impl();
     packet_builder_destroy(packet_builder_get());
@@ -122,7 +122,7 @@ void exit_handler() {
     close_log();
 };
 
-void signal_handler(int signal) {
+static void signal_handler(int signal) {
     exit(0);
 }
 

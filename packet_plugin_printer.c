@@ -29,7 +29,7 @@ PACKET_PLUGIN* packet_plugin_printer_new() {
     this->priv = NULL;
         
     this->name = "printer";
-    this->description = "将数据包数据包内容打印出来";
+    this->description = "将流经此插件的数据包内容打印出来";
     this->prepare_frame = printer_prepare_frame;
     this->on_frame_received = printer_on_frame_received;
     this->destroy = printer_destroy;

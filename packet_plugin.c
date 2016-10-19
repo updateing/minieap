@@ -89,6 +89,17 @@ RESULT packet_plugin_process_config_file(char* filepath) {
     return SUCCESS;
 }
 
+RESULT packet_plugin_validate_params() {
+    LIST_ELEMENT *plugin_info = g_active_packet_plugin_list;
+    if (g_active_packet_plugin_list == NULL) return SUCCESS;
+    do {
+        CHK_FUNC(PLUGIN->validate_params);
+        if (PLUGIN->validate_params(PLUGIN) == FAILURE)
+            return FAILURE;
+    } while ((plugin_info = plugin_info->next));
+    return SUCCESS;
+}
+
 void packet_plugin_print_cmdline_help() {
     LIST_ELEMENT *plugin_info = g_active_packet_plugin_list;
     if (g_active_packet_plugin_list == NULL) return;
