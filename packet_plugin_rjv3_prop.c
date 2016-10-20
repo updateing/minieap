@@ -87,13 +87,14 @@ size_t append_rjv3_prop_to_buffer(RJ_PROP* prop, uint8_t* buf, int buflen) {
 }
 
 size_t append_rjv3_prop_list_to_buffer(LIST_ELEMENT* list, uint8_t* buf, int buflen) {
-    size_t _props_len = 0;
+    size_t _props_len = 0, _single_len = 0;
     LIST_ELEMENT* _curr;
 
     for (_curr = list; _curr; _curr = _curr->next) {
-        _props_len += append_rjv3_prop_to_buffer((RJ_PROP*)_curr->content,
+        _single_len = append_rjv3_prop_to_buffer((RJ_PROP*)_curr->content,
                                                  buf + _props_len,
                                                  buflen - _props_len);
+        _props_len += _single_len; // TODO error handling
     }
     
     return _props_len;

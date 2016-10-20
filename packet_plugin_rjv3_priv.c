@@ -111,7 +111,12 @@ void rjv3_set_secondary_dns(char* dns_ascii_buf, char* fake_dns) {
             if (_line_buf == NULL) continue;
             _line_buf_1 = strtok(NULL, " ");
             if (_line_buf != NULL) {
-                memmove(dns_ascii_buf, _line_buf_1, strnlen(_line_buf_1, INET6_ADDRSTRLEN));
+                int _len = strnlen(_line_buf_1, INET6_ADDRSTRLEN);
+                if (_line_buf_1[_len - 1] == '\n') {
+                    _line_buf_1[_len - 1] = 0;
+                    _len--;
+                }
+                memmove(dns_ascii_buf, _line_buf_1, _len);
                 if (++_lines_read == 2) goto close_return;
             }
         }
@@ -126,7 +131,10 @@ close_return:
 }
 
 void rjv3_set_hdd_serial(uint8_t* serial_buf, char* fake_serial) {
-    if (fake_serial != NULL) memmove(serial_buf, fake_serial, strnlen(fake_serial, MAX_PROP_LEN));
+    if (fake_serial != NULL) {
+        memmove(serial_buf, fake_serial, strnlen(fake_serial, MAX_PROP_LEN));
+        return;
+    }
     
     FILE* _fp = fopen("/etc/mtab", "r");
     char _line_buf[MAX_LINE_LEN] = {0};
@@ -159,6 +167,9 @@ void rjv3_set_hdd_serial(uint8_t* serial_buf, char* fake_serial) {
         }
 
         if (!ioctl(devfd, HDIO_GET_IDENTITY, &hd)) {
+            unsigned char* _pos = &hd.serial_no[sizeof(hd.serial_no) - 1];
+            for (; *_pos == ' '; _pos--);
+            *(++_pos) = 0; /* Trim spaces */
             memmove(serial_buf, hd.serial_no, strlen((char*)hd.serial_no));
             goto close_return;
         } else {

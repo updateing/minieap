@@ -137,7 +137,7 @@ void rjv3_print_cmdline_help(struct _packet_plugin* this) {
 void rjv3_load_default_params(struct _packet_plugin* this) {
     PRIV->heartbeat_interval = DEFAULT_HEARTBEAT_INTERVAL;
     PRIV->service_name = strdup(DEFAULT_SERVICE_NAME);
-    PRIV->ver_str = strdup(DEFAULT_SERVICE_NAME);
+    PRIV->ver_str = strdup(DEFAULT_VER_STR);
     PRIV->bcast_addr = DEFAULT_EAP_BCAST_ADDR;
     PRIV->dhcp_type = DEFAULT_DHCP_TYPE;
 }
@@ -226,7 +226,7 @@ static int rjv3_append_common_fields(PACKET_PLUGIN* this, LIST_ELEMENT** list, i
     uint8_t _dhcp_en[RJV3_SIZE_DHCP] = {0x00, 0x00, 0x00, 0x01};
     uint8_t _local_mac[RJV3_SIZE_MAC];
     uint8_t _pwd_hash[RJV3_SIZE_PWD_HASH] = {0};
-    char _sec_dns[INET_ADDRSTRLEN] = {0};
+    char _sec_dns[INET6_ADDRSTRLEN] = {0};
     uint8_t _misc_2[RJV3_SIZE_MISC_2] = {0x01};
     uint8_t _ll_ipv6[RJV3_SIZE_LL_IPV6] = {0};
     uint8_t _ll_ipv6_tmp[RJV3_SIZE_LL_IPV6_T] = {0};
@@ -265,8 +265,7 @@ static int rjv3_append_common_fields(PACKET_PLUGIN* this, LIST_ELEMENT** list, i
     
     CHK_ADD(append_rjv3_prop(list, RJV3_TYPE_DHCP,     _dhcp_en,               sizeof(_dhcp_en)));
     CHK_ADD(append_rjv3_prop(list, RJV3_TYPE_MAC,      _local_mac,             sizeof(_local_mac)));
-    
-    //if (frame->header->eapol_hdr.type[0] == EAP_PACKET && frame->header->eap_hdr.type[0] == MD5_CHALLENGE) {
+
     if (append_pwd_hash) {
         CHK_ADD(append_rjv3_prop(list, RJV3_TYPE_PWD_HASH, _pwd_hash,          sizeof(_pwd_hash)));
     } else {

@@ -49,7 +49,7 @@ static int init_plugin_config(int argc, char* argv[]) {
         goto err;
     }
     if (IS_FAIL(packet_plugin_process_cmdline_opts(argc, argv))) {
-        PR_ERR("插件配置文件内容解析出错");
+        PR_ERR("插件命令行参数解析出错");
         goto err;
     }
     return packet_plugin_validate_params();
