@@ -5,6 +5,9 @@
 #include "logging.h"
 #include "packet_plugin_rjv3_priv.h"
 #include "packet_plugin_rjv3_prop.h"
+#include "packet_util.h"
+#include "eth_frame.h"
+#include "packet_plugin_rjv3.h"
 
 #include <stdint.h>
 #include <getopt.h>
@@ -61,7 +64,7 @@ static const uint8_t pkt_identity_priv_header[] = {
 //    0x02, 0x00, 0x00, 0x00, 0x13, 0x11, 0x01, 0xb1, /* ........ */
 };
 
-static const uint8_t pkt_md5_priv_header[] = {
+static const uint8_t pkt_challenge_priv_header[] = {
                 0xff, 0xff, 0x37, 0x77, 0x7f, 0xff, /*   ..7w.. */ /* Would be different in second auth */
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, /* ........ */
     0xff, 0xff, 0xff, 0xac, 0xb1, 0xff, 0xb0, 0xb0, /* ........ */
@@ -130,12 +133,20 @@ malformat:
 void rjv3_print_cmdline_help(struct _packet_plugin* this) {
 }
 
+void rjv3_load_default_params(struct _packet_plugin* this) {
+    PRIV->heartbeat_interval = DEFAULT_HEARTBEAT_INTERVAL;
+    PRIV->service_name = strdup(DEFAULT_SERVICE_NAME);
+    PRIV->ver_str = strdup(DEFAULT_SERVICE_NAME);
+    PRIV->bcast_addr = DEFAULT_EAP_BCAST_ADDR;
+    PRIV->dhcp_type = DEFAULT_DHCP_TYPE;
+}
+
 RESULT rjv3_process_cmdline_opts(struct _packet_plugin* this, int argc, char* argv[]) {
     int opt = 0;
     int longIndex = 0;
     int _arglen = 0; /* 当前参数长度 */
     unsigned int ver[2]; /* -v 版本号 */
-    static const char* shortOpts = "e:a:d:v:f:c:q:";
+    static const char* shortOpts = ":e:a:d:v:f:c:q:";
     static const struct option longOpts[] = {
 	    { "heartbeat", required_argument, NULL, 'e' },
 	    { "eap-bcast-addr", required_argument, NULL, 'a' },
@@ -162,10 +173,10 @@ RESULT rjv3_process_cmdline_opts(struct _packet_plugin* this, int argc, char* ar
                 PRIV->heartbeat_interval = atoi(optarg);
                 break;
             case 'a':
-                PRIV->bcast_addr = atoi(optarg) % 3; /* 一共三个选项 */
+                PRIV->bcast_addr = atoi(optarg) % 3; /* 一共三个选项 */ // TODO actually apply
                 break;
             case 'd':
-                PRIV->dhcp_type = atoi(optarg) % 4;
+                PRIV->dhcp_type = atoi(optarg) % 4; // TODO actually apply
                 break;
             case 'v':
                 if (sscanf(optarg, "%u.%u", ver, ver + 1) != EOF) {
@@ -192,6 +203,9 @@ RESULT rjv3_process_cmdline_opts(struct _packet_plugin* this, int argc, char* ar
                     COPY_N_ARG_TO(PRIV->fake_serial, MAX_PROP_LEN);
                 }
                 break;
+            case ':':
+                PR_ERR("缺少参数：%s", argv[optind - 1]);
+                return FAILURE;
             default:
                 break;
         }
@@ -217,7 +231,7 @@ static int rjv3_append_common_fields(PACKET_PLUGIN* this, LIST_ELEMENT* list, ET
     /* misc 6 */
     uint8_t _misc_7[RJV3_SIZE_MISC_7] = {0};
     uint8_t _misc_8[RJV3_SIZE_MISC_8] = {0x40};
-    char* _ver_str = PRIV->ver_str ? PRIV->ver_str : "RG-SU For Linux V1.0";
+    char* _ver_str = PRIV->ver_str;
 
     rjv3_set_dhcp_en(_dhcp_en, PRIV->dhcp_type);
 
@@ -268,6 +282,31 @@ static int rjv3_append_common_fields(PACKET_PLUGIN* this, LIST_ELEMENT* list, ET
     return _len;
 }
 
+static void rjv3_append_priv_header(struct _packet_plugin* this, ETH_EAP_FRAME* frame) {
+    EAPOL_TYPE _eapol_type = frame->header->eapol_hdr.type[0];
+    switch (_eapol_type) {
+        case EAPOL_START:
+            append_to_frame(frame, pkt_start_priv_header, sizeof(pkt_start_priv_header));
+            break;
+        case EAP_PACKET:
+            if (frame->header->eap_hdr.code[0] == EAP_REQUEST) {
+                switch (frame->header->eap_hdr.type[0]) {
+                    case IDENTITY:
+                        append_to_frame(frame, pkt_identity_priv_header,
+                                            sizeof(pkt_identity_priv_header));
+                        break;
+                    case MD5_CHALLENGE:
+                        append_to_frame(frame, pkt_challenge_priv_header,
+                                            sizeof(pkt_challenge_priv_header));
+                        break;
+                }
+            }
+            break;
+        default:
+            break;
+    }
+}
+
 RESULT rjv3_prepare_frame(struct _packet_plugin* this, ETH_EAP_FRAME* frame) {
     /*
      * Size field, its format is NOT the same as those header1.magic == 0x1a ones.
@@ -281,6 +320,8 @@ RESULT rjv3_prepare_frame(struct _packet_plugin* this, ETH_EAP_FRAME* frame) {
      */
     int _props_len;
     LIST_ELEMENT* _prop_list = NULL;
+    
+    rjv3_append_priv_header(this, frame);
     
     RJ_PROP* _size_prop = new_rjv3_prop();
     if (_size_prop < 0) {
@@ -344,6 +385,7 @@ PACKET_PLUGIN* packet_plugin_rjv3_new() {
     this->destroy = rjv3_destroy;
     this->set_auth_round = rjv3_set_auth_round;
     this->process_cmdline_opts = rjv3_process_cmdline_opts;
+    this->load_default_params = rjv3_load_default_params;
     this->print_cmdline_help = rjv3_print_cmdline_help;
     this->prepare_frame = rjv3_prepare_frame;
     this->on_frame_received = rjv3_on_frame_received;

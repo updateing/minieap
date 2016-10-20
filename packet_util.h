@@ -1,6 +1,7 @@
 #ifndef _MINIEAP_PACKET_UTIL_H
 #define _MINIEAP_PACKET_UTIL_H
 
+#include "minieap_common.h"
 #include "eth_frame.h"
 #include <stdint.h>
 
@@ -13,7 +14,7 @@
  *
  * Return: if the operation was successful
  */
-int append_to_frame(ETH_EAP_FRAME* frame, uint8_t* data, int len);
+RESULT append_to_frame(ETH_EAP_FRAME* frame, const uint8_t* data, int len);
 
 /*
  * Stringify

@@ -150,6 +150,11 @@ typedef struct _prog_config {
 } PROG_CONFIG;
 
 /*
+ * Default settings
+ */
+void load_default_params();
+
+/*
  * Fill in the PROG_CONFIG->conffile field only.
  * Used to implement cmdline option overriding.
  */

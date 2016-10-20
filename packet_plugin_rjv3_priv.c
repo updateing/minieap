@@ -14,6 +14,7 @@
 #include <sys/ioctl.h>
 #include <stdio.h>
 #include <fcntl.h>
+#include <malloc.h>
 
 #define IS_MD5_FRAME(frame) \
     (frame != NULL && frame->header->eapol_hdr.type[0] == EAP_PACKET \
@@ -85,9 +86,6 @@ void rjv3_set_v3_hash(uint8_t* hash_buf, ETH_EAP_FRAME* request) {
 }
 
 void rjv3_set_service_name(uint8_t* name_buf, char* cmd_opt) {
-    if (cmd_opt == NULL) {
-        cmd_opt = "internet";
-    }
     memmove(name_buf, cmd_opt, strlen(cmd_opt));
 };
 
@@ -132,8 +130,7 @@ void rjv3_set_hdd_serial(uint8_t* serial_buf, char* fake_serial) {
     
     FILE* _fp = fopen("/etc/mtab", "r");
     char _line_buf[MAX_LINE_LEN] = {0};
-    char* _line_buf_1;
-    char* _line_buf_2;
+    char* _line_buf_dev, *_line_buf_mountpoint;
     char* _root_dev = NULL;
     char* _ret;
     
@@ -143,11 +140,13 @@ void rjv3_set_hdd_serial(uint8_t* serial_buf, char* fake_serial) {
 
     /* Find the root device */
     while ((_ret = fgets(_line_buf, MAX_LINE_LEN, _fp))) {
-        _line_buf_1 = strtok(_line_buf, " ");
-        if (_line_buf_1 == NULL) continue;
-        _line_buf_2 = strtok(NULL, " ");
-        if (_line_buf_2 != NULL && strncmp(_line_buf_2, "/", 1) == 0) {
-            _root_dev = _line_buf_1;
+        _line_buf_dev = strtok(_line_buf, " ");
+        if (_line_buf_dev == NULL) continue;
+        _line_buf_mountpoint = strtok(NULL, " ");
+        if (_line_buf_mountpoint != NULL &&
+                _line_buf_mountpoint[0] == '/' && _line_buf_mountpoint[1] == 0) {
+            if (_root_dev) free(_root_dev); /* Multiple mounts */
+            _root_dev = strdup(_line_buf_dev);
         }
     }
     
@@ -171,5 +170,6 @@ info_err:
     PR_ERRNO("无法从 /etc/mtab 获取根分区挂载设备信息，请使用 --fake-serial 选项手动指定硬盘序列号");
 close_return:
     if (_fp > 0) fclose(_fp);
+    if (_root_dev) free(_root_dev);
     return;
 }

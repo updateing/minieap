@@ -39,6 +39,13 @@ typedef struct _packet_plugin {
     RESULT (*validate_params)(struct _packet_plugin* this);
     
     /*
+     * Load the defaults
+     *
+     * Return: if all mandatory params are valid/not null
+     */
+    void (*load_default_params)(struct _packet_plugin* this);
+    
+    /*
      * Called by main program when printing help for command line options.
      */
     void (*print_cmdline_help)(struct _packet_plugin* this);
@@ -93,6 +100,7 @@ RESULT select_packet_plugin(const char* name);
 void packet_plugin_destroy();
 RESULT packet_plugin_process_cmdline_opts(int argc, char* argv[]);
 RESULT packet_plugin_validate_params();
+void packet_plugin_load_default_params();
 RESULT packet_plugin_process_config_file(char* filepath);
 void packet_plugin_print_cmdline_help();
 RESULT packet_plugin_prepare_frame(ETH_EAP_FRAME* frame);

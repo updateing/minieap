@@ -64,7 +64,7 @@ static void packet_plugin_list_select(void* name, void* unused) {
 /*
  * Do all the initialization tasks
  */
-static int init_env(int argc, char* argv[]) {
+static int init_cfg(int argc, char* argv[]) {
     PROG_CONFIG* cfg = get_program_config();
     
     set_log_destination(LOG_TO_CONSOLE);
@@ -72,6 +72,7 @@ static int init_env(int argc, char* argv[]) {
     init_if_impl_list();
     init_packet_plugin_list();
     
+    load_default_params();
     if (IS_FAIL(init_program_config(argc, argv))) {
         PR_ERR("参数初始化错误");
         return FAILURE;
@@ -84,15 +85,12 @@ static int init_env(int argc, char* argv[]) {
         return FAILURE;
     }
     
+    packet_plugin_load_default_params();
     if (IS_FAIL(init_plugin_config(argc, argv))) {
         PR_ERR("插件初始化错误");
         return FAILURE;
     }
     
-    if (IS_FAIL(eap_state_machine_init())) {
-        PR_ERR("包生成器初始化错误");
-        return FAILURE;
-    }
     return SUCCESS;
 }
 
@@ -139,11 +137,15 @@ int main(int argc, char* argv[]) {
 	signal(SIGINT, signal_handler);
 	signal(SIGTERM, signal_handler);
 	
-    if (IS_FAIL(init_env(argc, argv))) {
+    if (IS_FAIL(init_cfg(argc, argv))) {
         return FAILURE;
     }
 
     if (IS_FAIL(init_if())) {
+        return FAILURE;
+    }
+
+    if (IS_FAIL(eap_state_machine_init())) {
         return FAILURE;
     }
     

@@ -38,7 +38,7 @@ static void configure_daemon_param(int daemon_mode) {
     }
 }
 
-static void load_default_config() {
+void load_default_params() {
 #define PCFG g_prog_config
     PCFG.pidfile = strdup(DEFAULT_PIDFILE);
     PCFG.if_impl = strdup(DEFAULT_IF_IMPL);
@@ -108,7 +108,6 @@ RESULT parse_cmdline_opts(int argc, char* argv[]) {
 	    { NULL, no_argument, NULL, 0 }
     };
 
-    load_default_config();
     opt = getopt_long(argc, argv, shortOpts, longOpts, &longIndex);
 #define COPY_N_ARG_TO(buf, maxlen) \
         _arglen = strnlen(optarg, maxlen); \

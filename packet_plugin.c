@@ -100,6 +100,15 @@ RESULT packet_plugin_validate_params() {
     return SUCCESS;
 }
 
+void packet_plugin_load_default_params() {
+    LIST_ELEMENT *plugin_info = g_active_packet_plugin_list;
+    if (g_active_packet_plugin_list == NULL) return;
+    do {
+        CHK_FUNC(PLUGIN->load_default_params);
+        PLUGIN->load_default_params(PLUGIN);
+    } while ((plugin_info = plugin_info->next));
+}
+
 void packet_plugin_print_cmdline_help() {
     LIST_ELEMENT *plugin_info = g_active_packet_plugin_list;
     if (g_active_packet_plugin_list == NULL) return;
