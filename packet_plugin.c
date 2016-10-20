@@ -4,6 +4,7 @@
 
 #include <string.h>
 #include <malloc.h>
+#include <getopt.h>
 
 #define TRUE 1
 #define FALSE 0
@@ -72,6 +73,7 @@ RESULT packet_plugin_process_cmdline_opts(int argc, char* argv[]) {
     if (g_active_packet_plugin_list == NULL) return SUCCESS;
     do {
         CHK_FUNC(PLUGIN->process_cmdline_opts);
+        optind = 1; /* Reset the pointer to make getopt works from start */
         if (PLUGIN->process_cmdline_opts(PLUGIN, argc, argv) == FAILURE)
             return FAILURE;
     } while ((plugin_info = plugin_info->next));
