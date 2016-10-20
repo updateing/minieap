@@ -139,8 +139,8 @@ typedef struct _prog_config {
      * How many auths it takes to finish the actual authentication process.
      * This is non-standard - but you can leave it alone.
      */
-    int require_successes;
-    #define DEFAULT_REQUIRE_SUCCESSES 1
+    int auth_round;
+    #define DEFAULT_AUTH_ROUND 1
     
     /*
      * How to kill other instances

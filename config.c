@@ -49,7 +49,7 @@ void load_default_params() {
     PCFG.max_failures = DEFAULT_MAX_FAILURES;
     PCFG.stage_timeout = DEFAULT_STAGE_TIMEOUT;
     PCFG.save_now = DEFAULT_STAGE_TIMEOUT;
-    PCFG.require_successes = DEFAULT_REQUIRE_SUCCESSES;
+    PCFG.auth_round = DEFAULT_AUTH_ROUND;
     PCFG.kill_type = DEFAULT_KILL_TYPE;
     
     configure_daemon_param(0); // No run in bg + log to console
@@ -93,12 +93,11 @@ RESULT parse_cmdline_opts(int argc, char* argv[]) {
 	    { "wait-after-fail", required_argument, NULL, 'r' },
 	    { "max-fail", required_argument, NULL, 'l' },
 	    { "no-auto-reauth", required_argument, NULL, 'x' },
-	    { "dhcp-type", required_argument, NULL, 'd' },
 	    { "daemonize", required_argument, NULL, 'b' },
 	    { "run-on-success", required_argument, NULL, 'c' }, /* They are */
 	    { "dhcp-script", required_argument, NULL, 'c' },    /* both 'c' */
 	    { "proxy-lan-iface", required_argument, NULL, 'z' },
-	    { "require-success", required_argument, NULL, 'j' },
+	    { "auth-round", required_argument, NULL, 'j' },
 	    { "decode-config", required_argument, NULL, 'q' },
 	    { "max-retries", required_argument, NULL, 0},
 	    { "pid-file", required_argument, NULL, 0},
@@ -159,7 +158,7 @@ RESULT parse_cmdline_opts(int argc, char* argv[]) {
                 COPY_N_ARG_TO(g_proxy_config.lan_ifname, IFNAMSIZ);
                 break;
             case 'j':
-                g_prog_config.require_successes = atoi(optarg);
+                g_prog_config.auth_round = atoi(optarg);
                 break;
             case 0: /* 超出26个字母的选项，没有短选项与其对应 */
 #define IF_ARG(arg_name) (strcmp(longOpts[longIndex].name, arg_name) == 0)

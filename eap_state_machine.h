@@ -10,13 +10,13 @@
  * Format:
  * Event                      -- Transition function ->      New state
  *
- * set PREPARING              ---send EAPOL-Start--->        START_SENT
+ * set PREPARING              ---open if, send EAPOL-Start-> START_SENT
  * received Request-Identity  ---send Response-Identity--->  IDENTITY_SENT
  * received Request-Challenge ---send Response-Challenge---> CHALLENGE_SENT
  * received SUCCESS           ---double auth?
  *                               Y -> auth_round >= required?
  *                                    Y ->                   SUCCESS
- *                                    N -> auth_round++ ->   PREPARING
+ *                                    N -> auth_round++ ->   START_SENT
  *                               N ->                        SUCCESS
  * received Keep-Alive        ---SUCCESS?
  *                               Y -> send Keep-Alive ->     SUCCESS

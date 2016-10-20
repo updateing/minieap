@@ -13,7 +13,6 @@ typedef struct _state_mach_priv {
     int state_max_count; // Number of timeouts allowed
     int auth_round; // Current authentication round
     int fail_count;
-    int success_count;
     uint8_t local_mac[6];
     uint8_t server_mac[6];
     EAP_STATE state;
@@ -61,7 +60,6 @@ static void eap_state_machine_clear_state() {
     PRIV->state = EAP_STATE_UNKNOWN;
     PRIV->auth_round = 1;
     PRIV->fail_count = 0;
-    PRIV->success_count = 0;
 }
 
 RESULT eap_state_machine_init() {
@@ -167,14 +165,31 @@ static RESULT state_mach_send_eapol_simple(EAPOL_TYPE eapol_type) {
 }
 
 static RESULT state_mach_process_success(ETH_EAP_FRAME* frame) {
-    // TODO show info
-    // perform double auth
+    // TODO show info, keepalive -> rjv3
+    PROG_CONFIG* _cfg = get_program_config();
+    PRIV->fail_count = 0;
+    if (PRIV->auth_round == _cfg->auth_round) {
+        PR_INFO("认证成功");
+        return SUCCESS;
+    } else {
+        PR_INFO("第 %d 次认证成功，正在执行下一次认证", PRIV->auth_round);
+        packet_plugin_set_auth_round(++PRIV->auth_round);
+        switch_to_state(EAP_STATE_START_SENT, frame); // No need to prepare again
+        return SUCCESS;
+    }
 }
 
 static RESULT state_mach_process_failure(ETH_EAP_FRAME* frame) {
-    // TODO show reason
-    // check if count maxed out
-    // restart
+    // TODO show reason -> rjv3
+    PROG_CONFIG* _cfg = get_program_config();
+    if (++PRIV->fail_count == _cfg->max_failures) {
+        PR_ERR("认证失败 %d 次，已达到指定次数，正在退出……", PRIV->fail_count);
+        exit(FAILURE);
+    } else {
+        PR_ERR("认证失败 %d 次，将在 %d 秒后重试……", PRIV->fail_count, _cfg->wait_after_fail_secs);
+        // TODO start alarm
+        return SUCCESS;
+    }
 }
 
 void eap_state_machine_recv_handler(ETH_EAP_FRAME* frame) {
