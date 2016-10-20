@@ -16,6 +16,7 @@ RJ_PROP* new_rjv3_prop() {
         return NULL;
     }
     
+    /* REAL MAGIC! */
     _prop->header1.header_type = 0x1a;
     _prop->header1.magic_2[0] = 0x00;
     _prop->header1.magic_2[1] = 0x00;
@@ -71,13 +72,45 @@ void remove_rjv3_prop(LIST_ELEMENT** list, uint8_t type) {
     remove_data(list, &_exp, rjv3_prop_compare);
 }
 
-void append_rjv3_prop_to_frame(void* prop, void* frame) {
-    ETH_EAP_FRAME* _frame = (ETH_EAP_FRAME*)frame;
+size_t append_rjv3_prop_to_buffer(RJ_PROP* prop, uint8_t* buf, int buflen) {
     RJ_PROP* _prop = (RJ_PROP*)prop;
-    int _content_len = _prop->header2.len - sizeof(RJ_PROP_HEADER2);
+    size_t _content_len = _prop->header2.len - sizeof(RJ_PROP_HEADER2);
+    size_t _full_len = sizeof(RJ_PROP_HEADER1) + sizeof(RJ_PROP_HEADER2) + _content_len;
     
-    append_to_frame(_frame, (uint8_t*)&_prop->header1, sizeof(RJ_PROP_HEADER1));
-    append_to_frame(_frame, (uint8_t*)&_prop->header2, sizeof(RJ_PROP_HEADER2));
-    append_to_frame(_frame, _prop->content, _content_len);
+    if (buflen < _full_len) {
+        return -1;
+    }
+    memmove(buf, &_prop->header1, sizeof(RJ_PROP_HEADER1));
+    memmove(buf + sizeof(RJ_PROP_HEADER1), &_prop->header2, sizeof(RJ_PROP_HEADER2));
+    memmove(buf + sizeof(RJ_PROP_HEADER1) + sizeof(RJ_PROP_HEADER2), _prop->content, _content_len);
+    return _full_len;
+}
+
+size_t append_rjv3_prop_list_to_buffer(LIST_ELEMENT* list, uint8_t* buf, int buflen) {
+    size_t _props_len = 0;
+    LIST_ELEMENT* _curr;
+
+    for (_curr = list; _curr; _curr = _curr->next) {
+        _props_len += append_rjv3_prop_to_buffer((RJ_PROP*)_curr->content,
+                                                 buf + _props_len,
+                                                 buflen - _props_len);
+    }
+    
+    return _props_len;
+}
+
+/* This one utilizes packet_util, thus no need to mess with pointer arithmetics */
+void append_rjv3_prop_to_frame(RJ_PROP* prop, ETH_EAP_FRAME* frame) {
+    int _content_len = 0;
+    if (prop->header1.header_type == 0x1a) {
+        _content_len = prop->header2.len - sizeof(RJ_PROP_HEADER2);
+    } else if (prop->header1.header_type == 0x02) {
+        /* Container prop, see `rjv3_prepare_frame` */
+        _content_len = prop->header2.len + (prop->header2.type << 8);
+    }
+    
+    append_to_frame(frame, (uint8_t*)&prop->header1, sizeof(RJ_PROP_HEADER1));
+    append_to_frame(frame, (uint8_t*)&prop->header2, sizeof(RJ_PROP_HEADER2));
+    append_to_frame(frame, prop->content, _content_len);
 }
 

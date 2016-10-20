@@ -8,6 +8,7 @@
 #include "packet_util.h"
 #include "eth_frame.h"
 #include "packet_plugin_rjv3.h"
+#include "if_impl.h"
 
 #include <stdint.h>
 #include <getopt.h>
@@ -215,7 +216,12 @@ RESULT rjv3_process_cmdline_opts(struct _packet_plugin* this, int argc, char* ar
     return SUCCESS;
 }
 
-static int rjv3_append_common_fields(PACKET_PLUGIN* this, LIST_ELEMENT* list, ETH_EAP_FRAME* frame) {
+/*
+ * Calculate values for commonly seen fields, and add them to a list
+ *
+ * Returns how much space it would take to "serialize" all the fields in the list
+ */
+static int rjv3_append_common_fields(PACKET_PLUGIN* this, LIST_ELEMENT** list, int append_pwd_hash) {
     int _len = 0, _this_len = -1;
     uint8_t _dhcp_en[RJV3_SIZE_DHCP] = {0x00, 0x00, 0x00, 0x01};
     uint8_t _local_mac[RJV3_SIZE_MAC];
@@ -257,27 +263,28 @@ static int rjv3_append_common_fields(PACKET_PLUGIN* this, LIST_ELEMENT* list, ET
         _len += _this_len; \
     }
     
-    CHK_ADD(append_rjv3_prop(&list, RJV3_TYPE_DHCP,     _dhcp_en,               sizeof(_dhcp_en)));
-    CHK_ADD(append_rjv3_prop(&list, RJV3_TYPE_MAC,      _local_mac,             sizeof(_local_mac)));
+    CHK_ADD(append_rjv3_prop(list, RJV3_TYPE_DHCP,     _dhcp_en,               sizeof(_dhcp_en)));
+    CHK_ADD(append_rjv3_prop(list, RJV3_TYPE_MAC,      _local_mac,             sizeof(_local_mac)));
     
-    if (frame->header->eapol_hdr.type[0] == EAP_PACKET && frame->header->eap_hdr.type[0] == MD5_CHALLENGE) {
-        CHK_ADD(append_rjv3_prop(&list, RJV3_TYPE_PWD_HASH, _pwd_hash,          sizeof(_pwd_hash)));
+    //if (frame->header->eapol_hdr.type[0] == EAP_PACKET && frame->header->eap_hdr.type[0] == MD5_CHALLENGE) {
+    if (append_pwd_hash) {
+        CHK_ADD(append_rjv3_prop(list, RJV3_TYPE_PWD_HASH, _pwd_hash,          sizeof(_pwd_hash)));
     } else {
-        CHK_ADD(append_rjv3_prop(&list, RJV3_TYPE_PWD_HASH, NULL,               0));
+        CHK_ADD(append_rjv3_prop(list, RJV3_TYPE_PWD_HASH, NULL,               0));
     }
     
-    CHK_ADD(append_rjv3_prop(&list, RJV3_TYPE_SEC_DNS,  (uint8_t*)_sec_dns,    strlen(_sec_dns)));
-    CHK_ADD(append_rjv3_prop(&list, RJV3_TYPE_MISC_2,   _misc_2,                sizeof(_misc_2)));
-    CHK_ADD(append_rjv3_prop(&list, RJV3_TYPE_LL_IPV6,  _ll_ipv6,               sizeof(_ll_ipv6)));
-    CHK_ADD(append_rjv3_prop(&list, RJV3_TYPE_LL_IPV6_T,_ll_ipv6_tmp,           sizeof(_ll_ipv6_tmp)));
-    CHK_ADD(append_rjv3_prop(&list, RJV3_TYPE_GLB_IPV6, _glb_ipv6,              sizeof(_glb_ipv6)));
-    CHK_ADD(append_rjv3_prop(&list, RJV3_TYPE_V3_HASH,  _v3_hash,               sizeof(_v3_hash)));
-    CHK_ADD(append_rjv3_prop(&list, RJV3_TYPE_SERVICE,  _service,               sizeof(_service)));
-    CHK_ADD(append_rjv3_prop(&list, RJV3_TYPE_HDD_SER,  _hdd_ser,               sizeof(_hdd_ser)));
-    CHK_ADD(append_rjv3_prop(&list, RJV3_TYPE_MISC_6,   NULL,                   0));
-    CHK_ADD(append_rjv3_prop(&list, RJV3_TYPE_MISC_7,   _misc_7,                sizeof(_misc_7)));
-    CHK_ADD(append_rjv3_prop(&list, RJV3_TYPE_MISC_8,   _misc_8,                sizeof(_misc_8)));
-    CHK_ADD(append_rjv3_prop(&list, RJV3_TYPE_VER_STR,  (uint8_t*)_ver_str,    strlen(_ver_str)));
+    CHK_ADD(append_rjv3_prop(list, RJV3_TYPE_SEC_DNS,  (uint8_t*)_sec_dns,    strlen(_sec_dns)));
+    CHK_ADD(append_rjv3_prop(list, RJV3_TYPE_MISC_2,   _misc_2,                sizeof(_misc_2)));
+    CHK_ADD(append_rjv3_prop(list, RJV3_TYPE_LL_IPV6,  _ll_ipv6,               sizeof(_ll_ipv6)));
+    CHK_ADD(append_rjv3_prop(list, RJV3_TYPE_LL_IPV6_T,_ll_ipv6_tmp,           sizeof(_ll_ipv6_tmp)));
+    CHK_ADD(append_rjv3_prop(list, RJV3_TYPE_GLB_IPV6, _glb_ipv6,              sizeof(_glb_ipv6)));
+    CHK_ADD(append_rjv3_prop(list, RJV3_TYPE_V3_HASH,  _v3_hash,               sizeof(_v3_hash)));
+    CHK_ADD(append_rjv3_prop(list, RJV3_TYPE_SERVICE,  _service,               sizeof(_service)));
+    CHK_ADD(append_rjv3_prop(list, RJV3_TYPE_HDD_SER,  _hdd_ser,               sizeof(_hdd_ser)));
+    CHK_ADD(append_rjv3_prop(list, RJV3_TYPE_MISC_6,   NULL,                   0));
+    CHK_ADD(append_rjv3_prop(list, RJV3_TYPE_MISC_7,   _misc_7,                sizeof(_misc_7)));
+    CHK_ADD(append_rjv3_prop(list, RJV3_TYPE_MISC_8,   _misc_8,                sizeof(_misc_8)));
+    CHK_ADD(append_rjv3_prop(list, RJV3_TYPE_VER_STR,  (uint8_t*)_ver_str,    strlen(_ver_str)));
     
     return _len;
 }
@@ -316,36 +323,41 @@ RESULT rjv3_prepare_frame(struct _packet_plugin* this, ETH_EAP_FRAME* frame) {
         struct _size_field {
             RJ_PROP_HEADER1 header1; // TODO Different in 2nd packet
             uint8_t whole_trailer_len[2]; // First 0x1a prop to end
+            <other 0x1a fields follow>
         }
      */
-    int _props_len;
+    size_t _props_len = 0;
+    uint8_t _std_prop_buf[FRAME_BUF_SIZE] = {0}; // Buffer for 0x1a props
     LIST_ELEMENT* _prop_list = NULL;
     
     rjv3_append_priv_header(this, frame);
     
-    RJ_PROP* _size_prop = new_rjv3_prop();
-    if (_size_prop < 0) {
-        free(_prop_list);
+    /* Let's make the big news! */
+    rjv3_append_common_fields(this, &_prop_list, frame->header->eapol_hdr.type[0] == EAP_PACKET &&
+                                                frame->header->eap_hdr.code[0] == MD5_CHALLENGE);
+    
+    /* Actually read from sparse nodes into a unite buffer */
+    _props_len = append_rjv3_prop_list_to_buffer(_prop_list, _std_prop_buf, FRAME_BUF_SIZE);
+    
+    /* And those from cmdline */
+    _props_len += append_rjv3_prop_list_to_buffer(PRIV->cmd_prop_list,
+                                                  _std_prop_buf + _props_len,
+                                                  FRAME_BUF_SIZE - _props_len);
+
+    /* The outside */
+    RJ_PROP* _container_prop = new_rjv3_prop();
+    if (_container_prop < 0) {
+        list_destroy(&_prop_list);
         return FAILURE;
     }
     
-    _size_prop->header1.header_type = 0x02;
-    _size_prop->header1.header_len = 0x00;
-    /* Change size by pointer later */
-    insert_data(&_prop_list, _size_prop);
-    
-    /* Let's do the huge project! */
-    _props_len = rjv3_append_common_fields(this, _prop_list, frame);
+    _container_prop->header1.header_type = 0x02;
+    _container_prop->header1.header_len = 0x00;
+    _container_prop->header2.type = (_props_len >> 8 & 0xff);
+    _container_prop->header2.len = (_props_len & 0xff);
+    _container_prop->content = _std_prop_buf;
 
-    /* Now correct the size, note the format is different */
-    _size_prop->header2.type = (_props_len >> 4 & 0xf);
-    _size_prop->header2.len = (_props_len & 0xf);
-    
-    /* Actually read from sparse nodes into a unite buffer */
-    list_traverse(_prop_list, append_rjv3_prop_to_frame, (void*)frame);
-    
-    /* And those from cmdline */
-    list_traverse(PRIV->cmd_prop_list, append_rjv3_prop_to_frame, (void*)frame);
+    append_rjv3_prop_to_frame(_container_prop, frame);
 
     list_destroy(&_prop_list);
     return SUCCESS;
