@@ -14,7 +14,7 @@
 #define RJV3_TYPE_PWD_HASH  0x2f /* computePwd in MentoHUST */
 #define RJV3_SIZE_PWD_HASH  0x10 /* Will be 0x0 when not in MD5-Challenge */
 
-#define RJV3_TYPE_SEC_DNS   0x76 /* Secondary DNS in resolv.conf, in ASCII */
+#define RJV3_TYPE_SEC_DNS   0x76 /* Secondary DNS in resolv.conf, in ASCII, no termination char*/
 /* Var size */
 
 #define RJV3_TYPE_MISC_2    0x35 /* 0x03 */
@@ -49,7 +49,7 @@
 #define RJV3_TYPE_MISC_8    0x70 /* 0x40 */
 #define RJV3_SIZE_MISC_8    0x01
 
-#define RJV3_TYPE_VER_STR   0x6f /* Client version string */
+#define RJV3_TYPE_VER_STR   0x6f /* Client version string, zero terminated */
 /* Var size */
 
 typedef enum _rj_broadcast_addr {

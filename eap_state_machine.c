@@ -49,7 +49,7 @@ static STATE_TRANSITION g_transition_table[] = {
 };
 
 static const uint8_t BCAST_ADDR[6] = {0x01,0x80,0xc2,0x00,0x00,0x03};
-static const uint8_t ETH_P_PAE_BYTE[2] = {0x88, 0x8e};
+static const uint8_t ETH_P_PAE_BYTES[2] = {0x88, 0x8e};
 
 #define PRIV (&g_priv) // I like pointers!
 
@@ -72,6 +72,8 @@ RESULT eap_state_machine_init() {
     
     _if_impl->obtain_mac(_if_impl, PRIV->local_mac);
 
+    memmove(PRIV->server_mac, BCAST_ADDR, sizeof(BCAST_ADDR));
+    
     return PRIV->packet_builder == NULL ? FAILURE : SUCCESS;
 }
 
@@ -80,20 +82,20 @@ void eap_state_machine_destroy() {
     PRIV->packet_builder = NULL;
 }
 
-static inline void set_outgoing_mac_addr(PACKET_BUILDER* builder) {
-    builder->set_eth_field(builder, FIELD_DST_MAC, BCAST_ADDR);
+static inline void set_outgoing_eth_fields(PACKET_BUILDER* builder, uint8_t* dst_mac) {
+    builder->set_eth_field(builder, FIELD_DST_MAC, dst_mac);
     builder->set_eth_field(builder, FIELD_SRC_MAC, PRIV->local_mac);
-    builder->set_eth_field(builder, FIELD_ETH_PROTO, ETH_P_PAE_BYTE);
+    builder->set_eth_field(builder, FIELD_ETH_PROTO, ETH_P_PAE_BYTES);
 }
 
-static RESULT state_mach_send_challenge_response(ETH_EAP_FRAME* request) {
+static RESULT state_mach_send_identity_response(ETH_EAP_FRAME* request) {
     uint8_t _buf[FRAME_BUF_SIZE] = {0};
     ETH_EAP_FRAME _response;
     IF_IMPL* _if_impl = get_if_impl();
     
-    set_outgoing_mac_addr(PRIV->packet_builder);
+    set_outgoing_eth_fields(PRIV->packet_builder, PRIV->server_mac);
     PRIV->packet_builder->set_eap_fields(PRIV->packet_builder,
-                                EAP_PACKET, EAP_REQUEST,
+                                EAP_PACKET, EAP_RESPONSE,
                                 IDENTITY, request->header->eap_hdr.id[0],
                                 get_eap_config());
     _response.actual_len = PRIV->packet_builder->build_packet(PRIV->packet_builder, _buf);
@@ -111,14 +113,14 @@ static RESULT state_mach_send_challenge_response(ETH_EAP_FRAME* request) {
     return SUCCESS;
 }
 
-static RESULT state_mach_send_identity_response(ETH_EAP_FRAME* request) {
+static RESULT state_mach_send_challenge_response(ETH_EAP_FRAME* request) {
     uint8_t _buf[FRAME_BUF_SIZE] = {0};
     ETH_EAP_FRAME _response;
     IF_IMPL* _if_impl = get_if_impl();
     
-    set_outgoing_mac_addr(PRIV->packet_builder);
+    set_outgoing_eth_fields(PRIV->packet_builder, PRIV->server_mac);
     PRIV->packet_builder->set_eap_fields(PRIV->packet_builder,
-                                EAP_PACKET, EAP_REQUEST,
+                                EAP_PACKET, EAP_RESPONSE,
                                 MD5_CHALLENGE, request->header->eap_hdr.id[0],
                                 get_eap_config());
     PRIV->packet_builder->set_eap_md5_seed(PRIV->packet_builder,
@@ -144,7 +146,7 @@ static RESULT state_mach_send_eapol_simple(EAPOL_TYPE eapol_type) {
     ETH_EAP_FRAME _response;
     IF_IMPL* _if_impl = get_if_impl();
     
-    set_outgoing_mac_addr(PRIV->packet_builder);
+    set_outgoing_eth_fields(PRIV->packet_builder, PRIV->server_mac);
     PRIV->packet_builder->set_eap_fields(PRIV->packet_builder,
                                 eapol_type, 0,
                                 0, 0,
@@ -185,6 +187,10 @@ void eap_state_machine_recv_handler(ETH_EAP_FRAME* frame) {
         
         switch (_eap_code) {
             case EAP_REQUEST:
+                /*
+                 * Store server's MAC addr, do not use broadcast after.
+                 */
+                memmove(PRIV->server_mac, frame->header->eth_hdr.src_mac, 6);
                 if (_eap_type == IDENTITY) {
                     switch_to_state(EAP_STATE_IDENTITY_SENT, frame);
                     return;

@@ -283,7 +283,7 @@ static int rjv3_append_common_fields(PACKET_PLUGIN* this, LIST_ELEMENT** list, i
     CHK_ADD(append_rjv3_prop(list, RJV3_TYPE_MISC_6,   NULL,                   0));
     CHK_ADD(append_rjv3_prop(list, RJV3_TYPE_MISC_7,   _misc_7,                sizeof(_misc_7)));
     CHK_ADD(append_rjv3_prop(list, RJV3_TYPE_MISC_8,   _misc_8,                sizeof(_misc_8)));
-    CHK_ADD(append_rjv3_prop(list, RJV3_TYPE_VER_STR,  (uint8_t*)_ver_str,    strlen(_ver_str)));
+    CHK_ADD(append_rjv3_prop(list, RJV3_TYPE_VER_STR,  (uint8_t*)_ver_str,    strlen(_ver_str) + 1)); // Zero terminated
     
     return _len;
 }
@@ -295,7 +295,7 @@ static void rjv3_append_priv_header(struct _packet_plugin* this, ETH_EAP_FRAME* 
             append_to_frame(frame, pkt_start_priv_header, sizeof(pkt_start_priv_header));
             break;
         case EAP_PACKET:
-            if (frame->header->eap_hdr.code[0] == EAP_REQUEST) {
+            if (frame->header->eap_hdr.code[0] == EAP_RESPONSE) {
                 switch (frame->header->eap_hdr.type[0]) {
                     case IDENTITY:
                         append_to_frame(frame, pkt_identity_priv_header,
