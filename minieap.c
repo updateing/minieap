@@ -78,7 +78,12 @@ static int init_env(int argc, char* argv[]) {
     }
 
     list_traverse(cfg->packet_plugin_list, packet_plugin_list_select, NULL);
-
+    
+    if (IS_FAIL(select_if_impl(cfg->if_impl))) {
+        PR_ERR("网络驱动插件启用失败，请检查插件名称是否拼写正确");
+        return FAILURE;
+    }
+    
     if (IS_FAIL(init_plugin_config(argc, argv))) {
         PR_ERR("插件初始化错误");
         return FAILURE;
@@ -94,12 +99,7 @@ static int init_env(int argc, char* argv[]) {
 static int init_if() {
     PROG_CONFIG* cfg = get_program_config();
     IF_IMPL* if_impl;
-    
-    if (IS_FAIL(select_if_impl(cfg->if_impl))) {
-        PR_ERR("网络驱动插件启用失败，请检查插件名称是否拼写正确");
-        return FAILURE;
-    }
-    
+
     if_impl = get_if_impl();
     if (IS_FAIL(if_impl->set_ifname(if_impl,cfg->ifname))) {
         PR_ERR("设置接口名称失败");

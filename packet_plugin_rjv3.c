@@ -280,8 +280,7 @@ RESULT rjv3_prepare_frame(struct _packet_plugin* this, ETH_EAP_FRAME* frame) {
         }
      */
     int _props_len;
-    LIST_ELEMENT* _prop_list = (LIST_ELEMENT*)malloc(sizeof(LIST_ELEMENT));
-    if (_prop_list < 0) return FAILURE;
+    LIST_ELEMENT* _prop_list = NULL;
     
     RJ_PROP* _size_prop = new_rjv3_prop();
     if (_size_prop < 0) {

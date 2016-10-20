@@ -16,7 +16,7 @@
 #include <fcntl.h>
 
 #define IS_MD5_FRAME(frame) \
-    (frame->header->eapol_hdr.type[0] == EAP_PACKET \
+    (frame != NULL && frame->header->eapol_hdr.type[0] == EAP_PACKET \
         && frame->header->eap_hdr.type[0] == MD5_CHALLENGE)
 #define MAX_LINE_LEN 100
 
@@ -44,7 +44,7 @@ void rjv3_set_pwd_hash(uint8_t* hash_buf, ETH_EAP_FRAME* request) {
 }
 
 void rjv3_set_ipv6_addr(uint8_t* ll_slaac, uint8_t* ll_temp, uint8_t* global) {
-    LIST_ELEMENT *_ip_list, *_ip_curr;
+    LIST_ELEMENT *_ip_list = NULL, *_ip_curr;
     IF_IMPL* _if_impl = get_if_impl();
     if (_if_impl == NULL) return;
     
@@ -92,7 +92,10 @@ void rjv3_set_service_name(uint8_t* name_buf, char* cmd_opt) {
 };
 
 void rjv3_set_secondary_dns(char* dns_ascii_buf, char* fake_dns) {
-    if (fake_dns != NULL) memmove(dns_ascii_buf, fake_dns, strnlen(fake_dns, INET6_ADDRSTRLEN));
+    if (fake_dns != NULL) {
+        memmove(dns_ascii_buf, fake_dns, strnlen(fake_dns, INET6_ADDRSTRLEN));
+        return;
+    }
     
     FILE* _fp = fopen("/etc/resolv.conf", "r");
     char _line_buf[MAX_LINE_LEN] = {0};
@@ -110,7 +113,7 @@ void rjv3_set_secondary_dns(char* dns_ascii_buf, char* fake_dns) {
             if (_line_buf == NULL) continue;
             _line_buf_1 = strtok(NULL, " ");
             if (_line_buf != NULL) {
-                memmove(dns_ascii_buf, _line_buf_1, strnlen(fake_dns, INET6_ADDRSTRLEN));
+                memmove(dns_ascii_buf, _line_buf_1, strnlen(_line_buf_1, INET6_ADDRSTRLEN));
                 if (++_lines_read == 2) goto close_return;
             }
         }
@@ -118,7 +121,7 @@ void rjv3_set_secondary_dns(char* dns_ascii_buf, char* fake_dns) {
     
     /* Only one DNS entry or file error */
 info_err:
-    PR_ERRNO("无法从 /etc/resolv.conf 获取第二 DNS 信息，请使用 --fake-dns 选项手动指定 DNS 地址。");
+    PR_ERR("无法从 /etc/resolv.conf 获取第二 DNS 信息，请使用 --fake-dns 选项手动指定 DNS 地址: %s", ferror(_fp));
 close_return:
     if (_fp > 0) fclose(_fp);
     return;
@@ -165,7 +168,7 @@ void rjv3_set_hdd_serial(uint8_t* serial_buf, char* fake_serial) {
     }
 
 info_err:
-    PR_ERRNO("无法从 /etc/mtab 获取根分区挂载设备信息，请使用 --fake-serial 选项手动指定硬盘序列号。");
+    PR_ERRNO("无法从 /etc/mtab 获取根分区挂载设备信息，请使用 --fake-serial 选项手动指定硬盘序列号");
 close_return:
     if (_fp > 0) fclose(_fp);
     return;
