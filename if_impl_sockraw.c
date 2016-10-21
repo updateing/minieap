@@ -39,13 +39,13 @@ static void sockraw_bind_to_if(struct _if_impl* this, short protocol) {
 
 RESULT sockraw_set_ifname(struct _if_impl* this, const char* ifname) {
     struct ifreq ifreq;
-    
+
     /* Default protocol is ETH_P_PAE (0x888e) */
     if ((PRIV->sockfd = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_PAE))) < 0) {
         PR_ERRNO("套接字打开失败");
         return FAILURE;
     }
-    
+
     memset(&ifreq, 0, sizeof(struct ifreq));
     strncpy(ifreq.ifr_name, ifname, IFNAMSIZ);
     if (ioctl(PRIV->sockfd, SIOCGIFINDEX, &ifreq) < 0) {
@@ -60,47 +60,11 @@ RESULT sockraw_set_ifname(struct _if_impl* this, const char* ifname) {
     return SUCCESS;
 }
 
-/*
- * Even if we develop another interface implementation using libpcap,
- * these obtain_* methods would be the same.
- * Shall we extract them?
- */
-RESULT sockraw_obtain_mac(struct _if_impl* this, uint8_t* adr_buf) {
-    struct ifreq ifreq;
-
-    memset(&ifreq, 0, sizeof(struct ifreq));
-    strncpy(ifreq.ifr_name, PRIV->ifname, IFNAMSIZ);
-    
-    if (ioctl(PRIV->sockfd, SIOCGIFHWADDR, &ifreq) < 0) {
-        PR_ERRNO("通过 ioctl 获取 MAC 地址失败");
+RESULT sockraw_get_ifname(struct _if_impl* this, char* buf, int buflen) {
+    if (buflen < strnlen(PRIV->ifname, IFNAMSIZ)) {
         return FAILURE;
     }
-
-    memcpy(adr_buf, ifreq.ifr_hwaddr.sa_data, 6);
-    return SUCCESS;
-}
-
-RESULT sockraw_obtain_ip(struct _if_impl* this, LIST_ELEMENT** list) {
-    struct ifaddrs *ifaddrs, *if_curr;
-    IP_ADDR *addr;
-    if (getifaddrs(&ifaddrs) < 0) {
-        PR_ERRNO("通过 getifaddrs 获取 IP 地址失败");
-        return FAILURE;
-    }
-    
-    if_curr = ifaddrs;
-    do {
-        if (strcmp(if_curr->ifa_name, PRIV->ifname) == 0) {
-            addr = (IP_ADDR*)malloc(sizeof(IP_ADDR));
-            memset(addr, 0, sizeof(IP_ADDR));
-            addr->family = if_curr->ifa_addr->sa_family;
-            if (addr->family == AF_INET)
-                memmove(addr->ip, &((struct sockaddr_in*)if_curr->ifa_addr)->sin_addr, 4);
-            else if (addr->family == AF_INET6)
-                memmove(addr->ip, &((struct sockaddr_in6*)if_curr->ifa_addr)->sin6_addr, 16);
-            insert_data(list, addr);
-        }
-    } while ((if_curr = if_curr->ifa_next));
+    strncpy(buf, PRIV->ifname, IFNAMSIZ);
     return SUCCESS;
 }
 
@@ -108,7 +72,7 @@ RESULT sockraw_setup_capture_params(struct _if_impl* this, short eth_protocol, i
     struct ifreq ifreq;
     int _curr_proto;
     unsigned int _opt_len = sizeof(int);
-    
+
     /* Handle protocol */
     if (getsockopt(PRIV->sockfd, SOL_SOCKET, SO_PROTOCOL, &_curr_proto, &_opt_len) < 0) {
         PR_ERRNO("获取套接字参数失败");
@@ -125,21 +89,21 @@ RESULT sockraw_setup_capture_params(struct _if_impl* this, short eth_protocol, i
         }
         sockraw_bind_to_if(this, eth_protocol);
     }
-    
+
     /* Handle promisc */
     memset(&ifreq, 0, sizeof(struct ifreq));
     strncpy(ifreq.ifr_name, PRIV->ifname, IFNAMSIZ);
-            
+
     if (ioctl(PRIV->sockfd, SIOCGIFFLAGS, &ifreq) < 0) {
         PR_ERRNO("获取网络界面标志信息失败");
         return FAILURE;
     }
-    
+
     if (promisc)
         ifreq.ifr_flags |= IFF_PROMISC;
     else
         ifreq.ifr_flags &= ~IFF_PROMISC;
-    
+
     if (ioctl(PRIV->sockfd, SIOCSIFFLAGS, &ifreq) < 0) {
         PR_ERRNO("开启混杂模式失败");
         return FAILURE;
@@ -163,7 +127,7 @@ RESULT sockraw_start_capture(struct _if_impl* this) {
         PRIV->handler(&frame);
         memset(buf, 0, 1512);
     }
-    
+
     PRIV->stop_flag = 0;
     return SUCCESS; /* No use if it's blocking... */
 }
@@ -177,13 +141,13 @@ RESULT sockraw_send_frame(struct _if_impl* this, ETH_EAP_FRAME* frame) {
     struct sockaddr_ll socket_address;
     if (frame == NULL || frame->content == NULL)
         return FAILURE;
-    
+
     /* Send via this interface */
     memset(&socket_address, 0, sizeof(struct sockaddr_ll));
     socket_address.sll_ifindex = PRIV->if_index;
     socket_address.sll_halen = ETH_ALEN;
     memmove(socket_address.sll_addr, frame->header->eth_hdr.dest_mac, 6);
-    
+
     return sendto(PRIV->sockfd, frame->content, frame->actual_len, 0,
                     (struct sockaddr*)&socket_address, sizeof(struct sockaddr_ll)) > 0;
 }
@@ -206,7 +170,7 @@ IF_IMPL* sockraw_new() {
         return NULL;
     }
     memset(this, 0, sizeof(IF_IMPL));
-    
+
     /* The priv pointer in if_impl.h is a sockraw_priv* here */
     this->priv = (sockraw_priv*)malloc(sizeof(sockraw_priv));
     if (this->priv < 0) {
@@ -215,11 +179,10 @@ IF_IMPL* sockraw_new() {
         return NULL;
     }
     memset(this->priv, 0, sizeof(sockraw_priv));
-    
+
     this->set_ifname = sockraw_set_ifname;
+    this->get_ifname = sockraw_get_ifname;
     this->destroy = sockraw_destroy;
-    this->obtain_mac = sockraw_obtain_mac;
-    this->obtain_ip = sockraw_obtain_ip;
     this->setup_capture_params = sockraw_setup_capture_params;
     this->start_capture = sockraw_start_capture;
     this->stop_capture = sockraw_stop_capture;

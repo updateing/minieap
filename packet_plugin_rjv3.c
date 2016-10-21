@@ -36,12 +36,10 @@ typedef struct _packet_plugin_rjv3_priv {
 
 #define PRIV ((rjv3_priv*)(this->priv))
 
-#define MAX_PATH 260 // TODO move to common
-
 /*
  * Headers before the fields
  */
-static const uint8_t pkt_start_priv_header[] = {
+static uint8_t pkt_start_priv_header[] = {
                 0xff, 0xff, 0x37, 0x77, 0x7f, 0xff, /*   ..7w.. */ /* Would be different in second auth */
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, /* ........ */
     0xff, 0xff, 0xff, 0xac, 0xb1, 0xff, 0xb0, 0xb0, /* ........ */
@@ -53,7 +51,7 @@ static const uint8_t pkt_start_priv_header[] = {
 //    0x02, 0x00, 0x00, 0x00, 0x13, 0x11, 0x01, 0xb1, /* ........ */
 };
 
-static const uint8_t pkt_identity_priv_header[] = {
+static uint8_t pkt_identity_priv_header[] = {
                 0xff, 0xff, 0x37, 0x77, 0x7f, 0xff, /*   ..7w.. */ /* Would be different in second auth */
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, /* ........ */
     0xff, 0xff, 0xff, 0xac, 0xb1, 0xff, 0xb0, 0xb0, /* ........ */
@@ -65,8 +63,8 @@ static const uint8_t pkt_identity_priv_header[] = {
 //    0x02, 0x00, 0x00, 0x00, 0x13, 0x11, 0x01, 0xb1, /* ........ */
 };
 
-static const uint8_t pkt_challenge_priv_header[] = {
-                0xff, 0xff, 0x37, 0x77, 0x7f, 0xff, /*   ..7w.. */ /* Would be different in second auth */
+static uint8_t pkt_challenge_priv_header[] = {
+                0xff, 0xff, 0x37, 0x77, 0x7f,0xff, /*   ..7w.. */ /* Would be different in second auth */
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, /* ........ */
     0xff, 0xff, 0xff, 0xac, 0xb1, 0xff, 0xb0, 0xb0, /* ........ */
     0x2d, 0x00, 0x00, 0x13, 0x11, 0x38, 0x30, 0x32, /* -....802 */
@@ -96,29 +94,29 @@ static RESULT append_rj_cmdline_opt(struct _packet_plugin* this, const char* opt
     uint8_t* _content_buf;
     char* _arg = strdup(opt);
     char* _split;
-   
+
     if (_arg == NULL) {
         PR_ERRNO("无法为命令行的 --rj-option 参数分配内存空间");
         return FAILURE;
     }
-    
+
     _split = strtok(_arg, ":");
     if (_split == NULL)
         goto malformat;
     _type = char2hex(_split);
-    
+
     _split = strtok(NULL, ":");
     if (_split == NULL)
         goto malformat;
-        
+
     _content_len = strnlen(_split, MAX_PROP_LEN);
     if ((_content_len & 1) == 1) _content_len += 1;
     _content_buf = (uint8_t*)malloc(_content_len >> 1); // divide by 2
-    
+
     for (_curr_pos = 0; _curr_pos < (_content_len >> 1); ++_curr_pos) {
         _content_buf[_curr_pos] = char2hex(_split + (_curr_pos << 1));
     }
-    
+
     append_rjv3_prop(&PRIV->cmd_prop_list, _type, _content_buf, _content_len);
 
     free(_arg);
@@ -212,7 +210,7 @@ RESULT rjv3_process_cmdline_opts(struct _packet_plugin* this, int argc, char* ar
         }
         opt = getopt_long(argc, argv, shortOpts, longOpts, &longIndex);
     }
-    
+
     return SUCCESS;
 }
 
@@ -244,7 +242,7 @@ static int rjv3_append_common_fields(PACKET_PLUGIN* this, LIST_ELEMENT** list, i
     rjv3_set_local_mac(_local_mac);
 
     rjv3_set_pwd_hash(_pwd_hash, PRIV->last_recv_packet);
-    
+
     rjv3_set_secondary_dns(_sec_dns, PRIV->fake_dns);
 
     rjv3_set_ipv6_addr(_ll_ipv6, _ll_ipv6_tmp, _glb_ipv6);
@@ -252,9 +250,9 @@ static int rjv3_append_common_fields(PACKET_PLUGIN* this, LIST_ELEMENT** list, i
     rjv3_set_v3_hash(_v3_hash, PRIV->last_recv_packet);
 
     rjv3_set_service_name(_service, PRIV->service_name);
-    
+
     rjv3_set_hdd_serial(_hdd_ser, PRIV->fake_serial);
-    
+
 #define CHK_ADD(x) \
     _this_len = x; \
     if (_this_len < 0) { \
@@ -262,7 +260,7 @@ static int rjv3_append_common_fields(PACKET_PLUGIN* this, LIST_ELEMENT** list, i
     } else { \
         _len += _this_len; \
     }
-    
+
     CHK_ADD(append_rjv3_prop(list, RJV3_TYPE_DHCP,     _dhcp_en,               sizeof(_dhcp_en)));
     CHK_ADD(append_rjv3_prop(list, RJV3_TYPE_MAC,      _local_mac,             sizeof(_local_mac)));
 
@@ -271,7 +269,7 @@ static int rjv3_append_common_fields(PACKET_PLUGIN* this, LIST_ELEMENT** list, i
     } else {
         CHK_ADD(append_rjv3_prop(list, RJV3_TYPE_PWD_HASH, NULL,               0));
     }
-    
+
     CHK_ADD(append_rjv3_prop(list, RJV3_TYPE_SEC_DNS,  (uint8_t*)_sec_dns,    strlen(_sec_dns)));
     CHK_ADD(append_rjv3_prop(list, RJV3_TYPE_MISC_2,   _misc_2,                sizeof(_misc_2)));
     CHK_ADD(append_rjv3_prop(list, RJV3_TYPE_LL_IPV6,  _ll_ipv6,               sizeof(_ll_ipv6)));
@@ -284,7 +282,7 @@ static int rjv3_append_common_fields(PACKET_PLUGIN* this, LIST_ELEMENT** list, i
     CHK_ADD(append_rjv3_prop(list, RJV3_TYPE_MISC_7,   _misc_7,                sizeof(_misc_7)));
     CHK_ADD(append_rjv3_prop(list, RJV3_TYPE_MISC_8,   _misc_8,                sizeof(_misc_8)));
     CHK_ADD(append_rjv3_prop(list, RJV3_TYPE_VER_STR,  (uint8_t*)_ver_str,    strlen(_ver_str) + 1)); // Zero terminated
-    
+
     return _len;
 }
 
@@ -328,16 +326,16 @@ RESULT rjv3_prepare_frame(struct _packet_plugin* this, ETH_EAP_FRAME* frame) {
     size_t _props_len = 0;
     uint8_t _std_prop_buf[FRAME_BUF_SIZE] = {0}; // Buffer for 0x1a props
     LIST_ELEMENT* _prop_list = NULL;
-    
+
     rjv3_append_priv_header(this, frame);
-    
+
     /* Let's make the big news! */
     rjv3_append_common_fields(this, &_prop_list, frame->header->eapol_hdr.type[0] == EAP_PACKET &&
                                                 frame->header->eap_hdr.code[0] == MD5_CHALLENGE);
-    
+
     /* Actually read from sparse nodes into a unite buffer */
     _props_len = append_rjv3_prop_list_to_buffer(_prop_list, _std_prop_buf, FRAME_BUF_SIZE);
-    
+
     /* And those from cmdline */
     _props_len += append_rjv3_prop_list_to_buffer(PRIV->cmd_prop_list,
                                                   _std_prop_buf + _props_len,
@@ -349,7 +347,7 @@ RESULT rjv3_prepare_frame(struct _packet_plugin* this, ETH_EAP_FRAME* frame) {
         list_destroy(&_prop_list);
         return FAILURE;
     }
-    
+
     _container_prop->header1.header_type = 0x02;
     _container_prop->header1.header_len = 0x00;
     _container_prop->header2.type = (_props_len >> 8 & 0xff);
@@ -382,7 +380,7 @@ PACKET_PLUGIN* packet_plugin_rjv3_new() {
         return NULL;
     }
     memset(this, 0, sizeof(PACKET_PLUGIN));
-    
+
     this->priv = (rjv3_priv*)malloc(sizeof(rjv3_priv));
     if (this->priv < 0) {
         PR_ERRNO("RJv3 插件私有结构内存分配失败");
@@ -390,7 +388,7 @@ PACKET_PLUGIN* packet_plugin_rjv3_new() {
         return NULL;
     }
     memset(this->priv, 0, sizeof(rjv3_priv));
-        
+
     this->name = "rjv3";
     this->description = "来自 hyrathb@GitHub 的 Ruijie V3 验证算法";
     this->destroy = rjv3_destroy;
@@ -403,4 +401,3 @@ PACKET_PLUGIN* packet_plugin_rjv3_new() {
     this->process_config_file = rjv3_process_config_file;
     return this;
 }
-

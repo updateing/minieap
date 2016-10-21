@@ -7,6 +7,8 @@
 #include "packet_util.h"
 #include "minieap_common.h"
 #include "eth_frame.h"
+#include "net_util.h"
+#include <stdlib.h>
 
 typedef struct _state_mach_priv {
     int state_last_count; // Number of timeouts occured in this state
@@ -54,7 +56,7 @@ static const uint8_t ETH_P_PAE_BYTES[2] = {0x88, 0x8e};
 
 static void eap_state_machine_clear_state() {
     PROG_CONFIG* _cfg = get_program_config();
-    
+
     PRIV->state_last_count = 0;
     PRIV->state_max_count = _cfg->max_retries;
     PRIV->state = EAP_STATE_UNKNOWN;
@@ -64,14 +66,16 @@ static void eap_state_machine_clear_state() {
 
 RESULT eap_state_machine_init() {
     IF_IMPL* _if_impl = get_if_impl();
-    
-    PRIV->packet_builder = packet_builder_get();
-    eap_state_machine_clear_state();
-    
-    _if_impl->obtain_mac(_if_impl, PRIV->local_mac);
+    char buf[IFNAMSIZ] = {0};
+
+    _if_impl->get_ifname(_if_impl, buf, IFNAMSIZ);
+    obtain_iface_mac(buf, PRIV->local_mac);
 
     memmove(PRIV->server_mac, BCAST_ADDR, sizeof(BCAST_ADDR));
-    
+
+    PRIV->packet_builder = packet_builder_get();
+    eap_state_machine_clear_state();
+
     return PRIV->packet_builder == NULL ? FAILURE : SUCCESS;
 }
 
@@ -90,7 +94,7 @@ static RESULT state_mach_send_identity_response(ETH_EAP_FRAME* request) {
     uint8_t _buf[FRAME_BUF_SIZE] = {0};
     ETH_EAP_FRAME _response;
     IF_IMPL* _if_impl = get_if_impl();
-    
+
     set_outgoing_eth_fields(PRIV->packet_builder, PRIV->server_mac);
     PRIV->packet_builder->set_eap_fields(PRIV->packet_builder,
                                 EAP_PACKET, EAP_RESPONSE,
@@ -99,7 +103,7 @@ static RESULT state_mach_send_identity_response(ETH_EAP_FRAME* request) {
     _response.actual_len = PRIV->packet_builder->build_packet(PRIV->packet_builder, _buf);
     _response.buffer_len = FRAME_BUF_SIZE;
     _response.content = _buf;
-    
+
     if (IS_FAIL(packet_plugin_prepare_frame(&_response))) {
         PR_ERR("插件在准备发送 Response-Identity 包时出现错误");
         return FAILURE;
@@ -115,7 +119,7 @@ static RESULT state_mach_send_challenge_response(ETH_EAP_FRAME* request) {
     uint8_t _buf[FRAME_BUF_SIZE] = {0};
     ETH_EAP_FRAME _response;
     IF_IMPL* _if_impl = get_if_impl();
-    
+
     set_outgoing_eth_fields(PRIV->packet_builder, PRIV->server_mac);
     PRIV->packet_builder->set_eap_fields(PRIV->packet_builder,
                                 EAP_PACKET, EAP_RESPONSE,
@@ -127,7 +131,7 @@ static RESULT state_mach_send_challenge_response(ETH_EAP_FRAME* request) {
     _response.actual_len = PRIV->packet_builder->build_packet(PRIV->packet_builder, _buf);
     _response.buffer_len = FRAME_BUF_SIZE;
     _response.content = _buf;
-    
+
     if (IS_FAIL(packet_plugin_prepare_frame(&_response))) {
         PR_ERR("插件在准备发送 Response-MD5-Challenge 包时出现错误");
         return FAILURE;
@@ -143,7 +147,7 @@ static RESULT state_mach_send_eapol_simple(EAPOL_TYPE eapol_type) {
     uint8_t _buf[FRAME_BUF_SIZE] = {0};
     ETH_EAP_FRAME _response;
     IF_IMPL* _if_impl = get_if_impl();
-    
+
     set_outgoing_eth_fields(PRIV->packet_builder, PRIV->server_mac);
     PRIV->packet_builder->set_eap_fields(PRIV->packet_builder,
                                 eapol_type, 0,
@@ -152,7 +156,7 @@ static RESULT state_mach_send_eapol_simple(EAPOL_TYPE eapol_type) {
     _response.actual_len = PRIV->packet_builder->build_packet(PRIV->packet_builder, _buf);
     _response.buffer_len = FRAME_BUF_SIZE;
     _response.content = _buf;
-    
+
     if (IS_FAIL(packet_plugin_prepare_frame(&_response))) {
         PR_ERR("插件在准备发送 %s 包时出现错误", str_eapol_type(eapol_type));
         return FAILURE;
@@ -199,7 +203,7 @@ void eap_state_machine_recv_handler(ETH_EAP_FRAME* frame) {
         /* We don't want to handle other types here */
         EAP_TYPE _eap_type = frame->header->eap_hdr.type[0];
         EAP_CODE _eap_code = frame->header->eap_hdr.code[0];
-        
+
         switch (_eap_code) {
             case EAP_REQUEST:
                 /*
@@ -270,4 +274,3 @@ RESULT switch_to_state(EAP_STATE state, ETH_EAP_FRAME* frame) {
     PR_WARN("%d 状态未定义"); // TODO Is this possible?
     return SUCCESS;
 }
-

@@ -9,9 +9,6 @@
 
 #define USERNAME_MAX_LEN 64
 #define PASSWORD_MAX_LEN 64
-#define MAX_PATH 260
-#define TRUE 1
-#define FALSE 0
 
 /*
  * EAP credentials
@@ -52,17 +49,17 @@ typedef struct _prog_config {
      */
     char* ifname;
     //#define DEFAULT_IFNAME NULL
-    
+
     /*
      * PID file, avoid multiple instances.
      * "none" to disable.
      */
     char* pidfile;
     #define DEFAULT_PIDFILE "/var/run/mentohust.pid"
-    
+
     /*
      * Config file path
-     * Will read everything from the file, 
+     * Will read everything from the file,
      * but cmdline opts may override it.
      */
     char* conffile;
@@ -72,25 +69,25 @@ typedef struct _prog_config {
      * Logging config is applied in logging.c
      */
     // char* logfile;
-    
+
     /*
      * Run this after authentication succeeds.
      * We have no other way to inform the system about the result...
      */
     char* run_on_success;
     //#define DEFAULT_RUN_ON_SUCCESS NULL
-    
+
     /*
      * Selected interface implementation: how to drive network adapters?
      */
     char* if_impl;
     #define DEFAULT_IF_IMPL "sockraw"
-    
+
     /*
      * Selected packet plugins: how you want to alter the packets?
      */
     LIST_ELEMENT* packet_plugin_list;
-    
+
     /*
      * Whether to restart after being forced offline by server.
      * Mostly due to same account being used elsewhere (classroom)
@@ -98,50 +95,50 @@ typedef struct _prog_config {
      */
     int restart_on_logoff;
     #define DEFAULT_RESTART_ON_LOGOFF FALSE
-    
+
     /*
      * Wait seconds after failure before next try.
      */
     int wait_after_fail_secs;
     #define DEFAULT_WAIT_AFTER_FAIL_SECS 30
-    
+
     /*
      * Whether to daemonize.
      */
     int run_in_background;
     #define DEFAULT_RUN_IN_BACKGROUND FALSE
-    
+
     /*
      * Max number of retries(timeouts) before we have a result, success or failure.
      */
     int max_retries;
     #define DEFAULT_MAX_RETRIES 3
-    
+
     /*
      * Max number of CONTINOUS failures before we exit.
      */
     int max_failures;
     #define DEFAULT_MAX_FAILURES 3
-    
+
     /*
      * Timeout (seconds) waiting for server reply in each stage
      */
     int stage_timeout;
     #define DEFAULT_STAGE_TIMEOUT 5
-    
+
     /*
      * Whether to save parameters to file
      */
     int save_now;
     #define DEFAULT_SAVE_NOW FALSE
-    
+
     /*
      * How many auths it takes to finish the actual authentication process.
      * This is non-standard - but you can leave it alone.
      */
     int auth_round;
     #define DEFAULT_AUTH_ROUND 1
-    
+
     /*
      * How to kill other instances
      */

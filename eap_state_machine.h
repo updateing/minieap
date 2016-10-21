@@ -9,6 +9,7 @@
  *
  * Format:
  * Event                      -- Transition function ->      New state
+ * "When ${event} happens, perform ${trans_func} and then go to ${new_state}"
  *
  * set PREPARING              ---open if, send EAPOL-Start-> START_SENT
  * received Request-Identity  ---send Response-Identity--->  IDENTITY_SENT
