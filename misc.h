@@ -13,4 +13,7 @@ void chk_free(void** pptr);
  * "ff" -> 255
  */
 uint8_t char2hex(const char* str);
+
+/* 10110001b -> 10001101b */
+uint8_t bit_reverse(uint8_t in);
 #endif
