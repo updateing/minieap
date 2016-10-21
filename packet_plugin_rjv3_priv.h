@@ -68,7 +68,6 @@ typedef enum _rj_dhcp_type {
 typedef struct _rj_prop_header1 {
     uint8_t header_type;
     uint8_t header_len;
-    uint8_t magic_2[4];
 } RJ_PROP_HEADER1;
 
 typedef struct _rj_prop_header2 {
@@ -78,6 +77,7 @@ typedef struct _rj_prop_header2 {
 
 typedef struct _rj_prop {
     RJ_PROP_HEADER1 header1;
+    uint8_t magic[4];
     RJ_PROP_HEADER2 header2;
     uint8_t* content; /* Length is included in header */
 } RJ_PROP;
@@ -92,4 +92,3 @@ void rjv3_set_secondary_dns(char* dns_ascii_buf, char* fake_dns);
 void rjv3_set_hdd_serial(uint8_t* serial_buf, char* fake_serial);
 
 #endif
-
