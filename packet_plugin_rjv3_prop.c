@@ -82,7 +82,7 @@ int modify_rjv3_prop_list(LIST_ELEMENT* org, LIST_ELEMENT* mods) {
 }
 
 void remove_rjv3_prop(LIST_ELEMENT** list, uint8_t type) {
-    remove_data(list, &type, rjv3_type_prop_compare);
+    remove_data(list, &type, rjv3_type_prop_compare, TRUE);
 }
 
 int append_rjv3_prop_to_buffer(RJ_PROP* prop, uint8_t* buf, int buflen) {

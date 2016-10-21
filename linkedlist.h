@@ -6,6 +6,10 @@ typedef struct _element {
     void* content;
 } LIST_ELEMENT;
 
+/*
+ * Insert data to the list. If the list which the reference points to (**) does not exist, create one
+ * and update the reference.
+ */
 void insert_data(LIST_ELEMENT** start, void* data);
 
 /*
@@ -24,10 +28,10 @@ void list_traverse(LIST_ELEMENT* start, void(*func)(void*, void*), void* user);
 /*
  * Destroy a list, freeing all the memory all nodes take up, zeroing its reference
  */
-void list_destroy(LIST_ELEMENT** start);
+void list_destroy(LIST_ELEMENT** start, int free_content);
 
 /*
  * Remove specific data using custom comprator, zeroing its reference
  */
-void remove_data(LIST_ELEMENT** start, void* elem_to_remove, int(*cmpfunc)(void*, void*));
+void remove_data(LIST_ELEMENT** start, void* elem_to_remove, int(*cmpfunc)(void*, void*), int free_content);
 #endif

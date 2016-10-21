@@ -45,7 +45,7 @@ RESULT select_packet_plugin(const char* name) {
     return FAILURE;
 }
 
-/* 
+/*
  * I know this is silly, but is there better way to do it
  * since list_traverse takes none extra parameters?
  * Even if it takes user-defined extra params, I'd make
@@ -56,7 +56,7 @@ RESULT select_packet_plugin(const char* name) {
 #define PLUGIN ((PACKET_PLUGIN*)(plugin_info->content))
 #define CHK_FUNC(func) \
     if (func == NULL) continue;
-    
+
 void packet_plugin_destroy() {
     LIST_ELEMENT *plugin_info = g_packet_plugin_list; // Different from below
     if (g_packet_plugin_list == NULL) return;
@@ -64,8 +64,8 @@ void packet_plugin_destroy() {
         CHK_FUNC(PLUGIN->destroy);
         PLUGIN->destroy(PLUGIN);
     } while ((plugin_info = plugin_info->next));
-    list_destroy(&g_packet_plugin_list);
-    list_destroy(&g_active_packet_plugin_list);
+    list_destroy(&g_packet_plugin_list, FALSE);
+    list_destroy(&g_active_packet_plugin_list, FALSE);
 }
 
 RESULT packet_plugin_process_cmdline_opts(int argc, char* argv[]) {

@@ -134,7 +134,7 @@ typedef struct _prog_config {
 
     /*
      * How many auths it takes to finish the actual authentication process.
-     * This is non-standard - but you can leave it alone.
+     * This is non-standard (mainly for proxy) - but you can leave it alone.
      */
     int auth_round;
     #define DEFAULT_AUTH_ROUND 1

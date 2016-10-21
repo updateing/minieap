@@ -32,7 +32,7 @@ typedef struct _packet_plugin_rjv3_priv {
         LIST_ELEMENT* cmd_prop_mod_list; // Destroy!
     };
     // Internal state variables
-    int auth_round;
+    int succ_count;
     ETH_EAP_FRAME* last_recv_packet;
 } rjv3_priv;
 
@@ -83,8 +83,8 @@ void rjv3_destroy(struct _packet_plugin* this) {
     chk_free((void**)&PRIV->fake_dns1);
     chk_free((void**)&PRIV->fake_dns2);
     chk_free((void**)&PRIV->fake_serial);
-    list_destroy(&PRIV->cmd_prop_list);
-    list_destroy(&PRIV->cmd_prop_mod_list);
+    list_destroy(&PRIV->cmd_prop_list, TRUE);
+    list_destroy(&PRIV->cmd_prop_mod_list, TRUE);
     chk_free((void**)&this->priv);
     chk_free((void**)&this);
 }
@@ -153,7 +153,6 @@ void rjv3_load_default_params(struct _packet_plugin* this) {
 RESULT rjv3_process_cmdline_opts(struct _packet_plugin* this, int argc, char* argv[]) {
     int opt = 0;
     int longIndex = 0;
-    int _arglen = 0; /* 当前参数长度 */
     unsigned int ver[2]; /* -v 版本号 */
     static const char* shortOpts = "-:e:a:d:v:f:c:q:";
     static const struct option longOpts[] = {
@@ -173,10 +172,8 @@ RESULT rjv3_process_cmdline_opts(struct _packet_plugin* this, int argc, char* ar
 
     opt = getopt_long(argc, argv, shortOpts, longOpts, &longIndex);
 #define COPY_N_ARG_TO(buf, maxlen) \
-        _arglen = strnlen(optarg, maxlen); \
         chk_free((void**)&buf); \
-        buf = (char*)malloc(_arglen); \
-        strncpy(buf, optarg, _arglen);
+        buf = strndup(optarg, maxlen);
     while (opt != -1) {
         switch (opt) {
             case 'e':
@@ -362,7 +359,7 @@ RESULT rjv3_prepare_frame(struct _packet_plugin* this, ETH_EAP_FRAME* frame) {
     /* The outside */
     RJ_PROP* _container_prop = new_rjv3_prop();
     if (_container_prop < 0) {
-        list_destroy(&_prop_list);
+        list_destroy(&_prop_list, TRUE);
         return FAILURE;
     }
 
@@ -374,17 +371,21 @@ RESULT rjv3_prepare_frame(struct _packet_plugin* this, ETH_EAP_FRAME* frame) {
 
     append_rjv3_prop_to_frame(_container_prop, frame);
 
-    list_destroy(&_prop_list);
+    list_destroy(&_prop_list, TRUE);
     return SUCCESS;
 }
 
 RESULT rjv3_on_frame_received(struct _packet_plugin* this, ETH_EAP_FRAME* frame) {
     PRIV->last_recv_packet = frame;
-    return SUCCESS; // TODO
-}
-
-void rjv3_set_auth_round(struct _packet_plugin* this, int round) {
-    PRIV->auth_round = round;
+    if (frame->header->eapol_hdr.type[0] == EAP_PACKET) {
+        if (frame->header->eap_hdr.type[0] == EAP_SUCCESS) {
+            PRIV->succ_count++;
+            // TODO show msg
+        } else if (frame->header->eap_hdr.type[0] == EAP_FAILURE) {
+            // TODO show msg
+        }
+    }
+    return SUCCESS;
 }
 
 RESULT rjv3_process_config_file(struct _packet_plugin* this, const char* filepath) {
@@ -410,7 +411,6 @@ PACKET_PLUGIN* packet_plugin_rjv3_new() {
     this->name = "rjv3";
     this->description = "来自 hyrathb@GitHub 的 Ruijie V3 验证算法";
     this->destroy = rjv3_destroy;
-    this->set_auth_round = rjv3_set_auth_round;
     this->process_cmdline_opts = rjv3_process_cmdline_opts;
     this->load_default_params = rjv3_load_default_params;
     this->print_cmdline_help = rjv3_print_cmdline_help;

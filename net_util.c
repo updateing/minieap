@@ -63,7 +63,7 @@ RESULT obtain_iface_ip(const char* ifname, LIST_ELEMENT** list) {
 }
 
 void free_ip_list(LIST_ELEMENT** list) {
-    free_list_with_content(list);
+    list_destroy(list, TRUE);
 }
 
 RESULT obtain_dns_list(LIST_ELEMENT** list) {
@@ -96,7 +96,7 @@ RESULT obtain_dns_list(LIST_ELEMENT** list) {
 }
 
 void free_dns_list(LIST_ELEMENT** list) {
-    free_list_with_content(list);
+    list_destroy(list, TRUE);
 }
 
 /* http://stackoverflow.com/a/3288983/5701966 */

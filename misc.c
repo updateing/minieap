@@ -23,11 +23,3 @@ uint8_t char2hex(const char* str) {
     return 16 * LOWER2HEX(digit0) + LOWER2HEX(digit1);
 }
 
-/* List implementation should not care about the content */
-void free_list_with_content(LIST_ELEMENT** list_ref) {
-    while (*list_ref) {
-        free((*list_ref)->content);
-        list_ref = &(*list_ref)->next;
-        chk_free((void**)list_ref);
-    }
-}

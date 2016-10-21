@@ -5,6 +5,7 @@
 #include "packet_builder.h"
 #include "logging.h"
 #include "eap_state_machine.h"
+#include "sched_alarm.h"
 
 #include <stdlib.h>
 #include <errno.h>
@@ -22,7 +23,7 @@ static int init_program_config(int argc, char* argv[]) {
         PR_ERR("配置文件路径解析出错");
         goto err;
     }
-    
+
     cfg = get_program_config();
     if (IS_FAIL(parse_config_file(cfg->conffile))) {
         PR_ERR("配置文件内容解析出错");
@@ -66,12 +67,12 @@ static void packet_plugin_list_select(void* name, void* unused) {
  */
 static int init_cfg(int argc, char* argv[]) {
     PROG_CONFIG* cfg = get_program_config();
-    
+
     set_log_destination(LOG_TO_CONSOLE);
-    
+
     init_if_impl_list();
     init_packet_plugin_list();
-    
+
     load_default_params();
     if (IS_FAIL(init_program_config(argc, argv))) {
         PR_ERR("参数初始化错误");
@@ -79,18 +80,18 @@ static int init_cfg(int argc, char* argv[]) {
     }
 
     list_traverse(cfg->packet_plugin_list, packet_plugin_list_select, NULL);
-    
+
     if (IS_FAIL(select_if_impl(cfg->if_impl))) {
         PR_ERR("网络驱动插件启用失败，请检查插件名称是否拼写正确");
         return FAILURE;
     }
-    
+
     packet_plugin_load_default_params();
     if (IS_FAIL(init_plugin_config(argc, argv))) {
         PR_ERR("插件初始化错误");
         return FAILURE;
     }
-    
+
     return SUCCESS;
 }
 
@@ -103,22 +104,23 @@ static int init_if() {
         PR_ERR("设置接口名称失败");
         return FAILURE;
     }
-    
+
     if (IS_FAIL(if_impl->setup_capture_params(if_impl, htons(ETH_P_PAE), FALSE))) {
         PR_ERR("设置捕获参数失败");
         return FAILURE;
     }
-    
+
     if_impl->set_frame_handler(if_impl, eap_state_machine_recv_handler);
-    
+
     return SUCCESS;
 }
 
 static void exit_handler() {
     free_config();
     free_if_impl();
-    packet_builder_destroy(packet_builder_get());
     packet_plugin_destroy();
+    eap_state_machine_destroy();
+    sched_alarm_destroy();
     PR_INFO("MiniEAP 已退出");
     close_log();
 };
@@ -136,7 +138,7 @@ int main(int argc, char* argv[]) {
 	signal(SIGHUP, signal_handler);
 	signal(SIGINT, signal_handler);
 	signal(SIGTERM, signal_handler);
-	
+
     if (IS_FAIL(init_cfg(argc, argv))) {
         return FAILURE;
     }
@@ -148,9 +150,12 @@ int main(int argc, char* argv[]) {
     if (IS_FAIL(eap_state_machine_init())) {
         return FAILURE;
     }
-    
+
+    if (IS_FAIL(sched_alarm_init())) {
+        return FAILURE;
+    }
+
     switch_to_state(EAP_STATE_PREPARING, NULL);
 
     return 0;
 }
-

@@ -1,5 +1,5 @@
 MINIEAP_COMMON_OBJS := config.o logging.o minieap.o misc.o linkedlist.o if_impl.o packet_builder.o \
-    packet_util.o packet_plugin.o eap_state_machine.c net_util.c
+    packet_util.o packet_plugin.o eap_state_machine.c net_util.c sched_alarm.o
 
 MINIEAP_PLUGIN_OBJS := if_impl_sockraw.o
 MINIEAP_PLUGIN_OBJS += packet_plugin_rjv3.o packet_plugin_rjv3_prop.o packet_plugin_rjv3_priv.o \

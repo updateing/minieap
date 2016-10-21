@@ -79,7 +79,6 @@ RESULT parse_cmdline_conf_file(int argc, char* argv[]) {
 RESULT parse_cmdline_opts(int argc, char* argv[]) {
     int opt = 0;
     int longIndex = 0;
-    int _arglen = 0; /* 当前参数长度 */
     static const char* shortOpts = "-:hk::wu:p:n:t:e:r:l:x:a:d:b:"
         "v:f:c:z:j:q:";
     static const struct option longOpts[] = {
@@ -109,10 +108,8 @@ RESULT parse_cmdline_opts(int argc, char* argv[]) {
 
     opt = getopt_long(argc, argv, shortOpts, longOpts, &longIndex);
 #define COPY_N_ARG_TO(buf, maxlen) \
-        _arglen = strnlen(optarg, maxlen); \
         chk_free((void**)&buf); \
-        buf = (char*)malloc(_arglen); \
-        strncpy(buf, optarg, _arglen);
+        buf = strndup(optarg, maxlen);
     while (opt != -1) {
         switch (opt) {
             case 'h':
@@ -210,7 +207,7 @@ void free_config() {
     chk_free((void**)&g_prog_config.pidfile);
     chk_free((void**)&g_prog_config.conffile);
     chk_free((void**)&g_prog_config.if_impl);
-    list_destroy(&g_prog_config.packet_plugin_list);
+    list_destroy(&g_prog_config.packet_plugin_list, FALSE);
 
     chk_free((void**)&g_eap_config.username);
     chk_free((void**)&g_eap_config.password);

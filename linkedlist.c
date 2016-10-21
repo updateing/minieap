@@ -47,26 +47,31 @@ void list_traverse(LIST_ELEMENT* start, void(*func)(void*, void*), void* user) {
     } while ((node = node->next));
 }
 
-void list_destroy(LIST_ELEMENT** start) {
-    LIST_ELEMENT *curr, *next = *start;
+void list_destroy(LIST_ELEMENT** ref, int free_content) {
+    LIST_ELEMENT* curr = NULL, *next = *ref;
     while ((curr = next)) {
         next = curr->next;
+        if (free_content) {
+            free(curr->content);
+        }
         free(curr);
     }
-    *start = NULL;
+    *ref = NULL;
 }
 
-void remove_data(LIST_ELEMENT** start, void* elem_to_remove, int(*cmpfunc)(void*, void*)) {
+void remove_data(LIST_ELEMENT** start, void* elem_to_remove, int(*cmpfunc)(void*, void*), int free_content) {
     LIST_ELEMENT *curr = NULL, **curr_ref = start;
     if (curr_ref == NULL) return;
-    
+
     while ((curr = *curr_ref)) {
-        if (cmpfunc(curr, elem_to_remove) == 0) {
+        if (cmpfunc(elem_to_remove, curr->content) == 0) {
             *curr_ref = curr->next;
+            if (free_content) {
+                free(curr->content);
+            }
             free(curr);
             return;
         }
         curr_ref = &curr->next;
     }
 }
-

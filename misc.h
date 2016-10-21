@@ -13,9 +13,4 @@ void chk_free(void** pptr);
  * "ff" -> 255
  */
 uint8_t char2hex(const char* str);
-
-/*
- * Self-explanatory. This also zeroes the pointer to the list.
- */
-void free_list_with_content(LIST_ELEMENT** list_ref);
 #endif
