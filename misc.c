@@ -12,15 +12,15 @@ void chk_free(void** pptr) {
 }
 
 uint8_t char2hex(const char* str) {
+#define LOWER2HEX(digit) ((digit >= 'a') ? (10 + (digit - 'a')) : (digit - '0'))
     const char digit0 = tolower(str[0]);
     const char digit1 = tolower(str[1]);
 
     if (digit1 == 0) {
-        return digit0 >= 'a' ? 10 + (digit0 - 'a') : digit0 - '0';
+        return LOWER2HEX(digit0);
     }
 
-    return 16 * (digit0 >= 'a' ? 10 + (digit0 - 'a') : digit0 - '0') +
-            digit1 >= 'a' ? 10 + (digit1 - 'a') : digit1 - '0';
+    return 16 * LOWER2HEX(digit0) + LOWER2HEX(digit1);
 }
 
 /* List implementation should not care about the content */

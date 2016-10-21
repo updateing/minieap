@@ -22,9 +22,12 @@
  *
  * `append_rjv3_prop` will create a new buffer of content. This buffer should be freed
  * by destroying the list.
+ *
+ * `modify_rjv3_prop[_list]` returns the difference in sizes of the field (new - old)
  */
 int append_rjv3_prop(LIST_ELEMENT** list, uint8_t type, uint8_t* content, int len);
 int modify_rjv3_prop(LIST_ELEMENT* list, uint8_t type, uint8_t* content, int len);
+int modify_rjv3_prop_list(LIST_ELEMENT* org, LIST_ELEMENT* mods);
 void remove_rjv3_prop(LIST_ELEMENT** list, uint8_t type);
 
 /*
@@ -41,7 +44,7 @@ RJ_PROP* new_rjv3_prop();
  * `append_rjv3_prop_[list_]to_buffer` returns the number of actual bytes written
  * `append_rjv3_prop_to_frame` can be used in list_traverse so it has two void* params.
  */
-size_t append_rjv3_prop_to_buffer(RJ_PROP* prop, uint8_t* buf, int buflen);
-size_t append_rjv3_prop_list_to_buffer(LIST_ELEMENT* list, uint8_t* buf, int buflen);
+int append_rjv3_prop_to_buffer(RJ_PROP* prop, uint8_t* buf, int buflen);
+int append_rjv3_prop_list_to_buffer(LIST_ELEMENT* list, uint8_t* buf, int buflen);
 void append_rjv3_prop_to_frame(RJ_PROP* prop, ETH_EAP_FRAME* frame);
 #endif

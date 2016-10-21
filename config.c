@@ -51,7 +51,7 @@ void load_default_params() {
     PCFG.save_now = DEFAULT_STAGE_TIMEOUT;
     PCFG.auth_round = DEFAULT_AUTH_ROUND;
     PCFG.kill_type = DEFAULT_KILL_TYPE;
-    
+
     configure_daemon_param(0); // No run in bg + log to console
 }
 
@@ -69,10 +69,10 @@ RESULT parse_cmdline_conf_file(int argc, char* argv[]) {
             }
         }
     }
-    
+
     if (g_prog_config.conffile == NULL)
         g_prog_config.conffile = strdup(DEFAULT_CONFFILE);
-        
+
     return SUCCESS;
 }
 
@@ -80,7 +80,7 @@ RESULT parse_cmdline_opts(int argc, char* argv[]) {
     int opt = 0;
     int longIndex = 0;
     int _arglen = 0; /* 当前参数长度 */
-    static const char* shortOpts = ":hk::wu:p:n:t:e:r:l:x:a:d:b:"
+    static const char* shortOpts = "-:hk::wu:p:n:t:e:r:l:x:a:d:b:"
         "v:f:c:z:j:q:";
     static const struct option longOpts[] = {
 	    { "help", no_argument, NULL, 'h' },
@@ -195,11 +195,9 @@ RESULT validate_params() {
         PR_ERR(msg); \
         return FAILURE; \
     }
-    
-#ifndef DEBUG
+
     ASSERT_NOTIFY(!g_proxy_config.proxy_on && !g_eap_config.username, "用户名不能为空");
     ASSERT_NOTIFY(!g_proxy_config.proxy_on && !g_eap_config.password, "密码不能为空");
-#endif
     ASSERT_NOTIFY(g_proxy_config.proxy_on && !g_proxy_config.lan_ifname,
                         "代理认证开启时，LAN 侧网卡名不能为空");
     ASSERT_NOTIFY(!g_prog_config.ifname, "网卡名不能为空");
@@ -213,10 +211,10 @@ void free_config() {
     chk_free((void**)&g_prog_config.conffile);
     chk_free((void**)&g_prog_config.if_impl);
     list_destroy(&g_prog_config.packet_plugin_list);
-    
+
     chk_free((void**)&g_eap_config.username);
     chk_free((void**)&g_eap_config.password);
-    
+
     chk_free((void**)&g_proxy_config.lan_ifname);
 }
 

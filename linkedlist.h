@@ -10,7 +10,7 @@ void insert_data(LIST_ELEMENT** start, void* data);
 
 /*
  * elem_to_find is a pointer to the actual data
- * Prototype of cmpfunc: int cmpfunc(void* lvalue, void* rvalue);
+ * Prototype of cmpfunc: int cmpfunc(void* elem_to_find, void* node_content);
  * cmpfunc returns 0 for equalvity, others for non-
  */
 void* lookup_data(LIST_ELEMENT* start, void* elem_to_find, int(*cmpfunc)(void*, void*));

@@ -22,12 +22,14 @@ typedef struct _packet_plugin_rjv3_priv {
         int heartbeat_interval;
         char* service_name; // All pointers can be freed since they are created by COPY_N_ARG_TO
         char* ver_str;
-        char* fake_dns;
+        char* fake_dns1;
+        char* fake_dns2;
         char* fake_serial;
         uint8_t fake_ver[2];
         DOT1X_BCAST_ADDR bcast_addr;
         DHCP_TYPE dhcp_type;
         LIST_ELEMENT* cmd_prop_list; // Destroy!
+        LIST_ELEMENT* cmd_prop_mod_list; // Destroy!
     };
     // Internal state variables
     int auth_round;
@@ -78,9 +80,11 @@ static uint8_t pkt_challenge_priv_header[] = {
 void rjv3_destroy(struct _packet_plugin* this) {
     chk_free((void**)&PRIV->service_name);
     chk_free((void**)&PRIV->ver_str);
-    chk_free((void**)&PRIV->fake_dns);
+    chk_free((void**)&PRIV->fake_dns1);
+    chk_free((void**)&PRIV->fake_dns2);
     chk_free((void**)&PRIV->fake_serial);
     list_destroy(&PRIV->cmd_prop_list);
+    list_destroy(&PRIV->cmd_prop_mod_list);
     chk_free((void**)&this->priv);
     chk_free((void**)&this);
 }
@@ -111,13 +115,19 @@ static RESULT append_rj_cmdline_opt(struct _packet_plugin* this, const char* opt
 
     _content_len = strnlen(_split, MAX_PROP_LEN);
     if ((_content_len & 1) == 1) _content_len += 1;
-    _content_buf = (uint8_t*)malloc(_content_len >> 1); // divide by 2
+    _content_len >>= 1;
+    _content_buf = (uint8_t*)malloc(_content_len); // divide by 2
 
-    for (_curr_pos = 0; _curr_pos < (_content_len >> 1); ++_curr_pos) {
+    for (_curr_pos = 0; _curr_pos < _content_len; ++_curr_pos) {
         _content_buf[_curr_pos] = char2hex(_split + (_curr_pos << 1));
     }
 
-    append_rjv3_prop(&PRIV->cmd_prop_list, _type, _content_buf, _content_len);
+    _split = strtok(NULL, ":");
+    if (_split != NULL && _split[0] == 'r') {
+        append_rjv3_prop(&PRIV->cmd_prop_mod_list, _type, _content_buf, _content_len);
+    } else {
+        append_rjv3_prop(&PRIV->cmd_prop_list, _type, _content_buf, _content_len);
+    }
 
     free(_arg);
     free(_content_buf);
@@ -125,7 +135,7 @@ static RESULT append_rj_cmdline_opt(struct _packet_plugin* this, const char* opt
 
 malformat:
     free(_arg);
-    PR_WARN("--rj-option 的参数格式错误");
+    PR_WARN("--rj-option 的参数格式错误：%s", opt);
     return FAILURE;
 }
 
@@ -145,7 +155,7 @@ RESULT rjv3_process_cmdline_opts(struct _packet_plugin* this, int argc, char* ar
     int longIndex = 0;
     int _arglen = 0; /* 当前参数长度 */
     unsigned int ver[2]; /* -v 版本号 */
-    static const char* shortOpts = ":e:a:d:v:f:c:q:";
+    static const char* shortOpts = "-:e:a:d:v:f:c:q:";
     static const struct option longOpts[] = {
 	    { "heartbeat", required_argument, NULL, 'e' },
 	    { "eap-bcast-addr", required_argument, NULL, 'a' },
@@ -155,7 +165,8 @@ RESULT rjv3_process_cmdline_opts(struct _packet_plugin* this, int argc, char* ar
 	    { "rj-option", required_argument, NULL, 0 },
 	    { "service", required_argument, NULL, 0 },
 	    { "version-str", required_argument, NULL, 0 },
-	    { "fake-dns", required_argument, NULL, 0 },
+	    { "fake-dns1", required_argument, NULL, 0 },
+	    { "fake-dns2", required_argument, NULL, 0 },
 	    { "fake-serial", required_argument, NULL, 0 },
 	    { NULL, no_argument, NULL, 0 }
     };
@@ -191,13 +202,17 @@ RESULT rjv3_process_cmdline_opts(struct _packet_plugin* this, int argc, char* ar
 #define IF_ARG(arg_name) (strcmp(longOpts[longIndex].name, arg_name) == 0)
                 if (IF_ARG("rj-option")) {
                     /* Allow mulitple rj-options */
-                    append_rj_cmdline_opt(this, optarg);
+                    if (IS_FAIL(append_rj_cmdline_opt(this, optarg))) {
+                        return FAILURE;
+                    }
                 } else if (IF_ARG("service")) {
                     COPY_N_ARG_TO(PRIV->service_name, RJV3_SIZE_SERVICE);
                 } else if (IF_ARG("version-str")) {
                     COPY_N_ARG_TO(PRIV->ver_str, MAX_PROP_LEN);
-                } else if (IF_ARG("fake-dns")) {
-                    COPY_N_ARG_TO(PRIV->fake_dns, INET6_ADDRSTRLEN);
+                } else if (IF_ARG("fake-dns1")) {
+                    COPY_N_ARG_TO(PRIV->fake_dns1, INET6_ADDRSTRLEN);
+                } else if (IF_ARG("fake-dns2")) {
+                    COPY_N_ARG_TO(PRIV->fake_dns2, INET6_ADDRSTRLEN);
                 } else if (IF_ARG("fake-serial")) {
                     COPY_N_ARG_TO(PRIV->fake_serial, MAX_PROP_LEN);
                 }
@@ -243,7 +258,7 @@ static int rjv3_append_common_fields(PACKET_PLUGIN* this, LIST_ELEMENT** list, i
 
     rjv3_set_pwd_hash(_pwd_hash, PRIV->last_recv_packet);
 
-    rjv3_set_secondary_dns(_sec_dns, PRIV->fake_dns);
+    rjv3_set_secondary_dns(_sec_dns, PRIV->fake_dns2);
 
     rjv3_set_ipv6_addr(_ll_ipv6, _ll_ipv6_tmp, _glb_ipv6);
 
@@ -323,7 +338,7 @@ RESULT rjv3_prepare_frame(struct _packet_plugin* this, ETH_EAP_FRAME* frame) {
             <other 0x1a fields follow>
         }
      */
-    size_t _props_len = 0;
+    int _props_len = 0;
     uint8_t _std_prop_buf[FRAME_BUF_SIZE] = {0}; // Buffer for 0x1a props
     LIST_ELEMENT* _prop_list = NULL;
 
@@ -332,6 +347,9 @@ RESULT rjv3_prepare_frame(struct _packet_plugin* this, ETH_EAP_FRAME* frame) {
     /* Let's make the big news! */
     rjv3_append_common_fields(this, &_prop_list, frame->header->eapol_hdr.type[0] == EAP_PACKET &&
                                                 frame->header->eap_hdr.code[0] == MD5_CHALLENGE);
+
+    /* The Mods! */
+    _props_len += modify_rjv3_prop_list(_prop_list, PRIV->cmd_prop_mod_list);
 
     /* Actually read from sparse nodes into a unite buffer */
     _props_len = append_rjv3_prop_list_to_buffer(_prop_list, _std_prop_buf, FRAME_BUF_SIZE);
