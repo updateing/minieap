@@ -124,9 +124,13 @@ static RESULT append_rj_cmdline_opt(struct _packet_plugin* this, const char* opt
 
     _split = strtok(NULL, ":");
     if (_split != NULL && _split[0] == 'r') {
-        append_rjv3_prop(&PRIV->cmd_prop_mod_list, _type, _content_buf, _content_len);
+        if (append_rjv3_prop(&PRIV->cmd_prop_mod_list, _type, _content_buf, _content_len) < 0) {
+            goto fail;
+        }
     } else {
-        append_rjv3_prop(&PRIV->cmd_prop_list, _type, _content_buf, _content_len);
+        if (append_rjv3_prop(&PRIV->cmd_prop_list, _type, _content_buf, _content_len) < 0) {
+            goto fail;
+        }
     }
 
     free(_arg);
@@ -134,8 +138,9 @@ static RESULT append_rj_cmdline_opt(struct _packet_plugin* this, const char* opt
     return SUCCESS;
 
 malformat:
+    PR_ERR("--rj-option 的参数格式错误：%s", opt);
+fail:
     free(_arg);
-    PR_WARN("--rj-option 的参数格式错误：%s", opt);
     return FAILURE;
 }
 
@@ -335,26 +340,41 @@ RESULT rjv3_prepare_frame(struct _packet_plugin* this, ETH_EAP_FRAME* frame) {
             <other 0x1a fields follow>
         }
      */
-    int _props_len = 0;
+    int _props_len = 0, _single_len = 0;
     uint8_t _std_prop_buf[FRAME_BUF_SIZE] = {0}; // Buffer for 0x1a props
     LIST_ELEMENT* _prop_list = NULL;
 
     rjv3_append_priv_header(this, frame);
 
     /* Let's make the big news! */
-    rjv3_append_common_fields(this, &_prop_list, frame->header->eapol_hdr.type[0] == EAP_PACKET &&
+    _single_len = rjv3_append_common_fields(this, &_prop_list,
+                                            frame->header->eapol_hdr.type[0] == EAP_PACKET &&
                                                 frame->header->eap_hdr.code[0] == MD5_CHALLENGE);
+    if (_single_len < 0) {
+        return FAILURE;
+    }
 
     /* The Mods! */
     _props_len += modify_rjv3_prop_list(_prop_list, PRIV->cmd_prop_mod_list);
 
     /* Actually read from sparse nodes into a unite buffer */
-    _props_len = append_rjv3_prop_list_to_buffer(_prop_list, _std_prop_buf, FRAME_BUF_SIZE);
+    _single_len = append_rjv3_prop_list_to_buffer(_prop_list, _std_prop_buf, FRAME_BUF_SIZE);
+
+    if (_single_len > 0) {
+        _props_len += _single_len;
+    } else {
+        return FAILURE;
+    }
 
     /* And those from cmdline */
-    _props_len += append_rjv3_prop_list_to_buffer(PRIV->cmd_prop_list,
+    _single_len = append_rjv3_prop_list_to_buffer(PRIV->cmd_prop_list,
                                                   _std_prop_buf + _props_len,
                                                   FRAME_BUF_SIZE - _props_len);
+    if (_single_len >= 0) { // This time with '='
+        _props_len += _single_len;
+    } else {
+        return FAILURE;
+    }
 
     /* The outside */
     RJ_PROP* _container_prop = new_rjv3_prop();
@@ -380,7 +400,7 @@ RESULT rjv3_on_frame_received(struct _packet_plugin* this, ETH_EAP_FRAME* frame)
     if (frame->header->eapol_hdr.type[0] == EAP_PACKET) {
         if (frame->header->eap_hdr.type[0] == EAP_SUCCESS) {
             PRIV->succ_count++;
-            // TODO show msg
+            // TODO show msg, timer to modify header & reauth
         } else if (frame->header->eap_hdr.type[0] == EAP_FAILURE) {
             // TODO show msg
         }

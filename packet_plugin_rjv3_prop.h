@@ -24,6 +24,8 @@
  * by destroying the list.
  *
  * `modify_rjv3_prop[_list]` returns the difference in sizes of the field (new - old)
+ *
+ * All these methods assume header_type == 0x1a
  */
 int append_rjv3_prop(LIST_ELEMENT** list, uint8_t type, uint8_t* content, int len);
 int modify_rjv3_prop(LIST_ELEMENT* list, uint8_t type, uint8_t* content, int len);
@@ -36,6 +38,9 @@ void remove_rjv3_prop(LIST_ELEMENT** list, uint8_t type);
  * NULL if not found
  */
 RJ_PROP* find_rjv3_prop(LIST_ELEMENT* list, uint8_t type);
+/*
+ * Default header_type = 0x1a
+ */
 RJ_PROP* new_rjv3_prop();
 
 /*

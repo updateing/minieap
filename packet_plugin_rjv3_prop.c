@@ -90,7 +90,13 @@ int append_rjv3_prop_to_buffer(RJ_PROP* prop, uint8_t* buf, int buflen) {
     int _full_len = sizeof(RJ_PROP_HEADER1) + sizeof(prop->magic) + sizeof(RJ_PROP_HEADER2) + _content_len;
 
     if (buflen < _full_len) {
+        PR_ERR("缓冲空间不足，无法追加字段");
         return -1;
+    }
+
+    if (prop->header1.header_type != 0x1a) {
+        PR_WARN("不支持写入 header_type 为 %zu 的字段", prop->header1.header_type);
+        return 0;
     }
     memmove(buf, &prop->header1, sizeof(RJ_PROP_HEADER1));
     memmove(buf + sizeof(RJ_PROP_HEADER1), &prop->magic, sizeof(prop->magic));
@@ -108,7 +114,11 @@ int append_rjv3_prop_list_to_buffer(LIST_ELEMENT* list, uint8_t* buf, int buflen
         _single_len = append_rjv3_prop_to_buffer((RJ_PROP*)_curr->content,
                                                  buf + _props_len,
                                                  buflen - _props_len);
-        _props_len += _single_len; // TODO error handling
+        if (_single_len > 0) {
+            _props_len += _single_len;
+        } else {
+            return -1;
+        }
     }
 
     return _props_len;
@@ -122,6 +132,9 @@ void append_rjv3_prop_to_frame(RJ_PROP* prop, ETH_EAP_FRAME* frame) {
     } else if (prop->header1.header_type == 0x02) {
         /* Container prop, see `rjv3_prepare_frame` */
         _content_len = prop->header2.len + (prop->header2.type << 8);
+    } else {
+        PR_WARN("不支持写入 header_type 为 %zu 的字段", prop->header1.header_type);
+        return;
     }
 
     append_to_frame(frame, (uint8_t*)&prop->header1, sizeof(RJ_PROP_HEADER1));
