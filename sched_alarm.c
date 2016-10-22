@@ -20,6 +20,22 @@ static LIST_ELEMENT* g_alarm_list = NULL;
 static int g_last_id = 0;
 static int g_ringing = 0;
 
+static void print_list(LIST_ELEMENT** list) {
+    ALARM_EVENT* elem;
+    LIST_ELEMENT** ref = list;
+    while (*ref) {
+        PR_DBG("List print: node at %p", *ref);
+        PR_DBG("    next at %p", (*ref)->next);
+        PR_DBG("    content at %p", (*ref)->content);
+        elem = (*ref)->content;
+        PR_DBG("    remain %d", elem->remaining);
+        PR_DBG("    id %d", elem->id);
+        PR_DBG("    func %p", elem->func);
+        PR_DBG("    user %p", elem->user);
+        ref = &(*ref)->next;
+    }
+}
+
 static int alarm_event_id_node_cmpfunc(void* id, void* node) {
     if (*(int*)id == ((ALARM_EVENT*)node)->id) {
         return 0;

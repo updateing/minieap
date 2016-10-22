@@ -14,9 +14,9 @@
 
 typedef struct _state_mach_priv {
     int state_last_count; // Number of timeouts occured in this state
-    int state_max_count; // Number of timeouts allowed
     int auth_round; // Current authentication round
     int fail_count;
+    int state_alarm_id;
     uint8_t local_mac[6];
     uint8_t server_mac[6];
     EAP_STATE state;
@@ -57,10 +57,7 @@ static const uint8_t ETH_P_PAE_BYTES[2] = {0x88, 0x8e};
 #define PRIV (&g_priv) // I like pointers!
 
 static void eap_state_machine_clear_state() {
-    PROG_CONFIG* _cfg = get_program_config();
-
     PRIV->state_last_count = 0;
-    PRIV->state_max_count = _cfg->max_retries;
     PRIV->state = EAP_STATE_UNKNOWN;
     PRIV->auth_round = 1;
     PRIV->fail_count = 0;
@@ -237,6 +234,11 @@ void eap_state_machine_recv_handler(ETH_EAP_FRAME* frame) {
     }
 }
 
+static void state_watchdog(void* frame) {
+    switch_to_state(PRIV->state, (ETH_EAP_FRAME*)frame);
+    PRIV->state_alarm_id = schedule_alarm(5, state_watchdog, frame);
+}
+
 static RESULT trans_to_preparing(ETH_EAP_FRAME* frame) {
     IF_IMPL* _if_impl = get_if_impl();
     RESULT ret = switch_to_state(EAP_STATE_START_SENT, frame);
@@ -245,22 +247,38 @@ static RESULT trans_to_preparing(ETH_EAP_FRAME* frame) {
 }
 
 static RESULT trans_to_start_sent(ETH_EAP_FRAME* frame) {
+    PR_INFO("正在查找认证服务器");
+    if (PRIV->state_alarm_id <= 0) {
+        PRIV->state_alarm_id = schedule_alarm(5, state_watchdog, frame);
+    }
     return state_mach_send_eapol_simple(EAPOL_START);
 }
 
 static RESULT trans_to_identity_sent(ETH_EAP_FRAME* frame) {
+    PR_INFO("正在发送用户名");
+    if (PRIV->state_alarm_id <= 0) {
+        PRIV->state_alarm_id = schedule_alarm(5, state_watchdog, frame);
+    }
     return state_mach_send_identity_response(frame);
 }
 
 static RESULT trans_to_challenge_sent(ETH_EAP_FRAME* frame) {
+    PR_INFO("正在发送密码");
+    if (PRIV->state_alarm_id <= 0) {
+        PRIV->state_alarm_id = schedule_alarm(5, state_watchdog, frame);
+    }
     return state_mach_send_challenge_response(frame);
 }
 
 static RESULT trans_to_success(ETH_EAP_FRAME* frame) {
+    unschedule_alarm(PRIV->state_alarm_id);
+    PRIV->state_alarm_id = 0;
     return state_mach_process_success(frame);
 }
 
 static RESULT trans_to_failure(ETH_EAP_FRAME* frame) {
+    unschedule_alarm(PRIV->state_alarm_id);
+    PRIV->state_alarm_id = 0;
     return state_mach_process_failure(frame);
 }
 
@@ -268,12 +286,22 @@ RESULT switch_to_state(EAP_STATE state, ETH_EAP_FRAME* frame) {
     int i = 0;
     for (; i < sizeof(g_transition_table) / sizeof(STATE_TRANSITION); ++i) {
         if (state == g_transition_table[i].state) {
+            if (PRIV->state == state) {
+                PROG_CONFIG* _cfg = get_program_config();
+                PRIV->state_last_count++;
+                if (PRIV->state_last_count == _cfg->max_retries) {
+                    PR_ERR("在 %d 状态已经停留了 %d 次，达到指定次数，正在退出……", PRIV->state, _cfg->max_retries);
+                    exit(FAILURE);
+                }
+            } else {
+                PRIV->state = state;
+                PRIV->state_last_count = 0;
+            }
             if (IS_FAIL(g_transition_table[i].trans_func(frame))) {
                 PR_ERR("从 %d 状态向 %d 状态的转化函数执行失败", PRIV->state, state);
                 return FAILURE;
-             }
-             PRIV->state = state;
-             return SUCCESS;
+            }
+            return SUCCESS;
         }
     }
     PR_WARN("%d 状态未定义"); // TODO Is this possible?
