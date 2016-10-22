@@ -71,16 +71,23 @@ typedef struct _rj_prop_header1 {
 } RJ_PROP_HEADER1;
 
 typedef struct _rj_prop_header2 {
+    uint8_t magic[4];
     uint8_t type;
     uint8_t len;
 } RJ_PROP_HEADER2;
 
 typedef struct _rj_prop {
     RJ_PROP_HEADER1 header1;
-    uint8_t magic[4];
     RJ_PROP_HEADER2 header2;
     uint8_t* content; /* Length is included in header */
 } RJ_PROP;
+
+/*
+ * Bare props: props without RJ_PROP_HEADER1
+ *
+ * In order to re-use code from packet_plugin_rjv3,
+ * we initialize RJ_PROP_HEADER1 as {0xba, 0xfe}.
+ */
 
 void rjv3_set_dhcp_en(uint8_t* dhcp_en_arr, DHCP_TYPE dhcp_type);
 void rjv3_set_local_mac(uint8_t* mac_buf);
