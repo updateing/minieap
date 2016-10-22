@@ -414,7 +414,7 @@ static void rjv3_show_server_msg(ETH_EAP_FRAME* frame) {
         int _content_len = _msg->header2.len - HEADER2_SIZE_NO_MAGIC(_msg);
 
         PR_INFO("服务器通知：\n");
-        pr_info_gbk(_msg->content, _content_len);
+        pr_info_gbk((char*)_msg->content, _content_len);
     }
     _msg = NULL;
     _msg = find_rjv3_prop(_srv_msg, 0x3c);
@@ -422,7 +422,7 @@ static void rjv3_show_server_msg(ETH_EAP_FRAME* frame) {
         int _content_len = _msg->header2.len - HEADER2_SIZE_NO_MAGIC(_msg);
 
         PR_INFO("计费通知：\n");
-        pr_info_gbk(_msg->content, _content_len);
+        pr_info_gbk((char*)_msg->content, _content_len);
     }
 }
 

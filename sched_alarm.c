@@ -53,8 +53,11 @@ static void update_remaining_and_fire(LIST_ELEMENT* alarm_list, int secs_elapsed
 }
 
 void alarm_sig_handler(int sig) {
-    int _curr_remaining = alarm(0);
+    int _curr_remaining = find_min_remaining(g_alarm_list);
+    /* Must be nearest one that fired the alarm */
     update_remaining_and_fire(g_alarm_list, _curr_remaining);
+    _curr_remaining = find_min_remaining(g_alarm_list);
+    alarm(_curr_remaining);
 }
 
 RESULT sched_alarm_init() {
@@ -85,11 +88,7 @@ int schedule_alarm(int secs, void (*func)(void*), void* user) {
     int _curr_remaining = alarm(0);
     update_remaining_and_fire(g_alarm_list, _curr_remaining);
     int _curr_min = find_min_remaining(g_alarm_list);
-
-    if (_curr_min > secs) {
-        /* The new event is nearest */
-        alarm(secs);
-    }
+    alarm(_curr_min > secs ? secs : _curr_min);
 
     insert_data(&g_alarm_list, _event);
 

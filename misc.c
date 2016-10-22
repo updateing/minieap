@@ -2,8 +2,10 @@
 #include <ctype.h>
 #include <stdint.h>
 #include <string.h>
+#include <sys/types.h>
 #include "linkedlist.h"
 #include "logging.h"
+
 
 #define ICONV
 
@@ -40,7 +42,7 @@ uint8_t bit_reverse(uint8_t in) {
     return half_reverse_table[in & 0xf] << 4 | half_reverse_table[(in & 0xf0) >> 4];
 }
 
-void gbk2utf8(uint8_t* in, int inlen, uint8_t* out, int outlen) {
+void gbk2utf8(char* in, size_t inlen, char* out, size_t outlen) {
 #ifdef ICONV
     iconv_t _cd = iconv_open("utf-8", "gbk");
     if (_cd < 0) {
@@ -56,9 +58,9 @@ legacy:
     memmove(out, in, inlen);
 }
 
-void pr_info_gbk(uint8_t* in, int inlen) {
-    int _utf8_size = (inlen >> 1) * 3;
-    uint8_t* _utf8_buf = (uint8_t*)malloc(_utf8_size);
+void pr_info_gbk(char* in, size_t inlen) {
+    size_t _utf8_size = (inlen >> 1) * 3;
+    char* _utf8_buf = (char*)malloc(_utf8_size);
     if (_utf8_buf > 0) {
         gbk2utf8(in, inlen, _utf8_buf, _utf8_size);
         PR_INFO("%s", _utf8_buf);
