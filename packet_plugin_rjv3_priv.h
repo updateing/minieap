@@ -76,6 +76,9 @@ typedef struct _rj_prop_header2 {
     uint8_t len;
 } RJ_PROP_HEADER2;
 
+#define HEADER2_SIZE_NO_MAGIC(x) (sizeof(RJ_PROP_HEADER2) - sizeof(x->header2.magic))
+#define PROP_TO_CONTENT_SIZE(prop) (prop->header2.len - HEADER2_SIZE_NO_MAGIC(prop))
+
 typedef struct _rj_prop {
     RJ_PROP_HEADER1 header1;
     RJ_PROP_HEADER2 header2;

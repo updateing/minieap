@@ -44,7 +44,7 @@ int append_rjv3_prop(LIST_ELEMENT** list, uint8_t type, uint8_t* content, int le
 
     _prop->header1.header_len = len + sizeof(RJ_PROP_HEADER1) + sizeof(RJ_PROP_HEADER2);
     _prop->header2.type = type;
-    _prop->header2.len = len + sizeof(RJ_PROP_HEADER2) - sizeof(_prop->header2.magic);
+    _prop->header2.len = len + HEADER2_SIZE_NO_MAGIC(_prop);
     _prop->content = buf;
     insert_data(list, _prop);
     return _prop->header1.header_len;
@@ -64,7 +64,7 @@ int modify_rjv3_prop(LIST_ELEMENT* list, uint8_t type, uint8_t* content, int len
     int _org_header2_len = _prop->header2.len;
     chk_free((void**)&_prop->content);
     _prop->content = content;
-    _prop->header2.len = len + sizeof(RJ_PROP_HEADER2) - sizeof(_prop->header2.magic);
+    _prop->header2.len = len + HEADER2_SIZE_NO_MAGIC(_prop);
     _prop->header1.header_len = len + sizeof(RJ_PROP_HEADER1) + sizeof(RJ_PROP_HEADER2);
     return _prop->header2.len - _org_header2_len;
 }
@@ -77,8 +77,7 @@ int modify_rjv3_prop_list(LIST_ELEMENT* org, LIST_ELEMENT* mods) {
         _delta += modify_rjv3_prop(org,
                                   CURR->header2.type,
                                   CURR->content,
-                                  CURR->header2.len - sizeof(RJ_PROP_HEADER2)
-                                                    + sizeof(CURR->header2.magic));
+                                  PROP_TO_CONTENT_SIZE(CURR));
     }
     return _delta;
 }
@@ -87,8 +86,12 @@ void remove_rjv3_prop(LIST_ELEMENT** list, uint8_t type) {
     remove_data(list, &type, rjv3_type_prop_compare, TRUE);
 }
 
+RJ_PROP* find_rjv3_prop(LIST_ELEMENT* list, uint8_t type) {
+    return (RJ_PROP*)lookup_data(list, &type, rjv3_type_prop_compare);
+}
+
 int append_rjv3_prop_to_buffer(RJ_PROP* prop, uint8_t* buf, int buflen) {
-    int _content_len = prop->header2.len - sizeof(RJ_PROP_HEADER2) + sizeof(prop->header2.magic);
+    int _content_len = PROP_TO_CONTENT_SIZE(prop);
     int _full_len = sizeof(RJ_PROP_HEADER1)+ sizeof(RJ_PROP_HEADER2) + _content_len;
 
     if (buflen < _full_len) {
@@ -129,7 +132,7 @@ int append_rjv3_prop_list_to_buffer(LIST_ELEMENT* list, uint8_t* buf, int buflen
 void append_rjv3_prop_to_frame(RJ_PROP* prop, ETH_EAP_FRAME* frame) {
     int _content_len = 0;
     if (prop->header1.header_type == 0x1a) {
-        _content_len = prop->header2.len - sizeof(RJ_PROP_HEADER2) + sizeof(prop->header2.magic);
+        _content_len = PROP_TO_CONTENT_SIZE(prop);
     } else if (prop->header1.header_type == 0x02) {
         /* Container prop, see `rjv3_prepare_frame` */
         _content_len = prop->header2.len + (prop->header2.type << 8);
@@ -171,15 +174,17 @@ RESULT parse_rjv3_buf_to_prop_list(LIST_ELEMENT** list, uint8_t* buf, int buflen
 
             if (memcmp(_tmp_prop->header2.magic, _magic, sizeof(_magic)) == 0) {
                 /* Valid */
-                if (_tmp_prop->header2.type != 1) {
-                    /* Next byte is prop len */
-                    _content_len = _tmp_prop->header2.len - sizeof(RJ_PROP_HEADER2)
-                                            + sizeof(_tmp_prop->header2.magic);
-                } else {
+                if (_tmp_prop->header2.type == 0) {
+                    /* 0x0 prop's len does not include HEADER2 */
+                    _content_len = _tmp_prop->header2.len;
+                } else if (_tmp_prop->header2.type == 1) {
                     /* Type 0x1 means there is no length info, we have to search for next 00 00 13 11 */
                     uint8_t* _next_magic = find_byte_pattern(_magic, sizeof(_magic),
                                                               buf + _read_len, buflen - _read_len);
                     _content_len = _next_magic ? (_next_magic - (buf + _read_len)) : buflen - _read_len;
+                } else {
+                    /* This is normal prop, len includes two bytes from HEADER2 */
+                    _content_len = _tmp_prop->header2.len - sizeof(RJ_PROP_HEADER2) + sizeof(_tmp_prop->header2.magic);
                 }
 
                 append_rjv3_prop(list,
@@ -206,8 +211,7 @@ RESULT parse_rjv3_buf_to_prop_list(LIST_ELEMENT** list, uint8_t* buf, int buflen
             if (memcmp(_tmp_prop->header2.magic, _magic, sizeof(_magic)) == 0) {
                 /* Valid */
                 if (_tmp_prop->header1.header_type == 0x1a) {
-                    _content_len = _tmp_prop->header2.len - sizeof(RJ_PROP_HEADER2)
-                                            + sizeof(_tmp_prop->header2.magic);
+                    _content_len = PROP_TO_CONTENT_SIZE(_tmp_prop);
                 } else {
                     uint8_t* _next_magic = find_byte_pattern(_magic, sizeof(_magic),
                                                               buf + _read_len, buflen - _read_len);

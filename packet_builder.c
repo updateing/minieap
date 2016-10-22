@@ -47,13 +47,13 @@ void builder_set_eth_field(struct _packet_builder* this, int field, const uint8_
 }
 
 void builder_set_eap_fields(struct _packet_builder* this,
-                       EAPOL_TYPE eapol_type, EAP_CODE code, 
+                       EAPOL_TYPE eapol_type, EAP_CODE code,
                        EAP_TYPE eap_type, int id, EAP_CONFIG* config) {
-    PRIV->frame_header.eapol_hdr.version[0] = 1; // Force EAPOL version = 1
+    PRIV->frame_header.eapol_hdr.ver[0] = 1; // Force EAPOL version = 1
     PRIV->frame_header.eapol_hdr.type[0] = (unsigned char)eapol_type;
     if (eapol_type == EAPOL_START || eapol_type == EAPOL_LOGOFF) {
-        PRIV->frame_header.eapol_hdr.length[0] = 0;
-        PRIV->frame_header.eapol_hdr.length[1] = 0;
+        PRIV->frame_header.eapol_hdr.len[0] = 0;
+        PRIV->frame_header.eapol_hdr.len[1] = 0;
         return;
     } else {
         /*
@@ -70,9 +70,9 @@ void builder_set_eap_fields(struct _packet_builder* this,
         PRIV->frame_header.eap_hdr.code[0] = (unsigned char)code;
         PRIV->frame_header.eap_hdr.id[0] = (unsigned char)id;
         PRIV->frame_header.eap_hdr.type[0] = (unsigned char)eap_type;
-        memmove(PRIV->frame_header.eap_hdr.length, &_eap_packet_len, sizeof(unsigned short));
-        memmove(PRIV->frame_header.eapol_hdr.length, &_eap_packet_len, sizeof(unsigned short));
-        
+        memmove(PRIV->frame_header.eap_hdr.len, &_eap_packet_len, sizeof(unsigned short));
+        memmove(PRIV->frame_header.eapol_hdr.len, &_eap_packet_len, sizeof(unsigned short));
+
         /* Save for further use */
         PRIV->eap_config = config;
     }
@@ -80,13 +80,13 @@ void builder_set_eap_fields(struct _packet_builder* this,
 
 void builder_set_eap_md5_seed(struct _packet_builder* this, uint8_t* md5_seed, int seed_len) {
     if (seed_len <= 0) return;
-    
+
     PRIV->md5_seed = (uint8_t*)malloc(seed_len);
     if (PRIV->md5_seed < 0) {
         PR_ERRNO("无法为 MD5 种子分配内存空间");
         return;
     }
-    
+
     memmove(PRIV->md5_seed, md5_seed, seed_len);
     PRIV->seed_len = seed_len;
 }
@@ -94,39 +94,39 @@ void builder_set_eap_md5_seed(struct _packet_builder* this, uint8_t* md5_seed, i
 int builder_build_packet(struct _packet_builder* this, uint8_t* buffer) {
     int _eapol_type = PRIV->frame_header.eapol_hdr.type[0];
     int _copied_bytes = sizeof(ETHERNET_HEADER) + sizeof(EAPOL_HEADER);
-    
+
     /* Copy the standard fields */
     memmove(buffer, &PRIV->frame_header, sizeof(FRAME_HEADER));
-    
+
     if (_eapol_type != EAP_PACKET) {
         /* EAP header is not valid. Do not indicate we have it */
         return _copied_bytes;
     } else {
         int _eap_type = PRIV->frame_header.eap_hdr.type[0];
         int _username_len = strlen(PRIV->eap_config->username);
-        
+
         /* EAP header is valid here */
         _copied_bytes += sizeof(EAP_HEADER);
         if (_eap_type == MD5_CHALLENGE) {
             uint8_t _challenge[MD5_CHALLENGE_DIGEST_SIZE];
-            
+
             if (PRIV->md5_seed == NULL || PRIV->seed_len == 0 || PRIV->eap_config == NULL) {
                 PR_ERR("构建 Challenge Response 的参数不齐全，请检查是否出现丢包");
                 return -1;
             }
-            
+
             memmove(_challenge, hash_md5_pwd(PRIV->frame_header.eap_hdr.id[0], PRIV->md5_seed,
                                              PRIV->seed_len, PRIV->eap_config->password),
                     MD5_CHALLENGE_DIGEST_SIZE);
             /* Extra field: MD5-Value-Size (1 byte) */
             buffer[_copied_bytes] = MD5_CHALLENGE_DIGEST_SIZE;
             _copied_bytes += 1;
-            
+
             /* Challenge */
             memmove(buffer + _copied_bytes, _challenge, MD5_CHALLENGE_DIGEST_SIZE);
             _copied_bytes += MD5_CHALLENGE_DIGEST_SIZE;
-        }      
-                        
+        }
+
         /* Common Routine: Username */
         memmove(buffer + _copied_bytes, PRIV->eap_config->username, _username_len);
         _copied_bytes += _username_len;
@@ -142,7 +142,7 @@ static PACKET_BUILDER* packet_builder_new() {
         return NULL;
     }
     memset(this, 0, sizeof(PACKET_BUILDER));
-    
+
     /* The priv pointer in packet_builder.h is a packet_builder_priv* here */
     this->priv = (packet_builder_priv*)malloc(sizeof(packet_builder_priv));
     if (this->priv < 0) {
@@ -150,12 +150,12 @@ static PACKET_BUILDER* packet_builder_new() {
         return NULL;
     }
     memset(this->priv, 0, sizeof(packet_builder_priv));
-    
+
     this->set_eth_field = builder_set_eth_field;
     this->set_eap_fields = builder_set_eap_fields;
     this->set_eap_md5_seed = builder_set_eap_md5_seed;
     this->build_packet = builder_build_packet;
-    
+
     g_builder = this;
     return this;
 }
@@ -170,4 +170,3 @@ void packet_builder_destroy() {
         chk_free((void**)&g_builder);
     }
 }
-

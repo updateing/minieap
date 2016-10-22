@@ -38,14 +38,14 @@ typedef struct _ethernet_header {
 typedef struct _eap_header {
 	unsigned char code[1];
 	unsigned char id[1];
-	unsigned char length[2];
+	unsigned char len[2];
 	unsigned char type[1];
 } EAP_HEADER;
 
 typedef struct _eapol_header {
-	unsigned char version[1];
+	unsigned char ver[1];
 	unsigned char type[1];
-	unsigned char length[2]; // 802.1Q will be preserved
+	unsigned char len[2]; // 802.1Q will be preserved
 } EAPOL_HEADER;
 
 typedef struct _frame_header {
@@ -65,4 +65,3 @@ typedef struct _eth_eap_frame {
 } ETH_EAP_FRAME;
 
 #endif
-        

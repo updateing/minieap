@@ -395,14 +395,46 @@ RESULT rjv3_prepare_frame(struct _packet_plugin* this, ETH_EAP_FRAME* frame) {
     return SUCCESS;
 }
 
+static void rjv3_show_server_msg(ETH_EAP_FRAME* frame) {
+    LIST_ELEMENT* _srv_msg = NULL;
+    RJ_PROP* _msg = NULL;
+
+    /* Success frames does not have EAP_HEADER.type,
+     * and do not use EAP_HEADER.len since it once betrayed us
+     */
+    parse_rjv3_buf_to_prop_list(&_srv_msg,
+                                frame->content + sizeof(FRAME_HEADER)
+                                    - sizeof(frame->header->eap_hdr.type),
+                                frame->actual_len - sizeof(FRAME_HEADER)
+                                    + sizeof(frame->header->eap_hdr.type),
+                                TRUE);
+
+    if (_srv_msg != NULL) {
+        _msg = (RJ_PROP*)_srv_msg->content;
+        int _content_len = _msg->header2.len - HEADER2_SIZE_NO_MAGIC(_msg);
+
+        PR_INFO("服务器通知：\n");
+        pr_info_gbk(_msg->content, _content_len);
+    }
+    _msg = NULL;
+    _msg = find_rjv3_prop(_srv_msg, 0x3c);
+    if (_msg != NULL) {
+        int _content_len = _msg->header2.len - HEADER2_SIZE_NO_MAGIC(_msg);
+
+        PR_INFO("计费通知：\n");
+        pr_info_gbk(_msg->content, _content_len);
+    }
+}
+
 RESULT rjv3_on_frame_received(struct _packet_plugin* this, ETH_EAP_FRAME* frame) {
     PRIV->last_recv_packet = frame;
     if (frame->header->eapol_hdr.type[0] == EAP_PACKET) {
-        if (frame->header->eap_hdr.type[0] == EAP_SUCCESS) {
+        if (frame->header->eap_hdr.code[0] == EAP_SUCCESS) {
             PRIV->succ_count++;
-            // TODO show msg, timer to modify header & reauth
-        } else if (frame->header->eap_hdr.type[0] == EAP_FAILURE) {
-            // TODO show msg
+            rjv3_show_server_msg(frame);
+            // TODO timer to modify header & reauth
+        } else if (frame->header->eap_hdr.code[0] == EAP_FAILURE) {
+            rjv3_show_server_msg(frame);
         }
     }
     return SUCCESS;
