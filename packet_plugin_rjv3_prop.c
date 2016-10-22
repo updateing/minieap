@@ -239,3 +239,12 @@ err:
     free(_tmp_prop);
     return FAILURE;
 }
+
+static void free_content(void* elem, void* unused) {
+    free(((RJ_PROP*)elem)->content);
+}
+
+void destroy_rjv3_prop_list(LIST_ELEMENT** list) {
+    list_traverse(*list, free_content, NULL);
+    list_destroy(list, TRUE);
+}

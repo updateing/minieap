@@ -81,6 +81,7 @@ void builder_set_eap_fields(struct _packet_builder* this,
 void builder_set_eap_md5_seed(struct _packet_builder* this, uint8_t* md5_seed, int seed_len) {
     if (seed_len <= 0) return;
 
+    free(PRIV->md5_seed);
     PRIV->md5_seed = (uint8_t*)malloc(seed_len);
     if (PRIV->md5_seed < 0) {
         PR_ERRNO("无法为 MD5 种子分配内存空间");
@@ -166,6 +167,7 @@ PACKET_BUILDER* packet_builder_get() {
 
 void packet_builder_destroy() {
     if (g_builder) {
+        chk_free((void**)&((packet_builder_priv*)g_builder->priv)->md5_seed);
         chk_free((void**)&g_builder->priv);
         chk_free((void**)&g_builder);
     }

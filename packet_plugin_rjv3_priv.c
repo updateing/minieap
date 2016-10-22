@@ -109,6 +109,7 @@ void rjv3_set_secondary_dns(char* dns_ascii_buf, char* fake_dns) {
     if (dns_list && dns_list->next) {
         strncpy(dns_ascii_buf, dns_list->next->content, INET6_ADDRSTRLEN);
     }
+    free_dns_list(&dns_list);
     return;
 }
 

@@ -161,13 +161,13 @@ RESULT rjv3_override_priv_header(struct _packet_plugin* this) {
     set_ipv4_priv_header(_gw.ip, 13);
     set_ipv4_priv_header(_dns1.ip, 17);
 
-    list_destroy(&_ip_list, TRUE);
-    list_destroy(&_dns_list, TRUE);
+    free_ip_list(&_ip_list);
+    free_dns_list(&_dns_list);
 
     return SUCCESS;
 fail:
-    list_destroy(&_ip_list, TRUE);
-    list_destroy(&_dns_list, TRUE);
+    free_ip_list(&_ip_list);
+    free_dns_list(&_dns_list);
 
     return FAILURE;
 }
@@ -470,7 +470,7 @@ RESULT rjv3_prepare_frame(struct _packet_plugin* this, ETH_EAP_FRAME* frame) {
     /* The outside */
     RJ_PROP* _container_prop = new_rjv3_prop();
     if (_container_prop < 0) {
-        list_destroy(&_prop_list, TRUE);
+        destroy_rjv3_prop_list(&_prop_list);
         return FAILURE;
     }
 
@@ -482,7 +482,8 @@ RESULT rjv3_prepare_frame(struct _packet_plugin* this, ETH_EAP_FRAME* frame) {
 
     append_rjv3_prop_to_frame(_container_prop, frame);
 
-    list_destroy(&_prop_list, TRUE);
+    destroy_rjv3_prop_list(&_prop_list);
+    free(_container_prop);
     return SUCCESS;
 }
 
@@ -515,6 +516,7 @@ static void rjv3_show_server_msg(ETH_EAP_FRAME* frame) {
         PR_INFO("计费通知：\n");
         pr_info_gbk((char*)_msg->content, _content_len);
     }
+    destroy_rjv3_prop_list(&_srv_msg);
 }
 
 void rjv3_start_secondary_auth(void* vthis) {
@@ -539,7 +541,7 @@ void rjv3_start_secondary_auth(void* vthis) {
 
 RESULT rjv3_on_frame_received(struct _packet_plugin* this, ETH_EAP_FRAME* frame) {
     PRIV->last_recv_packet = frame;
-    
+
     if (frame->header->eapol_hdr.type[0] == EAP_PACKET) {
         if (frame->header->eap_hdr.code[0] == EAP_SUCCESS) {
             PRIV->succ_count++;

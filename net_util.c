@@ -76,6 +76,7 @@ RESULT obtain_iface_ip_mask(const char* ifname, LIST_ELEMENT** list) {
             insert_data(list, addr);
         }
     } while ((if_curr = if_curr->ifa_next));
+    freeifaddrs(ifaddrs);
     return SUCCESS;
 }
 
@@ -108,7 +109,7 @@ RESULT obtain_dns_list(LIST_ELEMENT** list) {
             }
         }
     }
-
+    fclose(_fp);
     return SUCCESS;
 }
 

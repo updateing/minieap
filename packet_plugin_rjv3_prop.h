@@ -53,6 +53,7 @@ RJ_PROP* new_rjv3_prop();
 int append_rjv3_prop_to_buffer(RJ_PROP* prop, uint8_t* buf, int buflen);
 int append_rjv3_prop_list_to_buffer(LIST_ELEMENT* list, uint8_t* buf, int buflen);
 void append_rjv3_prop_to_frame(RJ_PROP* prop, ETH_EAP_FRAME* frame);
+void destroy_rjv3_prop_list(LIST_ELEMENT** list);
 
 /*
  * Read all props in buffer and form a list of the props.
