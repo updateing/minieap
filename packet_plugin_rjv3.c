@@ -97,20 +97,20 @@ void rjv3_destroy(struct _packet_plugin* this) {
 }
 
 void set_ipv4_priv_header(uint8_t* ipv4_buf, int offset) {
-    pkt_start_priv_header[offset] = bit_reverse(ipv4_buf[0]);
-    pkt_start_priv_header[offset + 1] = bit_reverse(ipv4_buf[1]);
-    pkt_start_priv_header[offset + 2] = bit_reverse(ipv4_buf[2]);
-    pkt_start_priv_header[offset + 3] = bit_reverse(ipv4_buf[3]);
+    pkt_start_priv_header[offset] = bit_reverse(~ipv4_buf[0]);
+    pkt_start_priv_header[offset + 1] = bit_reverse(~ipv4_buf[1]);
+    pkt_start_priv_header[offset + 2] = bit_reverse(~ipv4_buf[2]);
+    pkt_start_priv_header[offset + 3] = bit_reverse(~ipv4_buf[3]);
 
-    pkt_identity_priv_header[offset] = bit_reverse(ipv4_buf[0]);
-    pkt_identity_priv_header[offset + 1] = bit_reverse(ipv4_buf[1]);
-    pkt_identity_priv_header[offset + 2] = bit_reverse(ipv4_buf[2]);
-    pkt_identity_priv_header[offset + 3] = bit_reverse(ipv4_buf[3]);
+    pkt_identity_priv_header[offset] = bit_reverse(~ipv4_buf[0]);
+    pkt_identity_priv_header[offset + 1] = bit_reverse(~ipv4_buf[1]);
+    pkt_identity_priv_header[offset + 2] = bit_reverse(~ipv4_buf[2]);
+    pkt_identity_priv_header[offset + 3] = bit_reverse(~ipv4_buf[3]);
 
-    pkt_challenge_priv_header[offset] = bit_reverse(ipv4_buf[0]);
-    pkt_challenge_priv_header[offset + 1] = bit_reverse(ipv4_buf[1]);
-    pkt_challenge_priv_header[offset + 2] = bit_reverse(ipv4_buf[2]);
-    pkt_challenge_priv_header[offset + 3] = bit_reverse(ipv4_buf[3]);
+    pkt_challenge_priv_header[offset] = bit_reverse(~ipv4_buf[0]);
+    pkt_challenge_priv_header[offset + 1] = bit_reverse(~ipv4_buf[1]);
+    pkt_challenge_priv_header[offset + 2] = bit_reverse(~ipv4_buf[2]);
+    pkt_challenge_priv_header[offset + 3] = bit_reverse(~ipv4_buf[3]);
 }
 
 RESULT rjv3_override_priv_header(struct _packet_plugin* this) {
@@ -173,7 +173,7 @@ fail:
 }
 
 void rjv3_restore_empty_priv_header() {
-    uint8_t _empty[] = {0xff, 0xff, 0xff, 0xff};
+    uint8_t _empty[] = {0x00, 0x00, 0x00, 0x00};
     set_ipv4_priv_header(_empty, 5);
     set_ipv4_priv_header(_empty, 9);
     set_ipv4_priv_header(_empty, 13);

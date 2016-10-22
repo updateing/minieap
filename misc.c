@@ -7,7 +7,7 @@
 #include "logging.h"
 
 
-#define ICONV
+//#define ICONV
 
 #ifdef ICONV
 #include <iconv.h>

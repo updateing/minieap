@@ -7,7 +7,7 @@ MINIEAP_PLUGIN_OBJS += packet_plugin_rjv3.o packet_plugin_rjv3_prop.o packet_plu
 
 MINIEAP_PLUGIN_OBJS += packet_plugin_printer.o
 
-CC := clang -Wall -DDEBUG
+CC := /opt/hndtools-arm-linux-2.6.36-uclibc-4.5.3/bin/arm-brcm-linux-uclibcgnueabi-cc -Wall -DDEBUG
 
 minieap : $(MINIEAP_COMMON_OBJS) $(MINIEAP_PLUGIN_OBJS)
 

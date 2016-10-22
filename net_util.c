@@ -135,8 +135,11 @@ static int read_from_netlink_socket(int sockfd, uint8_t *buf, int seq, int pid) 
         /* Check if the header is valid */
         if ((NLMSG_OK(nlHdr, readLen) == 0)
             || (nlHdr->nlmsg_type == NLMSG_ERROR)) {
-            PR_ERRNO("NETLINK 报告了一个错误");
-            return -1;
+            struct nlmsgerr* _err = (struct nlmsgerr*) NLMSG_DATA(nlHdr);
+            if (_err->error != 0) {
+                PR_ERR("NETLINK 报告了一个错误，已忽略：%d", _err->error);
+                //return -1;
+            }
         }
 
          /* Check if the its the last message */
@@ -188,8 +191,8 @@ static RESULT retrive_if_gateway(const char* ifname, struct nlmsghdr* nl_hdr, st
         }
     }
 
-    PR_DBG("%08X %08X", dst_addr.s_addr, this_gateway.s_addr);
-    if (dst_addr.s_addr == 0 && strncmp(this_ifname, ifname, IFNAMSIZ)) {
+    PR_DBG("%08X %08X %s", dst_addr.s_addr, this_gateway.s_addr, this_ifname);
+    if (dst_addr.s_addr == 0 && strncmp(this_ifname, ifname, IFNAMSIZ) == 0) {
         gateway->s_addr = this_gateway.s_addr;
         return SUCCESS;
     }
