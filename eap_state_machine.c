@@ -199,7 +199,7 @@ static RESULT state_mach_process_failure(ETH_EAP_FRAME* frame) {
 }
 
 void eap_state_machine_recv_handler(ETH_EAP_FRAME* frame) {
-    packet_plugin_on_frame_received(frame);
+    PRIV->last_recv_frame = frame;
     EAPOL_TYPE _eapol_type = frame->header->eapol_hdr.type[0];
     if (_eapol_type == EAP_PACKET) {
         /* We don't want to handle other types here */
@@ -214,24 +214,21 @@ void eap_state_machine_recv_handler(ETH_EAP_FRAME* frame) {
                 memmove(PRIV->server_mac, frame->header->eth_hdr.src_mac, 6);
                 if (_eap_type == IDENTITY) {
                     switch_to_state(EAP_STATE_IDENTITY_SENT, frame);
-                    return;
                 } else if (_eap_type == MD5_CHALLENGE) {
                     switch_to_state(EAP_STATE_CHALLENGE_SENT, frame);
-                    return;
                 }
                 break;
             case EAP_SUCCESS:
                 switch_to_state(EAP_STATE_SUCCESS, frame);
-                return;
                 break;
             case EAP_FAILURE:
                 switch_to_state(EAP_STATE_FAILURE, frame);
-                return;
                 break;
             default:
                 break;
         }
     }
+    packet_plugin_on_frame_received(frame);
 }
 
 static void state_watchdog(void* frame) {
@@ -271,13 +268,13 @@ static RESULT trans_to_challenge_sent(ETH_EAP_FRAME* frame) {
 }
 
 static RESULT trans_to_success(ETH_EAP_FRAME* frame) {
-    unschedule_alarm(PRIV->state_alarm_id);
+    sched_alarm_destroy(); // Remove all alarms
     PRIV->state_alarm_id = 0;
     return state_mach_process_success(frame);
 }
 
 static RESULT trans_to_failure(ETH_EAP_FRAME* frame) {
-    unschedule_alarm(PRIV->state_alarm_id);
+    sched_alarm_destroy(); // Remove all alarms
     PRIV->state_alarm_id = 0;
     return state_mach_process_failure(frame);
 }
@@ -296,6 +293,8 @@ RESULT switch_to_state(EAP_STATE state, ETH_EAP_FRAME* frame) {
             } else {
                 PRIV->state = state;
                 PRIV->state_last_count = 0;
+                unschedule_alarm(PRIV->state_alarm_id);
+                PRIV->state_alarm_id = 0;
             }
             if (IS_FAIL(g_transition_table[i].trans_func(frame))) {
                 PR_ERR("从 %d 状态向 %d 状态的转化函数执行失败", PRIV->state, state);
