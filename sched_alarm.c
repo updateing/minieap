@@ -18,6 +18,7 @@ typedef struct _alarm_event {
 
 static LIST_ELEMENT* g_alarm_list = NULL;
 static int g_last_id = 0;
+static int g_ringing = 0;
 
 static int alarm_event_id_node_cmpfunc(void* id, void* node) {
     if (*(int*)id == ((ALARM_EVENT*)node)->id) {
@@ -31,8 +32,9 @@ static int find_min_remaining(LIST_ELEMENT* list) {
     int _min = INT_MAX;
 
     for (_curr = list; _curr; _curr = _curr->next) {
-        if (((ALARM_EVENT*)_curr->content)->remaining < _min) {
-            _min = ((ALARM_EVENT*)_curr->content)->remaining;
+#define CURR ((ALARM_EVENT*)_curr->content)
+        if (CURR->remaining != 0 && CURR->remaining< _min) {
+            _min = CURR->remaining;
         }
     }
 
@@ -53,11 +55,13 @@ static void update_remaining_and_fire(LIST_ELEMENT* alarm_list, int secs_elapsed
 }
 
 void alarm_sig_handler(int sig) {
+    g_ringing = TRUE;
     int _curr_remaining = find_min_remaining(g_alarm_list);
     /* Must be nearest one that fired the alarm */
     update_remaining_and_fire(g_alarm_list, _curr_remaining);
     _curr_remaining = find_min_remaining(g_alarm_list);
     alarm(_curr_remaining);
+    g_ringing = FALSE;
 }
 
 RESULT sched_alarm_init() {
@@ -85,8 +89,10 @@ int schedule_alarm(int secs, void (*func)(void*), void* user) {
     _event->func = func;
     _event->user = user;
 
-    int _curr_remaining = alarm(0);
-    update_remaining_and_fire(g_alarm_list, _curr_remaining);
+    if (!g_ringing) {
+        int _curr_remaining = alarm(0);
+        update_remaining_and_fire(g_alarm_list, _curr_remaining);
+    }
     int _curr_min = find_min_remaining(g_alarm_list);
     alarm(_curr_min > secs ? secs : _curr_min);
 
