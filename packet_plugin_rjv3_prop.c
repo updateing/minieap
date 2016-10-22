@@ -194,7 +194,7 @@ RESULT parse_rjv3_buf_to_prop_list(LIST_ELEMENT** list, uint8_t* buf, int buflen
                 _read_len += _content_len;
             } else {
                 PR_DBG("字段格式错误，未发现特征值（偏移量 0x%x）", _read_len);
-                return FAILURE;
+                goto err;
             }
         }
     } else {
@@ -216,7 +216,7 @@ RESULT parse_rjv3_buf_to_prop_list(LIST_ELEMENT** list, uint8_t* buf, int buflen
                     uint8_t* _next_magic = find_byte_pattern(_magic, sizeof(_magic),
                                                               buf + _read_len, buflen - _read_len);
                     _content_len = _next_magic ? (_next_magic - (buf + _read_len) - sizeof(RJ_PROP_HEADER1))
-                                                   : buflen - _read_len;
+                                               : buflen - _read_len;
                     PR_WARN("解析数据包时发现未知 header_type: %zu", _tmp_prop->header1.header_type);
                 }
 
@@ -227,9 +227,15 @@ RESULT parse_rjv3_buf_to_prop_list(LIST_ELEMENT** list, uint8_t* buf, int buflen
                 _read_len += _content_len;
             } else {
                 PR_DBG("字段格式错误，未发现特征值（偏移量 0x%x）", _read_len);
-                return FAILURE;
+                goto err;
             }
         }
     }
+
+    free(_tmp_prop);
     return SUCCESS;
+
+err:
+    free(_tmp_prop);
+    return FAILURE;
 }

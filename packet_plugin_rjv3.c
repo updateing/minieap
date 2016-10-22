@@ -33,6 +33,7 @@ typedef struct _packet_plugin_rjv3_priv {
     };
     // Internal state variables
     int succ_count;
+    int dhcp_count; // Used in double auth
     ETH_EAP_FRAME* last_recv_packet;
 } rjv3_priv;
 
@@ -42,9 +43,9 @@ typedef struct _packet_plugin_rjv3_priv {
  * Headers before the fields
  */
 static uint8_t pkt_start_priv_header[] = {
-                0xff, 0xff, 0x37, 0x77, 0x7f, 0xff, /*   ..7w.. */ /* Would be different in second auth */
-    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, /* ........ */
-    0xff, 0xff, 0xff, 0xac, 0xb1, 0xff, 0xb0, 0xb0, /* ........ */
+                0xff, 0xff, 0x37, 0x77, 0x7f, 0xff, /*   ..7w.I */ /* Would be different in second auth */
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, /* Pv4NMSKG */ /* IPv4, NetMaSK, GaTeWaY, Primary DNS */
+    0xff, 0xff, 0xff, 0xac, 0xb1, 0xff, 0xb0, 0xb0, /* TWYPNDS. */
     0x2d, 0x00, 0x00, 0x13, 0x11, 0x38, 0x30, 0x32, /* -....802 */
     0x31, 0x78, 0x2e, 0x65, 0x78, 0x65, 0x00, 0x00, /* 1x.exe.. */
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, /* ........ */
@@ -66,7 +67,7 @@ static uint8_t pkt_identity_priv_header[] = {
 };
 
 static uint8_t pkt_challenge_priv_header[] = {
-                0xff, 0xff, 0x37, 0x77, 0x7f,0xff, /*   ..7w.. */ /* Would be different in second auth */
+                0xff, 0xff, 0x37, 0x77, 0x7f, 0xff, /*   ..7w.. */ /* Would be different in second auth */
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, /* ........ */
     0xff, 0xff, 0xff, 0xac, 0xb1, 0xff, 0xb0, 0xb0, /* ........ */
     0x2d, 0x00, 0x00, 0x13, 0x11, 0x38, 0x30, 0x32, /* -....802 */
@@ -87,6 +88,77 @@ void rjv3_destroy(struct _packet_plugin* this) {
     list_destroy(&PRIV->cmd_prop_mod_list, TRUE);
     chk_free((void**)&this->priv);
     chk_free((void**)&this);
+}
+
+void set_ipv4_priv_header(uint8_t* ipv4_buf, int offset) {
+    if (_addr->family == AF_INET) {
+        pkt_start_priv_header[offset] = bit_reverse(ipv4_buf[0]);
+        pkt_start_priv_header[offset + 1] = bit_reverse(ipv4_buf[1]);
+        pkt_start_priv_header[offset + 2] = bit_reverse(ipv4_buf[2]);
+        pkt_start_priv_header[offset + 3] = bit_reverse(ipv4_buf[3]);
+
+        pkt_identity_priv_header[offset] = bit_reverse(ipv4_buf[0]);
+        pkt_identity_priv_header[offset + 1] = bit_reverse(ipv4_buf[1]);
+        pkt_identity_priv_header[offset + 2] = bit_reverse(ipv4_buf[2]);
+        pkt_identity_priv_header[offset + 3] = bit_reverse(ipv4_buf[3]);
+
+        pkt_challenge_priv_header[offset] = bit_reverse(ipv4_buf[0]);
+        pkt_challenge_priv_header[offset + 1] = bit_reverse(ipv4_buf[1]);
+        pkt_challenge_priv_header[offset + 2] = bit_reverse(ipv4_buf[2]);
+        pkt_challenge_priv_header[offset + 3] = bit_reverse(ipv4_buf[3]);
+    }
+}
+
+RESULT rjv3_override_priv_header(struct _packet_plugin* this) {
+    LIST_ELEMENT* _ip_list = NULL;
+    IP_ADDR* _ipv4 = NULL;
+    if (IS_FAIL(obtain_iface_ip_mask(PRIV->ifname, &_ip_list))
+            || (_ipv4 = find_ip_addr_with_family(_ip_list, AF_INET))) {
+        PR_ERR("IPv4 地址获取错误，将不能在数据包中展示 IPv4 地址");
+        goto fail;
+    }
+
+    IP_ADDR _gw;
+    _gw.family = AF_INET;
+    _gw.mask = {0};
+    if (IS_FAIL(obtain_iface_ipv4_gateway(PRIV->ifname, &_gw.ip))) {
+        PR_ERR("IPv4 网关获取错误，将不能在数据包中展示 IPv4 网关地址");
+        goto fail;
+    }
+
+    char* _dns1_str;
+    IP_ADDR _dns1;
+    _dns1.family = AF_INET;
+    _dns1.mask = {0};
+    if (!PRIV->fake_dns1) {
+        LIST_ELEMENT* _dns_list = NULL;
+        if (IS_FAIL(obtain_dns_list(&_dns_list))) {
+            PR_ERR("主 DNS 地址获取错误，请使用 --fake-dns1 选项手动指定主 DNS 地址");
+            goto fail;
+        }
+        _dns1_str = (const char*)_dns_list->content;
+    } else {
+        _dns1_str = PRIV->fake_dns1;
+    }
+    if (inet_pton(AF_INET, _dns_str1, &_dns1.ip) == 0) {
+            PR_ERR("主 DNS 地址格式错误，要求 IPv4 地址。请使用 --fake-dns1 选项手动指定主 DNS 地址");
+            goto fail;
+    }
+
+    set_ipv4_priv_header(&_ipv4.ip, 5);
+    set_ipv4_priv_header(&_ipv4.mask, 9);
+    set_ipv4_priv_header(&_gw.ip, 13);
+    set_ipv4_priv_header(&_dns1.ip, 17);
+
+    list_destroy(&_ip_list, TRUE);
+    list_destroy(&_dns_list, TRUE);
+
+    return SUCCESS;
+fail:
+    list_destroy(&_ip_list, TRUE);
+    list_destroy(&_dns_list, TRUE);
+
+    return FAILURE;
 }
 
 static RESULT append_rj_cmdline_opt(struct _packet_plugin* this, const char* opt) {
@@ -426,13 +498,33 @@ static void rjv3_show_server_msg(ETH_EAP_FRAME* frame) {
     }
 }
 
+void rjv3_start_secondary_auth(void* vthis) {
+    PACKET_PLUGIN* this = (PACKET_PLUGIN*)vthis;
+    if (IS_FAIL(rjv3_override_priv_header(this))) {
+        PRIV->dhcp_count++;
+        if (PRIV->dhcp_count > 4) {
+            PR_ERR("无法获取 IP 地址等信息，将不会进行第二次认证");
+        } else {
+            PR_WARN("DHCP 可能尚未完成，将继续等待……");
+            schedule_alarm(5, rjv3_start_secondary_auth, vthis);
+        }
+        return;
+    } else {
+        PR_INFO("DHCP 完成，正在开始第二次认证");
+        switch_to_state(EAP_STATE_START_SENT, NULL);
+        return;
+    }
+}
+
 RESULT rjv3_on_frame_received(struct _packet_plugin* this, ETH_EAP_FRAME* frame) {
     PRIV->last_recv_packet = frame;
     if (frame->header->eapol_hdr.type[0] == EAP_PACKET) {
         if (frame->header->eap_hdr.code[0] == EAP_SUCCESS) {
             PRIV->succ_count++;
             rjv3_show_server_msg(frame);
-            // TODO timer to modify header & reauth
+            if (PRIV->succ_count < 2 && PRIV->dhcp_type == DHCP_DOUBLE_AUTH) {
+                schedule_alarm(5, rjv3_start_secondary_auth, this);
+            }
         } else if (frame->header->eap_hdr.code[0] == EAP_FAILURE) {
             rjv3_show_server_msg(frame);
         }

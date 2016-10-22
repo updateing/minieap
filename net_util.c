@@ -14,6 +14,17 @@
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
 
+int ip_addr_family_cmpfunc(void* family, void* ip_addr) {
+    if (*(short*)family == (*(IP_ADDR*)ip_addr)->family) {
+        return 0;
+    }
+    return 1;
+}
+
+IP_ADDR* find_ip_with_family(LIST_ELEMENT* list, short family) {
+    return (IP_ADDR*)lookup_data(list, &family, ip_addr_family_cmpfunc);
+}
+
 RESULT obtain_iface_mac(const char* ifname, uint8_t* adr_buf) {
     struct ifreq ifreq;
     int sockfd = -1;
@@ -37,7 +48,7 @@ RESULT obtain_iface_mac(const char* ifname, uint8_t* adr_buf) {
     return SUCCESS;
 }
 
-RESULT obtain_iface_ip(const char* ifname, LIST_ELEMENT** list) {
+RESULT obtain_iface_ip_mask(const char* ifname, LIST_ELEMENT** list) {
     struct ifaddrs *ifaddrs, *if_curr;
     IP_ADDR *addr;
     if (getifaddrs(&ifaddrs) < 0) {
@@ -53,8 +64,14 @@ RESULT obtain_iface_ip(const char* ifname, LIST_ELEMENT** list) {
             addr->family = if_curr->ifa_addr->sa_family;
             if (addr->family == AF_INET) {
                 memmove(addr->ip, &((struct sockaddr_in*)if_curr->ifa_addr)->sin_addr, 4);
+                if (if_curr->ifa_netmask) {
+                    memmove(addr->mask, &((struct sockaddr_in*)if_curr->ifa_netmask)->sin_addr, 4);
+                }
             } else if (addr->family == AF_INET6) {
                 memmove(addr->ip, &((struct sockaddr_in6*)if_curr->ifa_addr)->sin6_addr, 16);
+                if (if_curr->ifa_netmask) {
+                    memmove(addr->mask, &((struct sockaddr_in6*)if_curr->ifa_netmask)->sin6_addr, 16);
+                }
             }
             insert_data(list, addr);
         }
@@ -72,7 +89,7 @@ RESULT obtain_dns_list(LIST_ELEMENT** list) {
     char* _line_buf_1;
 
     if (_fp <= 0) {
-        PR_ERR("无法从 /etc/resolv.conf 获取 DNS 信息，请使用 --fake-dns 选项手动指定 DNS 地址: %s", ferror(_fp));
+        PR_ERR("无法从 /etc/resolv.conf 获取 DNS 信息，请使用 --fake-dns[1|2] 选项手动指定 DNS 地址: %s", ferror(_fp));
         return FAILURE;
     }
 
@@ -217,10 +234,11 @@ RESULT obtain_iface_ipv4_gateway(const char* ifname, uint8_t* buf) {
         if (!IS_FAIL(retrive_if_gateway(ifname, nl_msg, &addr))) {
             /* IPv4 Only */
             memmove(buf, &addr.s_addr, 4);
-            break;
+            close(sockfd);
+            return SUCCESS;
         }
     }
     close(sockfd);
 
-    return SUCCESS;
+    return FAILURE;
 }

@@ -8,6 +8,7 @@
 typedef struct _ip_addr {
     unsigned short family;
     uint8_t ip[16]; /* IPv4 and IPv6. IPv4 takes first 4 bytes */
+    uint8_t mask[16];
 } IP_ADDR;
 
 /*
@@ -25,8 +26,9 @@ RESULT obtain_iface_mac(const char* ifname, uint8_t* address_buf);
  *
  * Return: if the operation was successful
  */
-RESULT obtain_iface_ip(const char* ifname, LIST_ELEMENT** list);
+RESULT obtain_iface_ip_mask(const char* ifname, LIST_ELEMENT** list);
 void free_ip_list(LIST_ELEMENT** list);
+IP_ADDR* find_ip_with_family(LIST_ELEMENT* list, short family);
 
 /*
  * Obtain a list of DNS servers in /etc/resolv.conf
