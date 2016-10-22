@@ -3,6 +3,7 @@
 
 #include "packet_plugin_rjv3_priv.h"
 #include "linkedlist.h"
+#include "minieap_common.h"
 
 #include <stdint.h>
 
@@ -52,4 +53,11 @@ RJ_PROP* new_rjv3_prop();
 int append_rjv3_prop_to_buffer(RJ_PROP* prop, uint8_t* buf, int buflen);
 int append_rjv3_prop_list_to_buffer(LIST_ELEMENT* list, uint8_t* buf, int buflen);
 void append_rjv3_prop_to_frame(RJ_PROP* prop, ETH_EAP_FRAME* frame);
+
+/*
+ * Read all props in buffer and form a list of the props.
+ *
+ * Make sure buf starts with xx xx 00 00 13 11 (normal) or 00 00 13 11 (bare)
+ */
+RESULT parse_rjv3_buf_to_prop_list(LIST_ELEMENT** list, uint8_t* buf, int buflen, int bare);
 #endif
