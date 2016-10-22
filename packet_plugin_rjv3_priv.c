@@ -55,7 +55,7 @@ void rjv3_set_ipv6_addr(uint8_t* ll_slaac, uint8_t* ll_temp, uint8_t* global) {
     char ifname[IFNAMSIZ] = {0};
     _if_impl->get_ifname(_if_impl, ifname, IFNAMSIZ);
 
-    obtain_iface_ip(ifname, &_ip_list);
+    obtain_iface_ip_mask(ifname, &_ip_list);
     _ip_curr = _ip_list;
 
 #define IP_ELEM ((IP_ADDR*)(_ip_curr->content))

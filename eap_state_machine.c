@@ -235,8 +235,8 @@ void eap_state_machine_recv_handler(ETH_EAP_FRAME* frame) {
 }
 
 static void state_watchdog(void* frame) {
-    switch_to_state(PRIV->state, (ETH_EAP_FRAME*)frame);
-    PRIV->state_alarm_id = schedule_alarm(5, state_watchdog, frame);
+    switch_to_state(PRIV->state, PRIV->last_recv_frame);
+    PRIV->state_alarm_id = schedule_alarm(5, state_watchdog, NULL);
 }
 
 static RESULT trans_to_preparing(ETH_EAP_FRAME* frame) {
@@ -249,7 +249,7 @@ static RESULT trans_to_preparing(ETH_EAP_FRAME* frame) {
 static RESULT trans_to_start_sent(ETH_EAP_FRAME* frame) {
     PR_INFO("正在查找认证服务器");
     if (PRIV->state_alarm_id <= 0) {
-        PRIV->state_alarm_id = schedule_alarm(5, state_watchdog, frame);
+        PRIV->state_alarm_id = schedule_alarm(5, state_watchdog, NULL);
     }
     return state_mach_send_eapol_simple(EAPOL_START);
 }
@@ -257,7 +257,7 @@ static RESULT trans_to_start_sent(ETH_EAP_FRAME* frame) {
 static RESULT trans_to_identity_sent(ETH_EAP_FRAME* frame) {
     PR_INFO("正在发送用户名");
     if (PRIV->state_alarm_id <= 0) {
-        PRIV->state_alarm_id = schedule_alarm(5, state_watchdog, frame);
+        PRIV->state_alarm_id = schedule_alarm(5, state_watchdog, NULL);
     }
     return state_mach_send_identity_response(frame);
 }
@@ -265,7 +265,7 @@ static RESULT trans_to_identity_sent(ETH_EAP_FRAME* frame) {
 static RESULT trans_to_challenge_sent(ETH_EAP_FRAME* frame) {
     PR_INFO("正在发送密码");
     if (PRIV->state_alarm_id <= 0) {
-        PRIV->state_alarm_id = schedule_alarm(5, state_watchdog, frame);
+        PRIV->state_alarm_id = schedule_alarm(5, state_watchdog, NULL);
     }
     return state_mach_send_challenge_response(frame);
 }

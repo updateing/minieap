@@ -14,8 +14,8 @@
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
 
-int ip_addr_family_cmpfunc(void* family, void* ip_addr) {
-    if (*(short*)family == (*(IP_ADDR*)ip_addr)->family) {
+static int ip_addr_family_cmpfunc(void* family, void* ip_addr) {
+    if (*(short*)family == ((IP_ADDR*)ip_addr)->family) {
         return 0;
     }
     return 1;
@@ -96,9 +96,9 @@ RESULT obtain_dns_list(LIST_ELEMENT** list) {
     while (fgets(_line_buf, MAX_LINE_LEN, _fp)) {
         if (_line_buf[0] != '#') {
             _line_buf_1 = strtok(_line_buf, " ");
-            if (_line_buf == NULL || strcmp(_line_buf, "nameserver") != 0) continue;
+            if (_line_buf_1 == NULL || strcmp(_line_buf_1, "nameserver") != 0) continue;
             _line_buf_1 = strtok(NULL, " ");
-            if (_line_buf != NULL) {
+            if (_line_buf_1 != NULL) {
                 int _len = strnlen(_line_buf_1, INET6_ADDRSTRLEN);
                 if (_line_buf_1[_len - 1] == '\n') {
                     _line_buf_1[_len - 1] = 0;
@@ -176,17 +176,18 @@ static RESULT retrive_if_gateway(const char* ifname, struct nlmsghdr* nl_hdr, st
     for (; RTA_OK(rtAttr, rtLen); rtAttr = RTA_NEXT(rtAttr, rtLen)) {
         switch (rtAttr->rta_type) {
         case RTA_OIF:
-            if_indextoname(*(int *) RTA_DATA(rtAttr), this_ifname);
+            if_indextoname(*(uint32_t *) RTA_DATA(rtAttr), this_ifname);
             break;
         case RTA_GATEWAY:
-            this_gateway.s_addr= *(u_int *) RTA_DATA(rtAttr);
+            this_gateway.s_addr = *(uint32_t *) RTA_DATA(rtAttr);
             break;
         case RTA_DST:
-            dst_addr.s_addr= *(u_int *) RTA_DATA(rtAttr);
+            dst_addr.s_addr = *(uint32_t *) RTA_DATA(rtAttr);
             break;
         }
     }
 
+    PR_DBG("%08X %08X", dst_addr.s_addr, this_gateway.s_addr);
     if (dst_addr.s_addr == 0 && strncmp(this_ifname, ifname, IFNAMSIZ)) {
         gateway->s_addr = this_gateway.s_addr;
         return SUCCESS;

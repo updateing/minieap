@@ -32,7 +32,7 @@ int init_packet_plugin_list() {
 }
 
 static int plugin_name_cmp(void* to_find, void* curr) {
-    return memcmp(to_find, ((PACKET_PLUGIN*)curr)->name, strlen(curr));
+    return memcmp(to_find, ((PACKET_PLUGIN*)curr)->name, strlen(to_find));
 }
 
 RESULT select_packet_plugin(const char* name) {

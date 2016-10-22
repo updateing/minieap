@@ -35,7 +35,7 @@ uint8_t char2hex(const char* str) {
 
 uint8_t bit_reverse(uint8_t in) {
     static const uint8_t half_reverse_table[] = {
-        0x0, 0x8, 0x4, 0xc, 0x2, 0xa, 0x6, 0x3,
+        0x0, 0x8, 0x4, 0xc, 0x2, 0xa, 0x6, 0xe,
         0x1, 0x9, 0x5, 0xd, 0x3, 0xb, 0x7, 0xf
     };
 
@@ -61,6 +61,7 @@ legacy:
 void pr_info_gbk(char* in, size_t inlen) {
     size_t _utf8_size = (inlen >> 1) * 3;
     char* _utf8_buf = (char*)malloc(_utf8_size);
+    memset(_utf8_buf, 0, _utf8_size);
     if (_utf8_buf > 0) {
         gbk2utf8(in, inlen, _utf8_buf, _utf8_size);
         PR_INFO("%s", _utf8_buf);

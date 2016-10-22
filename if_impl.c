@@ -1,5 +1,6 @@
 #include "linkedlist.h"
 #include "if_impl.h"
+#include "logging.h"
 #include <string.h>
 
 /* content of this list is IF_IMPL* */
@@ -22,7 +23,7 @@ int init_if_impl_list() {
 }
 
 static int impl_name_cmp(void* to_find, void* curr) {
-    return memcmp(to_find, ((IF_IMPL*)curr)->name, strlen(curr));
+    return memcmp(to_find, ((IF_IMPL*)curr)->name, strlen(to_find));
 }
 
 RESULT select_if_impl(const char* name) {

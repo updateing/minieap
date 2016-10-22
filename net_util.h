@@ -39,4 +39,6 @@ IP_ADDR* find_ip_with_family(LIST_ELEMENT* list, short family);
  */
 RESULT obtain_dns_list(LIST_ELEMENT** list);
 void free_dns_list(LIST_ELEMENT** list);
+
+RESULT obtain_iface_ipv4_gateway(const char* ifname, uint8_t* buf);
 #endif
