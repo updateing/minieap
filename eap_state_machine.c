@@ -8,6 +8,8 @@
 #include "minieap_common.h"
 #include "eth_frame.h"
 #include "net_util.h"
+#include "sched_alarm.h"
+
 #include <stdlib.h>
 
 typedef struct _state_mach_priv {
@@ -183,15 +185,18 @@ static RESULT state_mach_process_success(ETH_EAP_FRAME* frame) {
     }
 }
 
+static void restart_auth(void* unused) {
+    switch_to_state(EAP_STATE_START_SENT, NULL);
+}
+
 static RESULT state_mach_process_failure(ETH_EAP_FRAME* frame) {
-    // TODO show reason -> rjv3
     PROG_CONFIG* _cfg = get_program_config();
     if (++PRIV->fail_count == _cfg->max_failures) {
         PR_ERR("认证失败 %d 次，已达到指定次数，正在退出……", PRIV->fail_count);
         exit(FAILURE);
     } else {
         PR_ERR("认证失败 %d 次，将在 %d 秒后重试……", PRIV->fail_count, _cfg->wait_after_fail_secs);
-        // TODO start alarm
+        schedule_alarm(_cfg->wait_after_fail_secs, restart_auth, NULL);
         return SUCCESS;
     }
 }
