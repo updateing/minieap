@@ -159,9 +159,9 @@ static int read_from_netlink_socket(int sockfd, uint8_t *buf, int seq, int pid) 
 static RESULT retrive_if_gateway(const char* ifname, struct nlmsghdr* nl_hdr, struct in_addr* gateway) {
     struct rtmsg *rtMsg;
     struct rtattr *rtAttr;
-    struct in_addr dst_addr, this_gateway;
-    int rtLen;
-    char this_ifname[IFNAMSIZ];
+    struct in_addr dst_addr = {0}, this_gateway = {0};
+    int rtLen = 0;
+    char this_ifname[IFNAMSIZ] = {0};
 
     rtMsg = (struct rtmsg *) NLMSG_DATA(nl_hdr);
 
@@ -205,6 +205,8 @@ RESULT obtain_iface_ipv4_gateway(const char* ifname, uint8_t* buf) {
         PR_ERRNO("NETLINK 套接字打开失败");
         return FAILURE;
     }
+
+    memset(msg_buf, 0, sizeof(msg_buf));
 
     /* Point the header and the msg structure pointers into the buffer */
     nl_msg = (struct nlmsghdr *) msg_buf;
