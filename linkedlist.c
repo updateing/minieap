@@ -41,10 +41,12 @@ void* lookup_data(LIST_ELEMENT* start, void* elem_to_find, int(*cmpfunc)(void*, 
 
 void list_traverse(LIST_ELEMENT* start, void(*func)(void*, void*), void* user) {
     if (start == NULL) return;
-    LIST_ELEMENT* node = start;
-    do {
+    LIST_ELEMENT* node = start, *_tmp = NULL;
+    while (node) {
+        _tmp = node->next;
         func(node->content, user);
-    } while ((node = node->next));
+        node = _tmp;
+    }
 }
 
 void list_destroy(LIST_ELEMENT** ref, int free_content) {
