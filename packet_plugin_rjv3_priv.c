@@ -108,6 +108,8 @@ void rjv3_set_secondary_dns(char* dns_ascii_buf, char* fake_dns) {
     /* Only care about 2nd one */
     if (dns_list && dns_list->next) {
         strncpy(dns_ascii_buf, dns_list->next->content, INET6_ADDRSTRLEN);
+    } else {
+        PR_WARN("第二 DNS 地址获取错误。若认证失败，请用 --fake-dns2 指定第二 DNS 地址")
     }
     free_dns_list(&dns_list);
     return;

@@ -90,7 +90,7 @@ RESULT obtain_dns_list(LIST_ELEMENT** list) {
     char* _line_buf_1;
 
     if (_fp <= 0) {
-        PR_ERR("无法从 /etc/resolv.conf 获取 DNS 信息，请使用 --fake-dns[1|2] 选项手动指定 DNS 地址: %s", ferror(_fp));
+        PR_ERR("无法从 /etc/resolv.conf 获取 DNS 信息: %s", ferror(_fp));
         return FAILURE;
     }
 
@@ -137,8 +137,8 @@ static int read_from_netlink_socket(int sockfd, uint8_t *buf, int seq, int pid) 
             || (nlHdr->nlmsg_type == NLMSG_ERROR)) {
             struct nlmsgerr* _err = (struct nlmsgerr*) NLMSG_DATA(nlHdr);
             if (_err->error != 0) {
-                PR_ERR("NETLINK 报告了一个错误，已忽略：%d", _err->error);
-                //return -1;
+                PR_ERR("NETLINK 报告了一个错误 (%d)", _err->error);
+                return -1;
             }
         }
 
@@ -203,7 +203,7 @@ RESULT obtain_iface_ipv4_gateway(const char* ifname, uint8_t* buf) {
     struct nlmsghdr *nl_msg;
     uint8_t msg_buf[NL_BUFSIZE];
 
-    int sockfd, len, msg_seq = 0;
+    int sockfd, len, msg_seq = 0, rand_pid = rand() % 65536;
 
     if ((sockfd = socket(PF_NETLINK, SOCK_DGRAM, NETLINK_ROUTE)) < 0) {
         PR_ERRNO("NETLINK 套接字打开失败");
@@ -221,17 +221,17 @@ RESULT obtain_iface_ipv4_gateway(const char* ifname, uint8_t* buf) {
 
     nl_msg->nlmsg_flags = NLM_F_DUMP | NLM_F_REQUEST;    // The message is a request for dump.
     nl_msg->nlmsg_seq = msg_seq++;    // Sequence of the message packet.
-    nl_msg->nlmsg_pid = getpid();    // PID of process sending the request.
+    nl_msg->nlmsg_pid = rand_pid;    // PID of process sending the request.
 
     /* Send the request */
     if (send(sockfd, nl_msg, nl_msg->nlmsg_len, 0) < 0) {
         PR_ERRNO("无法向 NETLINK 发送请求");
-        return FAILURE;
+        goto err;
     }
 
     /* Read the response */
-    if ((len = read_from_netlink_socket(sockfd, msg_buf, msg_seq, getpid())) < 0) {
-        return FAILURE;
+    if ((len = read_from_netlink_socket(sockfd, msg_buf, msg_seq, rand_pid)) < 0) {
+        goto err;
     }
 
     /* Parse and print the response */
@@ -245,7 +245,7 @@ RESULT obtain_iface_ipv4_gateway(const char* ifname, uint8_t* buf) {
             return SUCCESS;
         }
     }
+err:
     close(sockfd);
-
     return FAILURE;
 }

@@ -1,5 +1,5 @@
 MINIEAP_COMMON_OBJS := config.o logging.o minieap.o misc.o linkedlist.o if_impl.o packet_builder.o \
-    packet_util.o packet_plugin.o eap_state_machine.o net_util.o sched_alarm.o
+    packet_util.o packet_plugin.o eap_state_machine.o net_util.o sched_alarm.o ifaddrs.o
 
 MINIEAP_PLUGIN_OBJS := if_impl_sockraw.o
 MINIEAP_PLUGIN_OBJS += packet_plugin_rjv3.o packet_plugin_rjv3_prop.o packet_plugin_rjv3_priv.o \
@@ -7,7 +7,7 @@ MINIEAP_PLUGIN_OBJS += packet_plugin_rjv3.o packet_plugin_rjv3_prop.o packet_plu
 
 MINIEAP_PLUGIN_OBJS += packet_plugin_printer.o
 
-CC := /opt/hndtools-arm-linux-2.6.36-uclibc-4.5.3/bin/arm-brcm-linux-uclibcgnueabi-cc -Wall -DDEBUG
+CC := /opt/hndtools-arm-linux-2.6.36-uclibc-4.5.3/bin/arm-brcm-linux-uclibcgnueabi-cc -Wall -DDEBUG -g
 
 minieap : $(MINIEAP_COMMON_OBJS) $(MINIEAP_PLUGIN_OBJS)
 

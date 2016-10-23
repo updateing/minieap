@@ -12,6 +12,7 @@
 #include <arpa/inet.h>
 #include <linux/if_ether.h>
 #include <signal.h>
+#include <time.h>
 
 /*
  * Initialize the settings.
@@ -133,8 +134,8 @@ static void signal_handler(int signal) {
  * Detailed errors are printed where they happen, not here ...
  */
 int main(int argc, char* argv[]) {
+    srand(time(0));
     atexit(exit_handler);
-	signal(SIGALRM, signal_handler);
 	signal(SIGHUP, signal_handler);
 	signal(SIGINT, signal_handler);
 	signal(SIGTERM, signal_handler);

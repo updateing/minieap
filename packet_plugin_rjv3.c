@@ -554,12 +554,17 @@ RESULT rjv3_on_frame_received(struct _packet_plugin* this, ETH_EAP_FRAME* frame)
                 if (PRIV->succ_count < 2) {
                     PR_INFO("正在执行 DHCP 脚本以准备第二次认证");
                     schedule_alarm(5, rjv3_start_secondary_auth, this);
+                    return SUCCESS;
                 } else {
                     /* Double success */
                     PRIV->dhcp_count = 0;
+                    PRIV->succ_count = 0
                     rjv3_restore_empty_priv_header();
+                    PR_INFO("二次认证成功");
                 }
             }
+            PR_INFO("正定时发送 Keep-Alive 报文以保持在线……");
+            // TODO keep alive
         } else if (frame->header->eap_hdr.code[0] == EAP_FAILURE) {
             rjv3_show_server_msg(frame);
         }
