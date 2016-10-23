@@ -426,9 +426,7 @@ RESULT rjv3_append_priv(struct _packet_plugin* this, ETH_EAP_FRAME* frame) {
     rjv3_append_priv_header(this, frame);
 
     /* Let's make the big news! */
-    _single_len = rjv3_append_common_fields(this, &_prop_list,
-                                            frame->header->eapol_hdr.type[0] == EAP_PACKET &&
-                                                frame->header->eap_hdr.code[0] == MD5_CHALLENGE);
+    _single_len = rjv3_append_common_fields(this, &_prop_list, IS_MD5_FRAME(frame));
     if (_single_len < 0) {
         return FAILURE;
     }
