@@ -51,7 +51,7 @@ void builder_set_eap_fields(struct _packet_builder* this,
                        EAP_TYPE eap_type, int id, EAP_CONFIG* config) {
     PRIV->frame_header.eapol_hdr.ver[0] = 1; // Force EAPOL version = 1
     PRIV->frame_header.eapol_hdr.type[0] = (unsigned char)eapol_type;
-    if (eapol_type == EAPOL_START || eapol_type == EAPOL_LOGOFF) {
+    if (eapol_type != EAP_PACKET) {
         PRIV->frame_header.eapol_hdr.len[0] = 0;
         PRIV->frame_header.eapol_hdr.len[1] = 0;
         return;

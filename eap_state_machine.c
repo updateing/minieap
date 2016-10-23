@@ -288,7 +288,7 @@ RESULT switch_to_state(EAP_STATE state, ETH_EAP_FRAME* frame) {
                 PRIV->state_last_count++;
                 if (PRIV->state_last_count == _cfg->max_retries) {
                     PR_ERR("在 %d 状态已经停留了 %d 次，达到指定次数，正在退出……", PRIV->state, _cfg->max_retries);
-                    exit(FAILURE);
+                    exit(EXIT_FAILURE);
                 }
             } else {
                 PRIV->state = state;
@@ -297,8 +297,8 @@ RESULT switch_to_state(EAP_STATE state, ETH_EAP_FRAME* frame) {
                 PRIV->state_alarm_id = 0;
             }
             if (IS_FAIL(g_transition_table[i].trans_func(frame))) {
-                PR_ERR("从 %d 状态向 %d 状态的转化函数执行失败", PRIV->state, state);
-                return FAILURE;
+                PR_ERR("从 %d 状态向 %d 状态的转化函数执行失败，正在退出……", PRIV->state, state);
+                exit(EXIT_FAILURE);
             }
             return SUCCESS;
         }

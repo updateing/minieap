@@ -5,6 +5,7 @@
 #include "logging.h"
 #include "packet_plugin_rjv3_priv.h"
 #include "packet_plugin_rjv3_prop.h"
+#include "packet_plugin_rjv3_keepalive.h"
 #include "packet_util.h"
 #include "eth_frame.h"
 #include "packet_plugin_rjv3.h"
@@ -185,11 +186,13 @@ RESULT rjv3_prepare_frame(struct _packet_plugin* this, ETH_EAP_FRAME* frame) {
 
 static RESULT rjv3_process_success(struct _packet_plugin* this, ETH_EAP_FRAME* frame) {
     PRIV->succ_count++;
-    rjv3_show_server_msg(frame);
+    if (IS_FAIL(rjv3_process_result_priv(frame))) {
+        return FAILURE;
+    }
     if (PRIV->dhcp_type == DHCP_DOUBLE_AUTH) {
         if (PRIV->succ_count < 2) {
             PR_INFO("正在执行 DHCP 脚本以准备第二次认证");
-            system("");
+            system(""); // TODO
 
             /* Try right before the script ends */
             rjv3_start_secondary_auth(this);
@@ -202,12 +205,12 @@ static RESULT rjv3_process_success(struct _packet_plugin* this, ETH_EAP_FRAME* f
         }
     }
     PR_INFO("正定时发送 Keep-Alive 报文以保持在线……");
-    // TODO keep alive
+    schedule_alarm(1, rjv3_send_keepalive_timed, this);
     return SUCCESS;
 }
 
 static RESULT rjv3_process_failure(PACKET_PLUGIN* this, ETH_EAP_FRAME* frame) {
-    rjv3_show_server_msg(frame);
+    rjv3_process_result_priv(frame);
     rjv3_reset_state(this);
     return SUCCESS;
 }

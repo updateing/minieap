@@ -1,5 +1,6 @@
 #include "packet_plugin_rjv3_priv.h"
 #include "packet_plugin_rjv3_prop.h"
+#include "packet_plugin_rjv3_keepalive.h"
 #include "eth_frame.h"
 #include "if_impl.h"
 #include "checkV4.h"
@@ -12,6 +13,7 @@
 #include "eap_state_machine.h"
 #include "sched_alarm.h"
 
+#include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
 #include <netinet/in.h>
@@ -377,6 +379,7 @@ static int rjv3_append_common_fields(PACKET_PLUGIN* this, LIST_ELEMENT** list, i
     return _len;
 }
 
+/* The bytes containing twisted IPv4 addresses */
 static void rjv3_append_priv_header(struct _packet_plugin* this, ETH_EAP_FRAME* frame) {
     EAPOL_TYPE _eapol_type = frame->header->eapol_hdr.type[0];
     switch (_eapol_type) {
@@ -402,6 +405,7 @@ static void rjv3_append_priv_header(struct _packet_plugin* this, ETH_EAP_FRAME* 
     }
 }
 
+/* Append everything proprietary */
 RESULT rjv3_append_priv(struct _packet_plugin* this, ETH_EAP_FRAME* frame) {
     /*
      * Size field, its format is NOT the same as those header1.magic == 0x1a ones.
@@ -471,7 +475,16 @@ RESULT rjv3_append_priv(struct _packet_plugin* this, ETH_EAP_FRAME* frame) {
     return SUCCESS;
 }
 
-void rjv3_show_server_msg(ETH_EAP_FRAME* frame) {
+static int rjv3_find_echokey_prop(void* unused, void* prop) {
+    RJ_PROP* _prop = (RJ_PROP*)prop;
+
+    if (_prop->header2.type == 0x1 && PROP_TO_CONTENT_SIZE(_prop) != 0) {
+        return 0;
+    }
+    return 1;
+}
+
+RESULT rjv3_process_result_priv(ETH_EAP_FRAME* frame) {
     LIST_ELEMENT* _srv_msg = NULL;
     RJ_PROP* _msg = NULL;
 
@@ -504,7 +517,22 @@ void rjv3_show_server_msg(ETH_EAP_FRAME* frame) {
             pr_info_gbk((char*)_msg->content, _content_len);
         }
     }
+    _msg = NULL;
+    _msg = (RJ_PROP*)lookup_data(_srv_msg, NULL, rjv3_find_echokey_prop);
+    if (_msg == NULL) {
+        PR_ERR("无法找到 echo key 的位置，将不能进行心跳");
+        return FAILURE;
+    } else {
+        uint32_t _echokey = 0;
+        _echokey |= bit_reverse(~*(_msg->content + 6)) << 24;
+        _echokey |= bit_reverse(~*(_msg->content + 7)) << 16;
+        _echokey |= bit_reverse(~*(_msg->content + 8)) << 8;
+        _echokey |= bit_reverse(~*(_msg->content + 9));
+        rjv3_set_keepalive_echokey(_echokey);
+        rjv3_set_keepalive_echono(rand() & 0xffff);
+    }
     destroy_rjv3_prop_list(&_srv_msg);
+    return SUCCESS;
 }
 
 void rjv3_start_secondary_auth(void* vthis) {
@@ -515,6 +543,7 @@ void rjv3_start_secondary_auth(void* vthis) {
         PRIV->dhcp_count++;
         if (PRIV->dhcp_count > _cfg->max_failures) {
             PR_ERR("无法获取 IP 地址等信息，将不会进行第二次认证");
+            schedule_alarm(1, rjv3_send_keepalive_timed, this);
         } else {
             PR_WARN("DHCP 可能尚未完成，将继续等待……");
             schedule_alarm(5, rjv3_start_secondary_auth, vthis);
@@ -527,7 +556,6 @@ void rjv3_start_secondary_auth(void* vthis) {
     }
 }
 
-
 void rjv3_reset_priv_header() {
     uint8_t _empty[] = {0x00, 0x00, 0x00, 0x00};
     set_ipv4_priv_header(_empty, 5);
@@ -535,4 +563,3 @@ void rjv3_reset_priv_header() {
     set_ipv4_priv_header(_empty, 13);
     set_ipv4_priv_header(_empty, 17);
 }
-
