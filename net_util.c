@@ -13,6 +13,7 @@
 #include <unistd.h>
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
+#include <stdlib.h>
 
 static int ip_addr_family_cmpfunc(void* family, void* ip_addr) {
     if (*(short*)family == ((IP_ADDR*)ip_addr)->family) {

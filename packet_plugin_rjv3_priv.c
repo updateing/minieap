@@ -7,6 +7,10 @@
 #include "linkedlist.h"
 #include "logging.h"
 #include "net_util.h"
+#include "packet_util.h"
+#include "misc.h"
+#include "eap_state_machine.h"
+#include "sched_alarm.h"
 
 #include <stdint.h>
 #include <string.h>
@@ -16,16 +20,56 @@
 #include <stdio.h>
 #include <fcntl.h>
 #include <malloc.h>
+#include <arpa/inet.h>
+
+/*
+ * Headers before the fields
+ */
+static uint8_t pkt_start_priv_header[] = {
+                0xff, 0xff, 0x37, 0x77, 0x7f, 0xff, /*   ..7w.I */ /* Would be different in second auth */
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, /* Pv4NMSKG */ /* IPv4, NetMaSK, GaTeWaY, Primary DNS */
+    0xff, 0xff, 0xff, 0xac, 0xb1, 0xff, 0xb0, 0xb0, /* TWYPDNS. */
+    0x2d, 0x00, 0x00, 0x13, 0x11, 0x38, 0x30, 0x32, /* -....802 */
+    0x31, 0x78, 0x2e, 0x65, 0x78, 0x65, 0x00, 0x00, /* 1x.exe.. */
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, /* ........ */
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, /* ........ */
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x01, 0x01, /* ........ */
+//    0x02, 0x00, 0x00, 0x00, 0x13, 0x11, 0x01, 0xb1, /* ........ */
+};
+
+static uint8_t pkt_identity_priv_header[] = {
+                0xff, 0xff, 0x37, 0x77, 0x7f, 0xff, /*   ..7w.. */ /* Would be different in second auth */
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, /* ........ */
+    0xff, 0xff, 0xff, 0xac, 0xb1, 0xff, 0xb0, 0xb0, /* ........ */
+    0x2d, 0x00, 0x00, 0x13, 0x11, 0x38, 0x30, 0x32, /* -....802 */
+    0x31, 0x78, 0x2e, 0x65, 0x78, 0x65, 0x00, 0x00, /* 1x.exe.. */
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, /* ........ */
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, /* ........ */
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x01, 0x01, /* ........ */
+//    0x02, 0x00, 0x00, 0x00, 0x13, 0x11, 0x01, 0xb1, /* ........ */
+};
+
+static uint8_t pkt_challenge_priv_header[] = {
+                0xff, 0xff, 0x37, 0x77, 0x7f, 0xff, /*   ..7w.. */ /* Would be different in second auth */
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, /* ........ */
+    0xff, 0xff, 0xff, 0xac, 0xb1, 0xff, 0xb0, 0xb0, /* ........ */
+    0x2d, 0x00, 0x00, 0x13, 0x11, 0x38, 0x30, 0x32, /* -....802 */
+    0x31, 0x78, 0x2e, 0x65, 0x78, 0x65, 0x00, 0x00, /* 1x.exe.. */
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, /* ........ */
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, /* ........ */
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x01, 0x01, /* ........ */
+//    0x02, 0x00, 0x00, 0x00, 0x13, 0x11, 0x01, 0xc1, /* ........ */
+};
 
 #define IS_MD5_FRAME(frame) \
     (frame != NULL && frame->header->eapol_hdr.type[0] == EAP_PACKET \
         && frame->header->eap_hdr.type[0] == MD5_CHALLENGE)
 
-void rjv3_set_dhcp_en(uint8_t* dhcp_en_arr, DHCP_TYPE dhcp_type) {
+static void rjv3_set_dhcp_en(uint8_t* dhcp_en_arr, DHCP_TYPE dhcp_type) {
     dhcp_en_arr[3] = (dhcp_type != DHCP_NONE);
 }
 
-void rjv3_set_local_mac(uint8_t* mac_buf) {
+static void rjv3_set_local_mac(uint8_t* mac_buf) {
     IF_IMPL* _if_impl = get_if_impl();
     if (_if_impl == NULL) return;
 
@@ -35,7 +79,7 @@ void rjv3_set_local_mac(uint8_t* mac_buf) {
     obtain_iface_mac(ifname, mac_buf);
 }
 
-void rjv3_set_pwd_hash(uint8_t* hash_buf, ETH_EAP_FRAME* request) {
+static void rjv3_set_pwd_hash(uint8_t* hash_buf, ETH_EAP_FRAME* request) {
     if (IS_MD5_FRAME(request)) {
         uint8_t* _hash_buf;
         EAP_CONFIG* _eap_config = get_eap_config();
@@ -47,7 +91,7 @@ void rjv3_set_pwd_hash(uint8_t* hash_buf, ETH_EAP_FRAME* request) {
     }
 }
 
-void rjv3_set_ipv6_addr(uint8_t* ll_slaac, uint8_t* ll_temp, uint8_t* global) {
+static void rjv3_set_ipv6_addr(uint8_t* ll_slaac, uint8_t* ll_temp, uint8_t* global) {
     LIST_ELEMENT *_ip_list = NULL, *_ip_curr;
     IF_IMPL* _if_impl = get_if_impl();
     if (_if_impl == NULL) return;
@@ -77,7 +121,7 @@ void rjv3_set_ipv6_addr(uint8_t* ll_slaac, uint8_t* ll_temp, uint8_t* global) {
     list_destroy(&_ip_list, TRUE);
 }
 
-void rjv3_set_v3_hash(uint8_t* hash_buf, ETH_EAP_FRAME* request) {
+static void rjv3_set_v3_hash(uint8_t* hash_buf, ETH_EAP_FRAME* request) {
     uint8_t* _v3_buf;
 
     /* computeV4 returns its internal buffer, which can not be freed */
@@ -91,11 +135,11 @@ void rjv3_set_v3_hash(uint8_t* hash_buf, ETH_EAP_FRAME* request) {
     memmove(hash_buf, _v3_buf, 0x80);
 }
 
-void rjv3_set_service_name(uint8_t* name_buf, char* cmd_opt) {
+static void rjv3_set_service_name(uint8_t* name_buf, char* cmd_opt) {
     memmove(name_buf, cmd_opt, strlen(cmd_opt));
 };
 
-void rjv3_set_secondary_dns(char* dns_ascii_buf, char* fake_dns) {
+static void rjv3_set_secondary_dns(char* dns_ascii_buf, char* fake_dns) {
     if (fake_dns != NULL) {
         memmove(dns_ascii_buf, fake_dns, strnlen(fake_dns, INET6_ADDRSTRLEN));
         return;
@@ -115,7 +159,7 @@ void rjv3_set_secondary_dns(char* dns_ascii_buf, char* fake_dns) {
     return;
 }
 
-void rjv3_set_hdd_serial(uint8_t* serial_buf, char* fake_serial) {
+static void rjv3_set_hdd_serial(uint8_t* serial_buf, char* fake_serial) {
     if (fake_serial != NULL) {
         memmove(serial_buf, fake_serial, strnlen(fake_serial, MAX_PROP_LEN));
         return;
@@ -169,3 +213,326 @@ close_return:
     if (_root_dev) free(_root_dev);
     return;
 }
+
+#define PRIV ((rjv3_priv*)(this->priv))
+
+static void set_ipv4_priv_header(uint8_t* ipv4_buf, int offset) {
+    pkt_start_priv_header[offset] = bit_reverse(~ipv4_buf[0]);
+    pkt_start_priv_header[offset + 1] = bit_reverse(~ipv4_buf[1]);
+    pkt_start_priv_header[offset + 2] = bit_reverse(~ipv4_buf[2]);
+    pkt_start_priv_header[offset + 3] = bit_reverse(~ipv4_buf[3]);
+
+    pkt_identity_priv_header[offset] = bit_reverse(~ipv4_buf[0]);
+    pkt_identity_priv_header[offset + 1] = bit_reverse(~ipv4_buf[1]);
+    pkt_identity_priv_header[offset + 2] = bit_reverse(~ipv4_buf[2]);
+    pkt_identity_priv_header[offset + 3] = bit_reverse(~ipv4_buf[3]);
+
+    pkt_challenge_priv_header[offset] = bit_reverse(~ipv4_buf[0]);
+    pkt_challenge_priv_header[offset + 1] = bit_reverse(~ipv4_buf[1]);
+    pkt_challenge_priv_header[offset + 2] = bit_reverse(~ipv4_buf[2]);
+    pkt_challenge_priv_header[offset + 3] = bit_reverse(~ipv4_buf[3]);
+}
+
+static RESULT rjv3_override_priv_header(struct _packet_plugin* this) {
+    IF_IMPL* _if = get_if_impl();
+    if (_if == NULL) return FAILURE;
+    char _ifname[IFNAMSIZ] = {0};
+    if (IS_FAIL(_if->get_ifname(_if, _ifname, IFNAMSIZ))) {
+        PR_ERR("网络界面尚未配置");
+        return FAILURE;
+    }
+
+    LIST_ELEMENT* _dns_list = NULL;
+    LIST_ELEMENT* _ip_list = NULL;
+    IP_ADDR* _ipv4 = NULL;
+    if (IS_FAIL(obtain_iface_ip_mask(_ifname, &_ip_list))
+            || (_ipv4 = find_ip_with_family(_ip_list, AF_INET)) == NULL) {
+
+        PR_ERR("IPv4 地址获取错误，将不能在数据包中展示 IPv4 地址");
+        goto fail;
+    }
+
+    IP_ADDR _gw;
+    _gw.family = AF_INET;
+    if (IS_FAIL(obtain_iface_ipv4_gateway(_ifname, _gw.ip))) {
+        PR_ERR("IPv4 网关获取错误，将不能在数据包中展示 IPv4 网关地址");
+        goto fail;
+    }
+
+    char* _dns1_str;
+    IP_ADDR _dns1;
+    _dns1.family = AF_INET;
+    if (!PRIV->fake_dns1) {
+        if (IS_FAIL(obtain_dns_list(&_dns_list))) {
+            PR_ERR("主 DNS 地址获取错误，请使用 --fake-dns1 选项手动指定主 DNS 地址");
+            goto fail;
+        }
+        _dns1_str = _dns_list->content;
+    } else {
+        _dns1_str = PRIV->fake_dns1;
+    }
+    if (inet_pton(AF_INET, _dns1_str, &_dns1.ip) == 0) {
+            PR_ERR("主 DNS 地址格式错误，要求 IPv4 地址。请使用 --fake-dns1 选项手动指定主 DNS 地址");
+            goto fail;
+    }
+
+    set_ipv4_priv_header(_ipv4->ip, 5);
+    set_ipv4_priv_header(_ipv4->mask, 9);
+    set_ipv4_priv_header(_gw.ip, 13);
+    set_ipv4_priv_header(_dns1.ip, 17);
+
+    free_ip_list(&_ip_list);
+    free_dns_list(&_dns_list);
+
+    return SUCCESS;
+fail:
+    free_ip_list(&_ip_list);
+    free_dns_list(&_dns_list);
+
+    return FAILURE;
+}
+
+static void rjv3_apply_bcast_addr(PACKET_PLUGIN* this, ETH_EAP_FRAME* frame) {
+    static const uint8_t _rj_bcast[6] = {0x01,0xd0,0xf8,0x00,0x00,0x03};
+    switch (PRIV->bcast_addr) {
+        case BROADCAST_RJ:
+            memmove(frame->header->eth_hdr.dest_mac, _rj_bcast, sizeof(_rj_bcast));
+            break;
+        case BROADCAST_CER:
+        case BROADCAST_STANDARD:
+        default:
+            break;
+    }
+}
+
+/*
+ * Calculate values for commonly seen fields, and add them to a list
+ *
+ * Returns how much space it would take to "serialize" all the fields in the list
+ */
+static int rjv3_append_common_fields(PACKET_PLUGIN* this, LIST_ELEMENT** list, int append_pwd_hash) {
+    int _len = 0, _this_len = -1;
+    uint8_t _dhcp_en[RJV3_SIZE_DHCP] = {0x00, 0x00, 0x00, 0x01};
+    uint8_t _local_mac[RJV3_SIZE_MAC];
+    uint8_t _pwd_hash[RJV3_SIZE_PWD_HASH] = {0};
+    char _sec_dns[INET6_ADDRSTRLEN] = {0};
+    uint8_t _misc_2[RJV3_SIZE_MISC_2] = {0x01};
+    uint8_t _ll_ipv6[RJV3_SIZE_LL_IPV6] = {0};
+    uint8_t _ll_ipv6_tmp[RJV3_SIZE_LL_IPV6_T] = {0};
+    uint8_t _glb_ipv6[RJV3_SIZE_GLB_IPV6] = {0};
+    uint8_t _v3_hash[RJV3_SIZE_V3_HASH] = {0};
+    uint8_t _service[RJV3_SIZE_SERVICE] = {0};
+    uint8_t _hdd_ser[RJV3_SIZE_HDD_SER] = {0};
+    /* misc 6 */
+    uint8_t _misc_7[RJV3_SIZE_MISC_7] = {0};
+    uint8_t _misc_8[RJV3_SIZE_MISC_8] = {0x40};
+    char* _ver_str = PRIV->ver_str;
+
+    rjv3_set_dhcp_en(_dhcp_en, PRIV->dhcp_type);
+
+    rjv3_set_local_mac(_local_mac);
+
+    rjv3_set_pwd_hash(_pwd_hash, PRIV->last_recv_packet);
+
+    rjv3_set_secondary_dns(_sec_dns, PRIV->fake_dns2);
+
+    rjv3_set_ipv6_addr(_ll_ipv6, _ll_ipv6_tmp, _glb_ipv6);
+
+    rjv3_set_v3_hash(_v3_hash, PRIV->last_recv_packet);
+
+    rjv3_set_service_name(_service, PRIV->service_name);
+
+    rjv3_set_hdd_serial(_hdd_ser, PRIV->fake_serial);
+
+#define CHK_ADD(x) \
+    _this_len = x; \
+    if (_this_len < 0) { \
+        return -1; \
+    } else { \
+        _len += _this_len; \
+    }
+
+    CHK_ADD(append_rjv3_prop(list, RJV3_TYPE_DHCP,     _dhcp_en,               sizeof(_dhcp_en)));
+    CHK_ADD(append_rjv3_prop(list, RJV3_TYPE_MAC,      _local_mac,             sizeof(_local_mac)));
+
+    if (append_pwd_hash) {
+        CHK_ADD(append_rjv3_prop(list, RJV3_TYPE_PWD_HASH, _pwd_hash,          sizeof(_pwd_hash)));
+    } else {
+        CHK_ADD(append_rjv3_prop(list, RJV3_TYPE_PWD_HASH, NULL,               0));
+    }
+
+    CHK_ADD(append_rjv3_prop(list, RJV3_TYPE_SEC_DNS,  (uint8_t*)_sec_dns,    strlen(_sec_dns)));
+    CHK_ADD(append_rjv3_prop(list, RJV3_TYPE_MISC_2,   _misc_2,                sizeof(_misc_2)));
+    CHK_ADD(append_rjv3_prop(list, RJV3_TYPE_LL_IPV6,  _ll_ipv6,               sizeof(_ll_ipv6)));
+    CHK_ADD(append_rjv3_prop(list, RJV3_TYPE_LL_IPV6_T,_ll_ipv6_tmp,           sizeof(_ll_ipv6_tmp)));
+    CHK_ADD(append_rjv3_prop(list, RJV3_TYPE_GLB_IPV6, _glb_ipv6,              sizeof(_glb_ipv6)));
+    CHK_ADD(append_rjv3_prop(list, RJV3_TYPE_V3_HASH,  _v3_hash,               sizeof(_v3_hash)));
+    CHK_ADD(append_rjv3_prop(list, RJV3_TYPE_SERVICE,  _service,               sizeof(_service)));
+    CHK_ADD(append_rjv3_prop(list, RJV3_TYPE_HDD_SER,  _hdd_ser,               sizeof(_hdd_ser)));
+    CHK_ADD(append_rjv3_prop(list, RJV3_TYPE_MISC_6,   NULL,                   0));
+    CHK_ADD(append_rjv3_prop(list, RJV3_TYPE_MISC_7,   _misc_7,                sizeof(_misc_7)));
+    CHK_ADD(append_rjv3_prop(list, RJV3_TYPE_MISC_8,   _misc_8,                sizeof(_misc_8)));
+    CHK_ADD(append_rjv3_prop(list, RJV3_TYPE_VER_STR,  (uint8_t*)_ver_str,    strlen(_ver_str) + 1)); // Zero terminated
+
+    return _len;
+}
+
+static void rjv3_append_priv_header(struct _packet_plugin* this, ETH_EAP_FRAME* frame) {
+    EAPOL_TYPE _eapol_type = frame->header->eapol_hdr.type[0];
+    switch (_eapol_type) {
+        case EAPOL_START:
+            append_to_frame(frame, pkt_start_priv_header, sizeof(pkt_start_priv_header));
+            break;
+        case EAP_PACKET:
+            if (frame->header->eap_hdr.code[0] == EAP_RESPONSE) {
+                switch (frame->header->eap_hdr.type[0]) {
+                    case IDENTITY:
+                        append_to_frame(frame, pkt_identity_priv_header,
+                                            sizeof(pkt_identity_priv_header));
+                        break;
+                    case MD5_CHALLENGE:
+                        append_to_frame(frame, pkt_challenge_priv_header,
+                                            sizeof(pkt_challenge_priv_header));
+                        break;
+                }
+            }
+            break;
+        default:
+            break;
+    }
+}
+
+RESULT rjv3_append_priv(struct _packet_plugin* this, ETH_EAP_FRAME* frame) {
+    /*
+     * Size field, its format is NOT the same as those header1.magic == 0x1a ones.
+     * Thus do not use the prop APIs.
+     */
+    /*
+        struct _size_field {
+            RJ_PROP_HEADER1 header1; // TODO Different in 2nd packet
+            uint8_t whole_trailer_len[2]; // First 0x1a prop to end
+            <other 0x1a fields follow>
+        }
+     */
+    int _props_len = 0, _single_len = 0;
+    uint8_t _std_prop_buf[FRAME_BUF_SIZE] = {0}; // Buffer for 0x1a props
+    LIST_ELEMENT* _prop_list = NULL;
+
+    rjv3_apply_bcast_addr(this, frame);
+    rjv3_append_priv_header(this, frame);
+
+    /* Let's make the big news! */
+    _single_len = rjv3_append_common_fields(this, &_prop_list,
+                                            frame->header->eapol_hdr.type[0] == EAP_PACKET &&
+                                                frame->header->eap_hdr.code[0] == MD5_CHALLENGE);
+    if (_single_len < 0) {
+        return FAILURE;
+    }
+
+    /* The Mods! */
+    _props_len += modify_rjv3_prop_list(_prop_list, PRIV->cmd_prop_mod_list);
+
+    /* Actually read from sparse nodes into a unite buffer */
+    _single_len = append_rjv3_prop_list_to_buffer(_prop_list, _std_prop_buf, FRAME_BUF_SIZE);
+
+    if (_single_len > 0) {
+        _props_len += _single_len;
+    } else {
+        return FAILURE;
+    }
+
+    /* And those from cmdline */
+    _single_len = append_rjv3_prop_list_to_buffer(PRIV->cmd_prop_list,
+                                                  _std_prop_buf + _props_len,
+                                                  FRAME_BUF_SIZE - _props_len);
+    if (_single_len >= 0) { // This time with '='
+        _props_len += _single_len;
+    } else {
+        return FAILURE;
+    }
+
+    /* The outside */
+    RJ_PROP* _container_prop = new_rjv3_prop();
+    if (_container_prop < 0) {
+        destroy_rjv3_prop_list(&_prop_list);
+        return FAILURE;
+    }
+
+    _container_prop->header1.header_type = 0x02;
+    _container_prop->header1.header_len = 0x00;
+    _container_prop->header2.type = (_props_len >> 8 & 0xff);
+    _container_prop->header2.len = (_props_len & 0xff);
+    _container_prop->content = _std_prop_buf;
+
+    append_rjv3_prop_to_frame(_container_prop, frame);
+
+    destroy_rjv3_prop_list(&_prop_list);
+    free(_container_prop);
+    return SUCCESS;
+}
+
+void rjv3_show_server_msg(ETH_EAP_FRAME* frame) {
+    LIST_ELEMENT* _srv_msg = NULL;
+    RJ_PROP* _msg = NULL;
+
+    /* Success frames does not have EAP_HEADER.type,
+     * and do not use EAP_HEADER.len since it once betrayed us
+     */
+    parse_rjv3_buf_to_prop_list(&_srv_msg,
+                                frame->content + sizeof(FRAME_HEADER)
+                                    - sizeof(frame->header->eap_hdr.type),
+                                frame->actual_len - sizeof(FRAME_HEADER)
+                                    + sizeof(frame->header->eap_hdr.type),
+                                TRUE);
+
+    if (_srv_msg != NULL) {
+        _msg = (RJ_PROP*)_srv_msg->content;
+        int _content_len = _msg->header2.len - HEADER2_SIZE_NO_MAGIC(_msg);
+
+        if (_content_len != 0) {
+            PR_INFO("服务器通知：\n");
+            pr_info_gbk((char*)_msg->content, _content_len);
+        }
+    }
+    _msg = NULL;
+    _msg = find_rjv3_prop(_srv_msg, 0x3c);
+    if (_msg != NULL) {
+        int _content_len = _msg->header2.len - HEADER2_SIZE_NO_MAGIC(_msg);
+
+        if (_content_len != 0) {
+            PR_INFO("计费通知：\n");
+            pr_info_gbk((char*)_msg->content, _content_len);
+        }
+    }
+    destroy_rjv3_prop_list(&_srv_msg);
+}
+
+void rjv3_start_secondary_auth(void* vthis) {
+    PACKET_PLUGIN* this = (PACKET_PLUGIN*)vthis;
+    PROG_CONFIG* _cfg = get_program_config();
+
+    if (IS_FAIL(rjv3_override_priv_header(this))) {
+        PRIV->dhcp_count++;
+        if (PRIV->dhcp_count > _cfg->max_failures) {
+            PR_ERR("无法获取 IP 地址等信息，将不会进行第二次认证");
+        } else {
+            PR_WARN("DHCP 可能尚未完成，将继续等待……");
+            schedule_alarm(5, rjv3_start_secondary_auth, vthis);
+        }
+        return;
+    } else {
+        PR_INFO("DHCP 完成，正在开始第二次认证");
+        switch_to_state(EAP_STATE_START_SENT, NULL);
+        return;
+    }
+}
+
+
+void rjv3_reset_priv_header() {
+    uint8_t _empty[] = {0x00, 0x00, 0x00, 0x00};
+    set_ipv4_priv_header(_empty, 5);
+    set_ipv4_priv_header(_empty, 9);
+    set_ipv4_priv_header(_empty, 13);
+    set_ipv4_priv_header(_empty, 17);
+}
+

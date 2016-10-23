@@ -2,6 +2,8 @@
 #define _MINIEAP_PACKET_PLUGIN_RJV3_PRIV_H
 
 #include "eth_frame.h"
+#include "packet_plugin.h"
+#include "linkedlist.h"
 
 #include <stdint.h>
 
@@ -85,20 +87,27 @@ typedef struct _rj_prop {
     uint8_t* content; /* Length is included in header */
 } RJ_PROP;
 
-/*
- * Bare props: props without RJ_PROP_HEADER1
- *
- * In order to re-use code from packet_plugin_rjv3,
- * we initialize RJ_PROP_HEADER1 as {0xba, 0xfe}.
- */
+typedef struct _packet_plugin_rjv3_priv {
+    struct { // Cmdline options
+        int heartbeat_interval;
+        char* service_name; // All pointers can be freed since they are created by COPY_N_ARG_TO
+        char* ver_str;
+        char* fake_dns1;
+        char* fake_dns2;
+        char* fake_serial;
+        DOT1X_BCAST_ADDR bcast_addr;
+        DHCP_TYPE dhcp_type;
+        LIST_ELEMENT* cmd_prop_list; // Destroy!
+        LIST_ELEMENT* cmd_prop_mod_list; // Destroy!
+    };
+    // Internal state variables
+    int succ_count;
+    int dhcp_count; // Used in double auth
+    ETH_EAP_FRAME* last_recv_packet;
+} rjv3_priv;
 
-void rjv3_set_dhcp_en(uint8_t* dhcp_en_arr, DHCP_TYPE dhcp_type);
-void rjv3_set_local_mac(uint8_t* mac_buf);
-void rjv3_set_pwd_hash(uint8_t* hash_buf, ETH_EAP_FRAME* request);
-void rjv3_set_ipv6_addr(uint8_t* ll_slaac, uint8_t* ll_temp, uint8_t* global);
-void rjv3_set_v3_hash(uint8_t* hash_buf, ETH_EAP_FRAME* request);
-void rjv3_set_service_name(uint8_t* name_buf, char* cmd_opt);
-void rjv3_set_secondary_dns(char* dns_ascii_buf, char* fake_dns);
-void rjv3_set_hdd_serial(uint8_t* serial_buf, char* fake_serial);
-
+RESULT rjv3_append_priv(struct _packet_plugin* this, ETH_EAP_FRAME* frame);
+void rjv3_show_server_msg(ETH_EAP_FRAME* frame);
+void rjv3_start_secondary_auth(void* vthis);
+void rjv3_reset_priv_header();
 #endif

@@ -21,6 +21,7 @@ static int g_last_id = 0;
 static int g_ringing = 0;
 static int g_last_set_time = 0;
 
+#ifdef DEBUG
 static void print_list(LIST_ELEMENT** list) {
     ALARM_EVENT* elem;
     LIST_ELEMENT** ref = list;
@@ -35,6 +36,12 @@ static void print_list(LIST_ELEMENT** list) {
         PR_DBG("    user %p", elem->user);
         ref = &(*ref)->next;
     }
+}
+#endif
+
+static void set_alarm(int time) {
+    alarm(time);
+    g_last_set_time = time;
 }
 
 static int alarm_event_id_node_cmpfunc(void* id, void* node) {
@@ -73,14 +80,17 @@ static void update_remaining_and_fire(LIST_ELEMENT* alarm_list, int secs_elapsed
 
 void alarm_sig_handler(int sig) {
     g_ringing = TRUE;
-    PR_DBG("RING");
+#ifdef DEBUG
+    PR_DBG("RING!");
     print_list(&g_alarm_list);
-    int _curr_remaining = find_min_remaining(g_alarm_list);
+#endif
     /* Must be nearest one that fired the alarm */
+    int _curr_remaining = find_min_remaining(g_alarm_list);
     update_remaining_and_fire(g_alarm_list, _curr_remaining);
+
     _curr_remaining = find_min_remaining(g_alarm_list);
-    alarm(_curr_remaining);
-    g_last_set_time = _curr_remaining;
+    set_alarm(_curr_remaining);
+
     g_ringing = FALSE;
 }
 
@@ -95,8 +105,11 @@ void sched_alarm_destroy() {
 }
 
 void unschedule_alarm(int id) {
-    PR_DBG("Removed id=%d", id);
     remove_data(&g_alarm_list, &id, alarm_event_id_node_cmpfunc, TRUE);
+#ifdef DEBUG
+    PR_DBG("Removed event id = %d", id);
+    print_list(&g_alarm_list);
+#endif
 }
 
 int schedule_alarm(int secs, void (*func)(void*), void* user) {
@@ -112,17 +125,16 @@ int schedule_alarm(int secs, void (*func)(void*), void* user) {
 
     if (!g_ringing) {
         int _curr_remaining = alarm(0);
-        PR_DBG("alarm() rem %d, last set %d", _curr_remaining, g_last_set_time);
         update_remaining_and_fire(g_alarm_list, g_last_set_time - _curr_remaining);
     }
     int _curr_min = find_min_remaining(g_alarm_list);
-
-    /* Set this as alarm */
-    g_last_set_time = _curr_min > secs ? secs : _curr_min;
-    alarm(g_last_set_time);
+    set_alarm(_curr_min > secs ? secs : _curr_min);
 
     insert_data(&g_alarm_list, _event);
-    PR_DBG("Add");
+
+#ifdef DEBUG
+    PR_DBG("New alarm event added");
     print_list(&g_alarm_list);
+#endif
     return _event->id;
 }
