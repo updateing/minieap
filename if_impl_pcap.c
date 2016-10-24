@@ -6,7 +6,6 @@
 #include "if_impl.h"
 #include "minieap_common.h"
 #include "logging.h"
-#include "misc.h"
 
 #include <pcap.h>
 #include <net/if.h>

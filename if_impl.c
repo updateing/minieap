@@ -1,6 +1,5 @@
 #include "linkedlist.h"
 #include "if_impl.h"
-#include "logging.h"
 #include <string.h>
 
 /* content of this list is IF_IMPL* */

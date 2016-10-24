@@ -1,7 +1,5 @@
 #include "linkedlist.h"
-#include "misc.h"
 #include <stdlib.h>
-#include <string.h>
 
 /* Rather naive! */
 static LIST_ELEMENT* find_last_node(LIST_ELEMENT* start) {

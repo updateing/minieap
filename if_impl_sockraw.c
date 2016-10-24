@@ -8,11 +8,10 @@
 #include "misc.h"
 
 #include <netinet/in.h>
-#include <linux/if_ether.h>
+#include <linux/if_ether.h> // ETH_ALEN
 #include <linux/if_packet.h>
 #include <net/if.h>
 #include <sys/ioctl.h>
-#include <sys/socket.h>
 #include <unistd.h>
 #include <stdlib.h>
 

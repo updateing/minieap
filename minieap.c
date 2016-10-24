@@ -1,6 +1,5 @@
 #include "config.h"
 #include "if_impl.h"
-#include "linkedlist.h"
 #include "packet_plugin.h"
 #include "packet_builder.h"
 #include "logging.h"
@@ -117,8 +116,13 @@ static int init_if() {
         return FAILURE;
     }
 
-    if (IS_FAIL(if_impl->setup_capture_params(if_impl, htons(ETH_P_PAE), FALSE))) {
+    if (IS_FAIL(if_impl->setup_capture_params(if_impl, ETH_P_PAE, FALSE))) {
         PR_ERR("设置捕获参数失败");
+        return FAILURE;
+    }
+
+    if (IS_FAIL(if_impl->prepare_interface(if_impl))) {
+        PR_ERR("捕获准备失败");
         return FAILURE;
     }
 

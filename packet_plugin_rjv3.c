@@ -6,23 +6,13 @@
 #include "packet_plugin_rjv3_priv.h"
 #include "packet_plugin_rjv3_prop.h"
 #include "packet_plugin_rjv3_keepalive.h"
-#include "packet_util.h"
-#include "eth_frame.h"
 #include "packet_plugin_rjv3.h"
-#include "if_impl.h"
-#include "net_util.h"
-#include "eap_state_machine.h"
 #include "sched_alarm.h"
 #include "config.h"
 
 #include <arpa/inet.h>
-#include <stdint.h>
 #include <getopt.h>
-#include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
-#include <netinet/in.h>
-#include <net/if.h>
 
 #define PRIV ((rjv3_priv*)(this->priv))
 

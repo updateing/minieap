@@ -244,16 +244,6 @@ static void state_watchdog(void* frame) {
 
 static RESULT trans_to_preparing(ETH_EAP_FRAME* frame) {
     IF_IMPL* _if_impl = get_if_impl();
-    if (IS_FAIL(_if_impl->setup_capture_params(_if_impl, ETH_P_PAE, FALSE))) {
-        PR_ERR("无法设置捕获参数");
-        return FAILURE;
-    }
-
-    if (IS_FAIL(_if_impl->prepare_interface(_if_impl))) {
-        PR_ERR("捕获准备失败");
-        return FAILURE;
-    }
-
     RESULT ret = switch_to_state(EAP_STATE_START_SENT, frame);
     _if_impl->start_capture(_if_impl); // Blocking...
     return ret;

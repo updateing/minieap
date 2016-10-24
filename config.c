@@ -3,7 +3,6 @@
  */
 
 #include <getopt.h>
-#include <string.h>
 #include <stdlib.h>
 #include <net/if.h>
 
