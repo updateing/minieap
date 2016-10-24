@@ -8,11 +8,13 @@ static LIST_ELEMENT* g_if_impl_list;
 static IF_IMPL* g_selected_impl;
 
 IF_IMPL* sockraw_new();
+IF_IMPL* libpcap_new();
 
 int init_if_impl_list() {
     IF_IMPL* (*list[])() = {
 //#include "if_impl_list_gen.h" TODO autogen
-        sockraw_new
+        sockraw_new,
+        libpcap_new
     };
     int i = 0;
     for (; i < sizeof(list) / sizeof(IF_IMPL*); ++i) {

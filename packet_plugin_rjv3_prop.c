@@ -100,7 +100,7 @@ int append_rjv3_prop_to_buffer(RJ_PROP* prop, uint8_t* buf, int buflen) {
     }
 
     if (prop->header1.header_type != 0x1a) {
-        PR_WARN("不支持写入 header_type 为 %zu 的字段", prop->header1.header_type);
+        PR_WARN("不支持写入 header_type 为 %hhu 的字段", prop->header1.header_type);
         return 0;
     }
     memmove(buf, &prop->header1, sizeof(RJ_PROP_HEADER1));
@@ -137,7 +137,7 @@ void append_rjv3_prop_to_frame(RJ_PROP* prop, ETH_EAP_FRAME* frame) {
         /* Container prop, see `rjv3_prepare_frame` */
         _content_len = prop->header2.len + (prop->header2.type << 8);
     } else {
-        PR_WARN("不支持写入 header_type 为 %zu 的字段", prop->header1.header_type);
+        PR_WARN("不支持写入 header_type 为 %hhu 的字段", prop->header1.header_type);
         return;
     }
 
@@ -217,7 +217,7 @@ RESULT parse_rjv3_buf_to_prop_list(LIST_ELEMENT** list, uint8_t* buf, int buflen
                                                               buf + _read_len, buflen - _read_len);
                     _content_len = _next_magic ? (_next_magic - (buf + _read_len) - sizeof(RJ_PROP_HEADER1))
                                                : buflen - _read_len;
-                    PR_WARN("解析数据包时发现未知 header_type: %zu", _tmp_prop->header1.header_type);
+                    PR_WARN("解析数据包时发现未知 header_type: %hhu", _tmp_prop->header1.header_type);
                 }
 
                 append_rjv3_prop(list,

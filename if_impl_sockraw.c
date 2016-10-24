@@ -13,10 +13,8 @@
 #include <net/if.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
-#include <string.h>
 #include <unistd.h>
 #include <stdlib.h>
-#include <ifaddrs.h>
 
 typedef struct _if_impl_sockraw_priv {
     char ifname[IFNAMSIZ];
