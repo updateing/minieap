@@ -40,9 +40,18 @@ typedef struct _if_impl {
       * (Ethernet protocol number and promiscuous mode request)
       * Can be used to set up packet filter or promiscuous mode.
       *
+      * Note: protocol number should be in host's byte order.
       * Return: if the setup was successful
       */
     RESULT (*setup_capture_params)(struct _if_impl* this, short eth_protocol, int promisc);
+
+    /*
+     * Prepare the interface, using all the parameters given.
+     * (Params are confirmed complete)
+     *
+     * Can be used to open interface.
+     */
+    RESULT (*prepare_interface)(struct _if_impl* this);
 
     /*
      * Called by main program when the capturing start/stop.

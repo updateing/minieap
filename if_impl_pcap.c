@@ -10,6 +10,7 @@
 
 #include <pcap.h>
 #include <net/if.h>
+#include <stdlib.h>
 
 typedef struct _if_impl_libpcap_priv {
     int promisc;
@@ -21,10 +22,12 @@ typedef struct _if_impl_libpcap_priv {
 
 #define PRIV ((libpcap_priv*)(this->priv))
 
-static void libpcap_packet_handler(uint8_t* user, const struct pcap_pkthdr* pkthdr, const uint8_t* packet) {
+static void libpcap_packet_handler(uint8_t* vthis, const struct pcap_pkthdr* pkthdr, const uint8_t* packet) {
     ETH_EAP_FRAME _frame;
-    _frame.buffer_len = _frame.actual_len = pkthdr.caplen;
-    _frame.content = packet;
+    IF_IMPL* this = (IF_IMPL*)vthis;
+
+    _frame.buffer_len = _frame.actual_len = pkthdr->caplen;
+    _frame.content = (uint8_t*)packet;
     PRIV->handler(&_frame);
 }
 
@@ -47,7 +50,7 @@ RESULT libpcap_setup_capture_params(struct _if_impl* this, short eth_protocol, i
     return SUCCESS;
 }
 
-RESULT libpcap_start_capture(struct _if_impl* this) {
+RESULT libpcap_prepare_interface(struct _if_impl* this) {
     char _err_buf[PCAP_ERRBUF_SIZE] = {0};
     PRIV->pcapdev = pcap_open_live(PRIV->ifname, FRAME_BUF_SIZE, PRIV->promisc, 0, _err_buf);
     if (PRIV->pcapdev == NULL) {
@@ -57,28 +60,36 @@ RESULT libpcap_start_capture(struct _if_impl* this) {
 
     char _filter_str[30] = {0};
     struct bpf_program _bpf;
-    sprintf(_filter_str, "ether proto 0x%hu", PRIV->proto);
+    sprintf(_filter_str, "ether proto 0x%hx", PRIV->proto);
     if (pcap_compile(PRIV->pcapdev, &_bpf, _filter_str, 0, 0) < 0) {
         PR_ERR("libpcap 过滤器编译失败");
         return FAILURE;
     }
 
-    if (pcap_setfilter(pcap->pcapdev, &_bpf) < 0) {
+    if (pcap_setfilter(PRIV->pcapdev, &_bpf) < 0) {
         PR_ERR("libpcap 过滤器设置失败");
         return FAILURE;
     }
+    return SUCCESS;
+}
 
-    pcap_loop(pcap->pcapdev, -1, libpcap_packet_handler, NULL);
+RESULT libpcap_start_capture(struct _if_impl* this) {
+    pcap_loop(PRIV->pcapdev, -1, libpcap_packet_handler, (uint8_t*)this);
     return SUCCESS; /* No use if it's blocking... */
 }
 
 RESULT libpcap_stop_capture(struct _if_impl* this) {
-    pcap_breakloop(PRIV->pcapdev);
-    return SUCCESS;
+    if (PRIV->pcapdev) {
+        pcap_breakloop(PRIV->pcapdev);
+        return SUCCESS;
+    } else {
+        return FAILURE;
+    }
 }
 
 RESULT libpcap_send_frame(struct _if_impl* this, ETH_EAP_FRAME* frame) {
-    if (pcap_sendpacket(PRIV->pcapdev, frame->content, frame->actual_len) < 0) {
+    int i;
+    if (!PRIV->pcapdev || (i=pcap_sendpacket(PRIV->pcapdev, frame->content, frame->actual_len)) < 0) {
         return FAILURE;
     }
     return SUCCESS;
@@ -89,7 +100,9 @@ void libpcap_set_frame_handler(struct _if_impl* this, void (*handler)(ETH_EAP_FR
 }
 
 void libpcap_destroy(IF_IMPL* this) {
-    pcap_close(PRIV->pcapdev);
+    if (PRIV->pcapdev) pcap_close(PRIV->pcapdev);
+    free(PRIV);
+    free(this);
 }
 
 IF_IMPL* libpcap_new() {
@@ -113,6 +126,7 @@ IF_IMPL* libpcap_new() {
     this->get_ifname = libpcap_get_ifname;
     this->destroy = libpcap_destroy;
     this->setup_capture_params = libpcap_setup_capture_params;
+    this->prepare_interface = libpcap_prepare_interface;
     this->start_capture = libpcap_start_capture;
     this->stop_capture = libpcap_stop_capture;
     this->send_frame = libpcap_send_frame;

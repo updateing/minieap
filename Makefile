@@ -13,6 +13,7 @@ MINIEAP_PLUGIN_OBJS += packet_plugin_rjv3.o packet_plugin_rjv3_prop.o packet_plu
 MINIEAP_PLUGIN_OBJS += packet_plugin_printer.o
 
 CC := clang -Wall -DDEBUG -g
+LDFLAGS := -lpcap
 
 minieap : $(MINIEAP_COMMON_OBJS) $(MINIEAP_PLUGIN_OBJS)
 

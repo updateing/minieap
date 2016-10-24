@@ -21,6 +21,8 @@ typedef struct _if_impl_sockraw_priv {
     int sockfd; /* Internal use */
     int if_index; /* Index of this interface */
     int stop_flag; /* Set to break out of recv loop */
+    int promisc;
+    short proto; /* Stored as host byte order */
     void (*handler)(ETH_EAP_FRAME* frame); /* Packet handler */
 } sockraw_priv;
 
@@ -31,30 +33,29 @@ static void sockraw_bind_to_if(struct _if_impl* this, short protocol) {
     memset(&sll, 0, sizeof(sll));
     sll.sll_family = AF_PACKET;
     sll.sll_ifindex = PRIV->if_index;
-    sll.sll_protocol = protocol;
+    sll.sll_protocol = htons(protocol);
     bind(PRIV->sockfd, (struct sockaddr*)&sll, sizeof(sll));
 }
 
 RESULT sockraw_set_ifname(struct _if_impl* this, const char* ifname) {
     struct ifreq ifreq;
+    int _tmpsockfd = 0;
 
-    /* Default protocol is ETH_P_PAE (0x888e) */
-    if ((PRIV->sockfd = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_PAE))) < 0) {
+    if ((_tmpsockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
         PR_ERRNO("套接字打开失败");
         return FAILURE;
     }
 
     memset(&ifreq, 0, sizeof(struct ifreq));
     strncpy(ifreq.ifr_name, ifname, IFNAMSIZ);
-    if (ioctl(PRIV->sockfd, SIOCGIFINDEX, &ifreq) < 0) {
+    if (ioctl(_tmpsockfd, SIOCGIFINDEX, &ifreq) < 0) {
         PR_ERRNO("网络界面 ID 获取失败");
         return FAILURE;
     }
     PRIV->if_index = ifreq.ifr_ifindex;
 
     strncpy(PRIV->ifname, ifname, IFNAMSIZ);
-
-    sockraw_bind_to_if(this, htons(ETH_P_PAE));
+    close(_tmpsockfd);
     return SUCCESS;
 }
 
@@ -67,26 +68,20 @@ RESULT sockraw_get_ifname(struct _if_impl* this, char* buf, int buflen) {
 }
 
 RESULT sockraw_setup_capture_params(struct _if_impl* this, short eth_protocol, int promisc) {
-    struct ifreq ifreq;
-    int _curr_proto;
-    unsigned int _opt_len = sizeof(int);
+    PRIV->proto = eth_protocol;
+    PRIV->promisc = promisc;
 
-    /* Handle protocol */
-    if (getsockopt(PRIV->sockfd, SOL_SOCKET, SO_PROTOCOL, &_curr_proto, &_opt_len) < 0) {
-        PR_ERRNO("获取套接字参数失败");
+    return SUCCESS;
+}
+
+RESULT sockraw_prepare_interface(struct _if_impl* this) {
+    struct ifreq ifreq;
+
+    if ((PRIV->sockfd = socket(AF_PACKET, SOCK_RAW, htons(PRIV->proto))) < 0) {
+        PR_ERRNO("套接字打开失败");
         return FAILURE;
     }
-
-    if (_curr_proto != eth_protocol) {
-        /* Socket protocol is not what we want. Reopen it. */
-        close(PRIV->sockfd);
-
-        if ((PRIV->sockfd = socket(AF_PACKET, SOCK_RAW, eth_protocol)) < 0) {
-            PR_ERRNO("套接字打开失败");
-            return FAILURE;
-        }
-        sockraw_bind_to_if(this, eth_protocol);
-    }
+    sockraw_bind_to_if(this, PRIV->proto);
 
     /* Handle promisc */
     memset(&ifreq, 0, sizeof(struct ifreq));
@@ -97,13 +92,13 @@ RESULT sockraw_setup_capture_params(struct _if_impl* this, short eth_protocol, i
         return FAILURE;
     }
 
-    if (promisc)
+    if (PRIV->promisc)
         ifreq.ifr_flags |= IFF_PROMISC;
     else
         ifreq.ifr_flags &= ~IFF_PROMISC;
 
     if (ioctl(PRIV->sockfd, SIOCSIFFLAGS, &ifreq) < 0) {
-        PR_ERRNO("开启混杂模式失败");
+        PR_ERRNO("混杂模式设置失败");
         return FAILURE;
     }
     return SUCCESS;
@@ -182,6 +177,7 @@ IF_IMPL* sockraw_new() {
     this->get_ifname = sockraw_get_ifname;
     this->destroy = sockraw_destroy;
     this->setup_capture_params = sockraw_setup_capture_params;
+    this->prepare_interface = sockraw_prepare_interface;
     this->start_capture = sockraw_start_capture;
     this->stop_capture = sockraw_stop_capture;
     this->send_frame = sockraw_send_frame;
