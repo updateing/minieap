@@ -2,10 +2,11 @@
 #include <ctype.h>
 #include <stdint.h>
 #include <string.h>
+#include <unistd.h>
 #include <sys/types.h>
 #include "linkedlist.h"
 #include "logging.h"
-
+#include "minieap_common.h"
 
 //#define ICONV
 
@@ -70,4 +71,18 @@ void pr_info_gbk(char* in, size_t inlen) {
         _utf8_buf = in;
         PR_INFO("%s", _utf8_buf);
     }
+}
+
+RESULT go_background() {
+    pid_t pid;
+
+    pid = fork();
+    if (pid < 0)
+        return FAILURE;
+    if (pid > 0)
+        _exit(0); /* Do not call exit_handler() */
+
+   if (setsid() < 0)
+      return FAILURE;
+   return SUCCESS;
 }

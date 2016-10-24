@@ -21,7 +21,7 @@ static PROG_CONFIG g_prog_config;
  * We don't have a "daemon_mode" parameter, so translate
  * it to what we have.
  */
-static void configure_daemon_param(int daemon_mode) {
+static void configure_daemon_log_param(int daemon_mode) {
     switch (daemon_mode) {
         case 0:
             g_prog_config.run_in_background = 0;
@@ -34,7 +34,9 @@ static void configure_daemon_param(int daemon_mode) {
             break;
         case 3:
             g_prog_config.run_in_background = 1;
+            set_log_file_path(g_prog_config.logfile);
             set_log_destination(LOG_TO_FILE);
+            break;
     }
 }
 
@@ -42,6 +44,7 @@ void load_default_params() {
 #define PCFG g_prog_config
     PCFG.pidfile = strdup(DEFAULT_PIDFILE);
     PCFG.if_impl = strdup(DEFAULT_IF_IMPL);
+    PCFG.logfile = strdup(DEFAULT_LOGFILE);
     PCFG.restart_on_logoff = DEFAULT_RESTART_ON_LOGOFF;
     PCFG.wait_after_fail_secs = DEFAULT_WAIT_AFTER_FAIL_SECS;
     PCFG.run_in_background = DEFAULT_RUN_IN_BACKGROUND;
@@ -52,7 +55,7 @@ void load_default_params() {
     PCFG.auth_round = DEFAULT_AUTH_ROUND;
     PCFG.kill_type = DEFAULT_KILL_TYPE;
 
-    configure_daemon_param(0); // No run in bg + log to console
+    configure_daemon_log_param(0); // No run in bg + log to console
 }
 
 RESULT parse_cmdline_conf_file(int argc, char* argv[]) {
@@ -79,6 +82,7 @@ RESULT parse_cmdline_conf_file(int argc, char* argv[]) {
 RESULT parse_cmdline_opts(int argc, char* argv[]) {
     int opt = 0;
     int longIndex = 0;
+    int daemon_mode = 0; /* 涉及日志文件路径设定，稍后处理 */
     static const char* shortOpts = "-:hk::wu:p:n:t:e:r:l:x:a:d:b:"
         "v:f:c:z:j:q:";
     static const struct option longOpts[] = {
@@ -103,6 +107,7 @@ RESULT parse_cmdline_opts(int argc, char* argv[]) {
 	    { "if-impl", required_argument, NULL, 0},
 	    { "pkt-plugin", required_argument, NULL, 0},
 	    { "module", required_argument, NULL, 0},
+	    { "log-file", required_argument, NULL, 0},
 	    { NULL, no_argument, NULL, 0 }
     };
 
@@ -145,7 +150,7 @@ RESULT parse_cmdline_opts(int argc, char* argv[]) {
                 g_prog_config.restart_on_logoff = atoi(optarg);
                 break;
             case 'b':
-                configure_daemon_param(atoi(optarg) % 4);
+                daemon_mode = atoi(optarg) % 4;
                 break;
             case 'c':
                 COPY_N_ARG_TO(g_prog_config.run_on_success, MAX_PATH);
@@ -167,6 +172,8 @@ RESULT parse_cmdline_opts(int argc, char* argv[]) {
                     COPY_N_ARG_TO(g_prog_config.if_impl, IFNAMSIZ);
                 } else if (IF_ARG("pkt-plugin") || IF_ARG("module")) {
                     insert_data(&g_prog_config.packet_plugin_list, optarg);
+                } else if (IF_ARG("log-file")) {
+                    COPY_N_ARG_TO(g_prog_config.logfile, MAX_PATH);
                 }
                 break;
             case ':':
@@ -179,6 +186,7 @@ RESULT parse_cmdline_opts(int argc, char* argv[]) {
         opt = getopt_long(argc, argv, shortOpts, longOpts, &longIndex);
     }
 
+    configure_daemon_log_param(daemon_mode);
     return SUCCESS;
 }
 

@@ -6,6 +6,7 @@
 #include "logging.h"
 #include "eap_state_machine.h"
 #include "sched_alarm.h"
+#include "misc.h"
 
 #include <stdlib.h>
 #include <errno.h>
@@ -69,7 +70,9 @@ static void packet_plugin_list_select(void* name, void* unused) {
 static int init_cfg(int argc, char* argv[]) {
     PROG_CONFIG* cfg = get_program_config();
 
+    /* Temporaory logs */
     set_log_destination(LOG_TO_CONSOLE);
+    start_log();
 
     init_if_impl_list();
     init_packet_plugin_list();
@@ -92,6 +95,14 @@ static int init_cfg(int argc, char* argv[]) {
         PR_ERR("插件初始化错误");
         return FAILURE;
     }
+
+    if (cfg->run_in_background && IS_FAIL(go_background())) {
+        PR_WARN("无法应用后台运行设置");
+    }
+
+    /* Apply log destination */
+    close_log();
+    start_log();
 
     return SUCCESS;
 }

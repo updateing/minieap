@@ -14,12 +14,12 @@
 #include "logging.h"
 
 #define LOG_FORMAT_BUFFER_SIZE 1024
-#define DEFAULT_LOG_FILE "/tmp/mentohust.log"
+#define DEFAULT_LOG_FILE "/tmp/minieap.log"
 
 static char g_time_buffer[20]; // Buffer for time output
 static char* g_log_path = DEFAULT_LOG_FILE; // Log file path
 static FILE* g_log_fp = NULL; // Log destination
-
+static LOG_DEST g_dest = LOG_TO_CONSOLE;
 
 static char* get_formatted_date() {
 	time_t time_tmp;
@@ -51,7 +51,7 @@ static void print_detail_line(FILE* log_file, const char* log_level,
                       const char* func_name, const char* log_format, va_list argptr) {
 	char format_buffer[LOG_FORMAT_BUFFER_SIZE];
     int _strlen;
-    
+
     if (func_name != NULL && func_name[0] != 0) {
 	    snprintf(format_buffer, LOG_FORMAT_BUFFER_SIZE, "[%s][%s](%s) %s",
 	            get_formatted_date(), log_level, func_name, log_format);
@@ -66,31 +66,18 @@ static void print_detail_line(FILE* log_file, const char* log_level,
 	    format_buffer[_strlen] = '\n';
 	    format_buffer[_strlen + 1] = 0;
 	}
-	
+
 	print_raw_line(log_file, format_buffer, argptr);
 }
 
 /*
- * 设置日志的目标，是打印到标准输出还是写入文件，并设置g_log_fp为对应目标。
+ * 设置日志的目标，是打印到标准输出还是写入文件
  *
  * 注：写入文件时，将直接打开文件来写入，而不是reopen stdout到文件。
  * 故仍可以使用printf来直接打印到控制台（用户交互使用）
- *
- * 使用print_log + LOG_TO_SCREEN与直接printf的区别是
- * 前者会带上时间戳，而printf不会
  */
 void set_log_destination(LOG_DEST dst) {
-	switch (dst) {
-		case LOG_TO_CONSOLE:
-			g_log_fp = stdout;
-			break;
-		case LOG_TO_FILE:
-			if (g_log_fp == NULL || g_log_fp == stdout) {
-				g_log_fp = fopen(g_log_path, "a");
-				setvbuf(g_log_fp, NULL, _IOLBF, BUFSIZ);
-			}
-			break;
-	}
+    g_dest = dst;
 }
 
 /*
@@ -115,8 +102,28 @@ void print_log_raw(const char* log_format, ...) {
 	va_end(argptr);
 }
 
+void start_log() {
+	switch (g_dest) {
+		case LOG_TO_CONSOLE:
+			g_log_fp = stdout;
+			break;
+		case LOG_TO_FILE:
+			g_log_fp = fopen(g_log_path, "a");
+			if (g_log_fp == NULL) {
+			    g_log_fp = stdout;
+			    g_dest = LOG_TO_CONSOLE;
+			    PR_ERRNO("日志文件打开失败，将输出至控制台");
+			}
+			setvbuf(g_log_fp, NULL, _IOLBF, BUFSIZ);
+			break;
+	}
+}
+
 void close_log() {
-    if (g_log_fp)
+    if (g_dest == LOG_TO_FILE)
         fclose(g_log_fp);
 }
 
+void set_log_file_path(char* path) {
+    g_log_path = path;
+}

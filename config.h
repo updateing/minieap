@@ -55,7 +55,7 @@ typedef struct _prog_config {
      * "none" to disable.
      */
     char* pidfile;
-    #define DEFAULT_PIDFILE "/var/run/mentohust.pid"
+    #define DEFAULT_PIDFILE "/var/run/minieap.pid"
 
     /*
      * Config file path
@@ -63,12 +63,15 @@ typedef struct _prog_config {
      * but cmdline opts may override it.
      */
     char* conffile;
-    #define DEFAULT_CONFFILE "/etc/mentohust.conf"
+    #define DEFAULT_CONFFILE "/etc/minieap.conf"
 
     /*
-     * Logging config is applied in logging.c
+     * Config file path
+     * Will read everything from the file,
+     * but cmdline opts may override it.
      */
-    // char* logfile;
+    char* logfile;
+    #define DEFAULT_LOGFILE "/var/log/minieap.log"
 
     /*
      * Run this after authentication succeeds.
