@@ -1,6 +1,7 @@
 #include "eap_state_machine.h"
 #include "packet_builder.h"
 #include "packet_plugin.h"
+#include "packet_util.h"
 #include "config.h"
 #include "if_impl.h"
 #include "logging.h"
@@ -200,7 +201,11 @@ static RESULT state_mach_process_failure(ETH_EAP_FRAME* frame) {
 }
 
 void eap_state_machine_recv_handler(ETH_EAP_FRAME* frame) {
-    PRIV->last_recv_frame = frame;
+    if (PRIV->last_recv_frame != NULL) {
+        free_frame(&PRIV->last_recv_frame);
+    }
+    PRIV->last_recv_frame = frame_duplicate(frame);
+
     EAPOL_TYPE _eapol_type = frame->header->eapol_hdr.type[0];
     if (_eapol_type == EAP_PACKET) {
         /* We don't want to handle other types here */

@@ -17,6 +17,16 @@
 RESULT append_to_frame(ETH_EAP_FRAME* frame, const uint8_t* data, int len);
 
 /*
+ * Duplicate a frame and its content
+ */
+ETH_EAP_FRAME* frame_duplicate(const ETH_EAP_FRAME* frame);
+
+/*
+ * Free a frame created by frame_duplicate
+ */
+void free_frame(ETH_EAP_FRAME** frame);
+
+/*
  * Stringify
  */
 char* str_eapol_type(EAPOL_TYPE type);
