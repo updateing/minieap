@@ -6,7 +6,7 @@
 #include "sched_alarm.h"
 #include "misc.h"
 
-#include <malloc.h>
+#include <stdlib.h>
 
 static uint32_t g_echokey;
 static uint32_t g_echono;

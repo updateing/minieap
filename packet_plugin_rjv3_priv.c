@@ -21,7 +21,7 @@
 #include <sys/ioctl.h>
 #include <stdio.h>
 #include <fcntl.h>
-#include <malloc.h>
+#include <stdlib.h>
 #include <arpa/inet.h>
 
 /*

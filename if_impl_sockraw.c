@@ -15,7 +15,7 @@
 #include <sys/socket.h>
 #include <string.h>
 #include <unistd.h>
-#include <malloc.h>
+#include <stdlib.h>
 #include <ifaddrs.h>
 
 typedef struct _if_impl_sockraw_priv {

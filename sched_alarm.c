@@ -7,7 +7,7 @@
 #include <limits.h>
 #include <unistd.h>
 #include <signal.h>
-#include <malloc.h>
+#include <stdlib.h>
 
 typedef struct _alarm_event {
     int remaining;

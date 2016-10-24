@@ -9,11 +9,11 @@
 #include <ifaddrs.h>
 #include <string.h>
 #include <net/if.h>
-#include <malloc.h>
+#include <stdlib.h>
 #include <unistd.h>
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
-#include <stdlib.h>
+#include <stdio.h>
 
 static int ip_addr_family_cmpfunc(void* family, void* ip_addr) {
     if (*(short*)family == ((IP_ADDR*)ip_addr)->family) {
@@ -192,7 +192,9 @@ static RESULT retrive_if_gateway(const char* ifname, struct nlmsghdr* nl_hdr, st
         }
     }
 
+#ifdef DEBUG
     PR_DBG("%08X %08X %s", dst_addr.s_addr, this_gateway.s_addr, this_ifname);
+#endif
     if (dst_addr.s_addr == 0 && strncmp(this_ifname, ifname, IFNAMSIZ) == 0) {
         gateway->s_addr = this_gateway.s_addr;
         return SUCCESS;

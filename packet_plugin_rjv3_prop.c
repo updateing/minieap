@@ -7,7 +7,7 @@
 #include "packet_util.h"
 
 #include <stdint.h>
-#include <malloc.h>
+#include <stdlib.h>
 #include <limits.h>
 
 RJ_PROP* new_rjv3_prop() {

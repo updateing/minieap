@@ -1,5 +1,5 @@
 #include <string.h>
-#include <malloc.h>
+#include <stdlib.h>
 #include <arpa/inet.h>
 
 #include "packet_builder.h"

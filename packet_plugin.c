@@ -3,7 +3,7 @@
 #include "logging.h"
 
 #include <string.h>
-#include <malloc.h>
+#include <stdlib.h>
 #include <getopt.h>
 
 #define TRUE 1

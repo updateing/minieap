@@ -1,7 +1,7 @@
 #include "packet_plugin.h"
 #include "eth_frame.h"
 #include "logging.h"
-#include "malloc.h"
+#include "stdlib.h"
 #include <stdio.h>
 
 RESULT printer_prepare_frame(struct _packet_plugin* this, ETH_EAP_FRAME* frame) {

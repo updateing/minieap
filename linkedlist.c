@@ -1,6 +1,6 @@
 #include "linkedlist.h"
 #include "misc.h"
-#include <malloc.h>
+#include <stdlib.h>
 #include <string.h>
 
 /* Rather naive! */

@@ -1,7 +1,7 @@
 MINIEAP_COMMON_OBJS := config.o logging.o minieap.o misc.o linkedlist.o if_impl.o packet_builder.o \
-    packet_util.o packet_plugin.o eap_state_machine.o net_util.o sched_alarm.o ifaddrs.o
+    packet_util.o packet_plugin.o eap_state_machine.o net_util.o sched_alarm.o
 
-# If your platform does not get getifaddrs, you can find some implemention and compile it
+# If your platform does not provide getifaddrs(), you can find some implemention and compile it here
 #MINIEAP_COMMON_OBJS += ifaddrs.o
 
 MINIEAP_PLUGIN_OBJS := if_impl_sockraw.o
