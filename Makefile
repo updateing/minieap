@@ -9,7 +9,9 @@ PLUGIN_MODULES := \
 #PLUGIN_MODULES += ifaddrs
 
 #### Common bits ####
-APPEND := $(shell pwd)/append.mk
+# These two flags are inherited from environment
+COMMON_CFLAGS := $(CFLAGS)
+COMMON_LDFLAGS := $(LDFLAGS)
 COMMON_C_INCLUDES := include
 COMMON_MODULES := \
 	util \
@@ -21,6 +23,7 @@ BUILD_MODULES := $(PLUGIN_MODULES) $(COMMON_MODULES)
 
 minieap: $(BUILD_MODULES)
 	$(CC) -o minieap \
+        $(COMMON_LDFLAGS) \
         $(foreach objs,$(addsuffix _LDFLAGS,$(BUILD_MODULES)),$($(objs))) \
         $(foreach objs,$(addsuffix _PRIV_OBJS,$(BUILD_MODULES)),$($(objs)))
 
@@ -35,5 +38,6 @@ define all-c-files-under
 $(subst $(LOCAL_PATH)/,,$(wildcard $(LOCAL_PATH)/$(1)/*.c))
 endef
 
+APPEND := $(shell pwd)/append.mk
 MK_LIST := $(shell find . -name minieap.mk)
 include $(MK_LIST)

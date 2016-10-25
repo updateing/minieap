@@ -27,6 +27,7 @@ ETH_EAP_FRAME* frame_duplicate(const ETH_EAP_FRAME* frame) {
 }
 
 void free_frame(ETH_EAP_FRAME** frame) {
+    if (frame == NULL || *frame == NULL) return;
     free((*frame)->content);
     free(*frame);
     *frame = NULL;

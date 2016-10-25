@@ -10,9 +10,14 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <arpa/inet.h>
-#include <linux/if_ether.h>
 #include <signal.h>
 #include <time.h>
+
+#ifdef __linux__
+#include <linux/if_ether.h>
+#else
+#define ETH_P_PAE 0x888e
+#endif
 
 /*
  * Initialize the settings.

@@ -11,9 +11,17 @@
 #include <net/if.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <stdio.h>
+
+#ifdef __linux__
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
-#include <stdio.h>
+#include <linux/if_packet.h>
+#endif
+
+#ifdef __APPLE__
+#include <net/if_dl.h>
+#endif
 
 static int ip_addr_family_cmpfunc(void* family, void* ip_addr) {
     if (*(short*)family == ((IP_ADDR*)ip_addr)->family) {
@@ -27,25 +35,27 @@ IP_ADDR* find_ip_with_family(LIST_ELEMENT* list, short family) {
 }
 
 RESULT obtain_iface_mac(const char* ifname, uint8_t* adr_buf) {
-    struct ifreq ifreq;
-    int sockfd = -1;
-
-    if ((sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP)) < 0) {
-        PR_ERRNO("套接字打开失败");
+    struct ifaddrs *ifaddrs, *if_curr;
+    if (getifaddrs(&ifaddrs) < 0) {
+        PR_ERRNO("通过 getifaddrs 获取 MAC 地址失败");
         return FAILURE;
     }
 
-    memset(&ifreq, 0, sizeof(struct ifreq));
-    strncpy(ifreq.ifr_name, ifname, IFNAMSIZ);
-
-    if (ioctl(sockfd, SIOCGIFHWADDR, &ifreq) < 0) {
-        PR_ERRNO("通过 ioctl 获取 MAC 地址失败");
-        close(sockfd);
-        return FAILURE;
-    }
-
-    memcpy(adr_buf, ifreq.ifr_hwaddr.sa_data, 6);
-    close(sockfd);
+    if_curr = ifaddrs;
+    do {
+        if (strcmp(if_curr->ifa_name, ifname) == 0) {
+#ifdef __linux
+            if (if_curr->ifa_addr->sa_family == AF_PACKET) {
+                memmove(adr_buf, ((struct sockaddr_ll*)if_curr->ifa_addr)->sll_addr, 6);
+            }
+#else
+            if (if_curr->ifa_addr->sa_family == AF_LINK) {
+                memmove(adr_buf, LLADDR((struct sockaddr_dl*)if_curr->ifa_addr), 6);
+            }
+#endif
+        }
+    } while ((if_curr = if_curr->ifa_next));
+    freeifaddrs(ifaddrs);
     return SUCCESS;
 }
 
@@ -118,6 +128,7 @@ void free_dns_list(LIST_ELEMENT** list) {
     list_destroy(list, TRUE);
 }
 
+#ifdef __linux__
 /* http://stackoverflow.com/a/3288983/5701966 */
 #define NL_BUFSIZE 8192
 static int read_from_netlink_socket(int sockfd, uint8_t *buf, int seq, int pid) {
@@ -138,8 +149,8 @@ static int read_from_netlink_socket(int sockfd, uint8_t *buf, int seq, int pid) 
             || (nlHdr->nlmsg_type == NLMSG_ERROR)) {
             struct nlmsgerr* _err = (struct nlmsgerr*) NLMSG_DATA(nlHdr);
             if (_err->error != 0) {
-                PR_ERR("NETLINK 报告了一个错误 (%d)", _err->error);
-                return -1;
+                PR_WARN("NETLINK 报告了一个错误 (%x)", _err->error);
+                return msgLen - readLen;
             }
         }
 
@@ -212,6 +223,10 @@ RESULT obtain_iface_ipv4_gateway(const char* ifname, uint8_t* buf) {
         PR_ERRNO("NETLINK 套接字打开失败");
         return FAILURE;
     }
+    struct sockaddr_nl nl_addr;
+    nl_addr.nl_family = AF_NETLINK;
+    nl_addr.nl_pid = rand_pid;
+    bind(sockfd, (struct sockaddr*)&nl_addr, sizeof(nl_addr));
 
     memset(msg_buf, 0, sizeof(msg_buf));
 
@@ -221,10 +236,14 @@ RESULT obtain_iface_ipv4_gateway(const char* ifname, uint8_t* buf) {
     /* Fill in the nlmsg header*/
     nl_msg->nlmsg_len = NLMSG_LENGTH(sizeof(struct rtmsg));  // Length of message.
     nl_msg->nlmsg_type = RTM_GETROUTE;   // Get the routes from kernel routing table.
-
     nl_msg->nlmsg_flags = NLM_F_DUMP | NLM_F_REQUEST;    // The message is a request for dump.
     nl_msg->nlmsg_seq = msg_seq++;    // Sequence of the message packet.
     nl_msg->nlmsg_pid = rand_pid;    // PID of process sending the request.
+
+    struct rtmsg *rtMsg;
+    rtMsg = (struct rtmsg *) NLMSG_DATA(nl_msg);
+    rtMsg->rtm_table = RT_TABLE_MAIN;
+    rtMsg->rtm_family = AF_INET;
 
     /* Send the request */
     if (send(sockfd, nl_msg, nl_msg->nlmsg_len, 0) < 0) {
@@ -252,3 +271,9 @@ err:
     close(sockfd);
     return FAILURE;
 }
+#elif defined __APPLE__
+RESULT obtain_iface_ipv4_gateway(const char* ifname, uint8_t* buf) {
+    // TODO
+    return FAILURE;
+}
+#endif

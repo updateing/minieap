@@ -13,7 +13,7 @@ int init_if_impl_list() {
     IF_IMPL* (*list[])() = {
 //#include "if_impl_list_gen.h" TODO autogen
         sockraw_new,
-        libpcap_new
+        //libpcap_new
     };
     int i = 0;
     for (; i < sizeof(list) / sizeof(IF_IMPL*); ++i) {

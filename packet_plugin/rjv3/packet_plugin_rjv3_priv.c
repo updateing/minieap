@@ -17,12 +17,15 @@
 #include <stdint.h>
 #include <string.h>
 #include <netinet/in.h>
-#include <linux/hdreg.h>
 #include <sys/ioctl.h>
 #include <stdio.h>
 #include <fcntl.h>
 #include <stdlib.h>
 #include <arpa/inet.h>
+
+#ifdef __linux__
+#include <linux/hdreg.h>
+#endif
 
 /*
  * Headers before the fields
@@ -166,7 +169,7 @@ static void rjv3_set_hdd_serial(uint8_t* serial_buf, char* fake_serial) {
         memmove(serial_buf, fake_serial, strnlen(fake_serial, MAX_PROP_LEN));
         return;
     }
-
+#ifdef __linux__
     FILE* _fp = fopen("/etc/mtab", "r");
     char _line_buf[MAX_LINE_LEN] = {0};
     char* _line_buf_dev, *_line_buf_mountpoint;
@@ -213,6 +216,7 @@ info_err:
 close_return:
     if (_fp > 0) fclose(_fp);
     if (_root_dev) free(_root_dev);
+#endif // TODO macOS ioreg?
     return;
 }
 

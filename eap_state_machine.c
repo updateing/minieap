@@ -82,6 +82,7 @@ RESULT eap_state_machine_init() {
 void eap_state_machine_destroy() {
     packet_builder_destroy();
     PRIV->packet_builder = NULL;
+    free_frame(&PRIV->last_recv_frame);
 }
 
 static inline void set_outgoing_eth_fields(PACKET_BUILDER* builder, uint8_t* dst_mac) {
@@ -169,7 +170,6 @@ static RESULT state_mach_send_eapol_simple(EAPOL_TYPE eapol_type) {
 }
 
 static RESULT state_mach_process_success(ETH_EAP_FRAME* frame) {
-    // TODO show info, keepalive -> rjv3
     PROG_CONFIG* _cfg = get_program_config();
     PRIV->fail_count = 0;
     if (PRIV->auth_round == _cfg->auth_round) {
@@ -308,6 +308,6 @@ RESULT switch_to_state(EAP_STATE state, ETH_EAP_FRAME* frame) {
             return SUCCESS;
         }
     }
-    PR_WARN("%d 状态未定义"); // TODO Is this possible?
+    PR_WARN("%d 状态未定义");
     return SUCCESS;
 }
