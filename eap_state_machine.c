@@ -12,7 +12,6 @@
 #include "sched_alarm.h"
 
 #include <stdlib.h>
-#include <linux/if_ether.h> // ETH_P_PAE
 
 typedef struct _state_mach_priv {
     int state_last_count; // Number of timeouts occured in this state

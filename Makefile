@@ -10,10 +10,12 @@ PLUGIN_MODULES := \
 
 #### Common bits ####
 APPEND := $(shell pwd)/append.mk
-COMMON_C_INCLUDES := . util
+COMMON_C_INCLUDES := include
 COMMON_MODULES := \
 	util \
-	main
+	main \
+	if_impl_manager \
+	packet_plugin_manager
 
 BUILD_MODULES := $(PLUGIN_MODULES) $(COMMON_MODULES)
 
