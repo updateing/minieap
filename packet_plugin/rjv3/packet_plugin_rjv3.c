@@ -176,7 +176,7 @@ RESULT rjv3_prepare_frame(struct _packet_plugin* this, ETH_EAP_FRAME* frame) {
 
 static RESULT rjv3_process_success(struct _packet_plugin* this, ETH_EAP_FRAME* frame) {
     PRIV->succ_count++;
-    if (IS_FAIL(rjv3_process_result_priv(frame))) {
+    if (IS_FAIL(rjv3_process_result_prop(frame))) {
         return FAILURE;
     }
     if (PRIV->dhcp_type == DHCP_DOUBLE_AUTH) {
@@ -184,7 +184,7 @@ static RESULT rjv3_process_success(struct _packet_plugin* this, ETH_EAP_FRAME* f
             PR_INFO("正在执行 DHCP 脚本以准备第二次认证");
             system((get_program_config())->run_on_success); // TODO move this to plugin
 
-            /* Try right before the script ends */
+            /* Try right after the script ends */
             rjv3_start_secondary_auth(this);
 
             return SUCCESS;
@@ -200,7 +200,7 @@ static RESULT rjv3_process_success(struct _packet_plugin* this, ETH_EAP_FRAME* f
 }
 
 static RESULT rjv3_process_failure(PACKET_PLUGIN* this, ETH_EAP_FRAME* frame) {
-    rjv3_process_result_priv(frame);
+    rjv3_process_result_prop(frame);
     rjv3_reset_state(this);
     return SUCCESS;
 }

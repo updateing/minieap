@@ -189,13 +189,26 @@ static void restart_auth(void* unused) {
 
 static RESULT state_mach_process_failure(ETH_EAP_FRAME* frame) {
     PROG_CONFIG* _cfg = get_program_config();
-    if (++PRIV->fail_count == _cfg->max_failures) {
-        PR_ERR("认证失败 %d 次，已达到指定次数，正在退出……", PRIV->fail_count);
-        exit(FAILURE);
+    if (PRIV->state == EAP_STATE_SUCCESS) {
+        /* This is link dropping, not auth failing */
+        if (_cfg->restart_on_logoff != FALSE) {
+            PR_ERR("认证掉线，正在退出……");
+            exit(EXIT_FAILURE);
+        } else {
+            PR_WARN("认证掉线，正在重新开始认证……");
+            restart_auth(NULL);
+            return SUCCESS;
+        }
     } else {
-        PR_ERR("认证失败 %d 次，将在 %d 秒后重试……", PRIV->fail_count, _cfg->wait_after_fail_secs);
-        schedule_alarm(_cfg->wait_after_fail_secs, restart_auth, NULL);
-        return SUCCESS;
+        /* Auth fail during process */
+        if (++PRIV->fail_count == _cfg->max_failures) {
+            PR_ERR("认证失败 %d 次，已达到指定次数，正在退出……", PRIV->fail_count);
+            exit(EXIT_FAILURE);
+        } else {
+            PR_ERR("认证失败 %d 次，将在 %d 秒或服务器请求后重试……", PRIV->fail_count, _cfg->wait_after_fail_secs);
+            schedule_alarm(_cfg->wait_after_fail_secs, restart_auth, NULL);
+            return SUCCESS;
+        }
     }
 }
 
@@ -257,7 +270,7 @@ static RESULT trans_to_start_sent(ETH_EAP_FRAME* frame) {
 }
 
 static RESULT trans_to_identity_sent(ETH_EAP_FRAME* frame) {
-    PR_INFO("正在发送用户名");
+    PR_INFO("正在回应用户名请求");
     if (PRIV->state_alarm_id <= 0) {
         PRIV->state_alarm_id = schedule_alarm(5, state_watchdog, NULL);
     }
@@ -265,7 +278,7 @@ static RESULT trans_to_identity_sent(ETH_EAP_FRAME* frame) {
 }
 
 static RESULT trans_to_challenge_sent(ETH_EAP_FRAME* frame) {
-    PR_INFO("正在发送密码");
+    PR_INFO("正在回应密码请求");
     if (PRIV->state_alarm_id <= 0) {
         PRIV->state_alarm_id = schedule_alarm(5, state_watchdog, NULL);
     }

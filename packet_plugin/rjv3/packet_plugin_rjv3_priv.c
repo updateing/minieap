@@ -486,7 +486,7 @@ static int rjv3_find_echokey_prop(void* unused, void* prop) {
     return 1;
 }
 
-RESULT rjv3_process_result_priv(ETH_EAP_FRAME* frame) {
+RESULT rjv3_process_result_prop(ETH_EAP_FRAME* frame) {
     LIST_ELEMENT* _srv_msg = NULL;
     RJ_PROP* _msg = NULL;
 
@@ -509,29 +509,33 @@ RESULT rjv3_process_result_priv(ETH_EAP_FRAME* frame) {
             pr_info_gbk((char*)_msg->content, _content_len);
         }
     }
-    _msg = NULL;
-    _msg = find_rjv3_prop(_srv_msg, 0x3c);
-    if (_msg != NULL) {
-        int _content_len = _msg->header2.len - HEADER2_SIZE_NO_MAGIC(_msg);
+    if (frame->header->eapol_hdr.type[0] == EAP_PACKET &&
+            frame->header->eap_hdr.code[0] == EAP_SUCCESS) {
+        _msg = NULL;
+        _msg = find_rjv3_prop(_srv_msg, 0x3c);
+        if (_msg != NULL) {
+            int _content_len = _msg->header2.len - HEADER2_SIZE_NO_MAGIC(_msg);
 
-        if (_content_len != 0) {
-            PR_INFO("计费通知：\n");
-            pr_info_gbk((char*)_msg->content, _content_len);
+            if (_content_len != 0) {
+                PR_INFO("计费通知：\n");
+                pr_info_gbk((char*)_msg->content, _content_len);
+            }
         }
-    }
-    _msg = NULL;
-    _msg = (RJ_PROP*)lookup_data(_srv_msg, NULL, rjv3_find_echokey_prop);
-    if (_msg == NULL) {
-        PR_ERR("无法找到 echo key 的位置，将不能进行心跳");
-        return FAILURE;
-    } else {
-        uint32_t _echokey = 0;
-        _echokey |= bit_reverse(~*(_msg->content + 6)) << 24;
-        _echokey |= bit_reverse(~*(_msg->content + 7)) << 16;
-        _echokey |= bit_reverse(~*(_msg->content + 8)) << 8;
-        _echokey |= bit_reverse(~*(_msg->content + 9));
-        rjv3_set_keepalive_echokey(_echokey);
-        rjv3_set_keepalive_echono(rand() & 0xffff);
+
+        _msg = NULL;
+        _msg = (RJ_PROP*)lookup_data(_srv_msg, NULL, rjv3_find_echokey_prop);
+        if (_msg == NULL) {
+            PR_ERR("无法找到 echo key 的位置，将不能进行心跳");
+            return FAILURE;
+        } else {
+            uint32_t _echokey = 0;
+            _echokey |= bit_reverse(~*(_msg->content + 6)) << 24;
+            _echokey |= bit_reverse(~*(_msg->content + 7)) << 16;
+            _echokey |= bit_reverse(~*(_msg->content + 8)) << 8;
+            _echokey |= bit_reverse(~*(_msg->content + 9));
+            rjv3_set_keepalive_echokey(_echokey);
+            rjv3_set_keepalive_echono(rand() & 0xffff);
+        }
     }
     destroy_rjv3_prop_list(&_srv_msg);
     return SUCCESS;

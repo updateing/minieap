@@ -44,7 +44,7 @@ RESULT obtain_iface_mac(const char* ifname, uint8_t* adr_buf) {
     if_curr = ifaddrs;
     do {
         if (strcmp(if_curr->ifa_name, ifname) == 0) {
-#ifdef __linux
+#ifdef __linux__
             if (if_curr->ifa_addr->sa_family == AF_PACKET) {
                 memmove(adr_buf, ((struct sockaddr_ll*)if_curr->ifa_addr)->sll_addr, 6);
             }

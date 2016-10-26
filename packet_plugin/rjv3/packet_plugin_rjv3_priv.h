@@ -107,7 +107,7 @@ typedef struct _packet_plugin_rjv3_priv {
 } rjv3_priv;
 
 RESULT rjv3_append_priv(struct _packet_plugin* this, ETH_EAP_FRAME* frame);
-RESULT rjv3_process_result_priv(ETH_EAP_FRAME* frame);
+RESULT rjv3_process_result_prop(ETH_EAP_FRAME* frame);
 void rjv3_start_secondary_auth(void* vthis);
 void rjv3_reset_priv_header();
 #endif

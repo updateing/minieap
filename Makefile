@@ -1,16 +1,17 @@
 #### Choose/Add your modules here ####
 PLUGIN_MODULES := \
-	if_impl_libpcap \
 	if_impl_sockraw \
 	packet_plugin_printer \
 	packet_plugin_rjv3
+
+#PLUGIN_MODULES += if_impl_libpcap
 
 # If your platform does not provide ifaddrs, add your own implementation here
 #PLUGIN_MODULES += ifaddrs
 
 #### Common bits ####
 # These two flags are inherited from environment
-COMMON_CFLAGS := $(CFLAGS)
+COMMON_CFLAGS := $(CFLAGS) -Wall -g -DDEBUG -D_GNU_SOURCE
 COMMON_LDFLAGS := $(LDFLAGS)
 COMMON_C_INCLUDES := include
 COMMON_MODULES := \
