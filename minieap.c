@@ -81,6 +81,9 @@ static int init_cfg(int argc, char* argv[]) {
     init_if_impl_list();
     init_packet_plugin_list();
 
+    PR_RAW("MiniEAP " VERSION "\n"
+           "Hamster Tian, 2016\n\n");
+
     load_default_params();
     if (IS_FAIL(init_program_config(argc, argv))) {
         PR_ERR("参数初始化错误");
@@ -94,6 +97,7 @@ static int init_cfg(int argc, char* argv[]) {
         return FAILURE;
     }
 
+    packet_plugin_print_banner();
     packet_plugin_load_default_params();
     if (IS_FAIL(init_plugin_config(argc, argv))) {
         PR_ERR("插件初始化错误");

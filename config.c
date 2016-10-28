@@ -26,11 +26,11 @@ static void configure_daemon_log_param(int daemon_mode) {
             g_prog_config.run_in_background = 0;
             set_log_destination(LOG_TO_CONSOLE);
             break;
-        case 1:
         case 2:
             g_prog_config.run_in_background = 1;
             set_log_destination(LOG_TO_CONSOLE);
             break;
+        case 1:
         case 3:
             g_prog_config.run_in_background = 1;
             set_log_file_path(g_prog_config.logfile);
@@ -78,6 +78,41 @@ RESULT parse_cmdline_conf_file(int argc, char* argv[]) {
     return SUCCESS;
 }
 
+#define _STR(x) #x
+#define STR(x) _STR(x)
+static void print_cmdline_help() {
+    PR_RAW(
+        "\t--help, -h\t显示本帮助\n"
+        "\t--kill, -k [1]\t终止其他实例并退出。加任意非 0 参数表示终止其他实例后继续进行认证\n"
+        "\t--save, -w\t保存本次认证所用参数\n"
+        "\t--username, -u <...>\t用户名\n"
+        "\t--password, -p <...>\t密码\n"
+        "\t--nic, -n <...>\t\t要使用的网络界面名\n"
+        "\t--stage-timeout, -t <num>\t单个认证阶段的超时时间 [默认" STR(DEFAULT_STAGE_TIMEOUT) "]\n"
+        "\t--wait-after-fail, -r <num>\t认证失败后重新认证前的等待时间（注意当服务器要求重新认证时将直接开始认证）[默认" STR(DEFAULT_WAIT_AFTER_FAIL_SECS) "]\n"
+        "\t--max-fail, -l <num>\t最大允许认证失败次数 [默认" STR(DEFAULT_MAX_FAILURES) "]\n"
+        "\t--no-auto-reauth, -x\t认证掉线后不允许自动重连 [默认" STR(DEFAULT_RESTART_ON_LOGOFF) "]\n"
+        "\t--daemonize, -b <0-3>\t后台运行方式： [默认0]\n"
+            "\t\t\t\t0 = 不后台\n"
+            "\t\t\t\t1 = 后台运行，输出到当前控制台\n"
+            "\t\t\t\t2 = 同3，为保持兼容性而设\n"
+            "\t\t\t\t3 = 后台运行，输出到日志文件\n"
+        "\t--run-on-success, -c <...>\t认证完成后运行此命令 [默认无]\n"
+        "\t--dhcp-script <...>\t\t同上\n"
+        "\t--proxy-lan-iface, -z <...>\t代理认证时的 LAN 网络界面名 [默认无]\n"
+        "\t--auth-round, -j <num>\t需要认证的次数 [默认1]\n"
+        "\t--max-retries <num>\t最大超时重试的次数 [默认3]\n"
+        "\t--pid-file <...>\tPID 文件路径，设为none可禁用 [默认" DEFAULT_PIDFILE "]\n"
+        "\t--conf-file <...>\t配置文件路径 [默认" DEFAULT_CONFFILE "]\n"
+        "\t--if-impl <...>\t\t选择此网络操作抽象模块 [默认" DEFAULT_IF_IMPL "]\n"
+        "\t--pkt-plugin <...>\t启用此名称的数据包修改器 [默认无]\n"
+        "\t--module <...>\t\t同上\n"
+    );
+    
+    packet_plugin_print_cmdline_help();
+    exit(EXIT_SUCCESS);
+}
+
 RESULT parse_cmdline_opts(int argc, char* argv[]) {
     int opt = 0;
     int longIndex = 0;
@@ -91,16 +126,15 @@ RESULT parse_cmdline_opts(int argc, char* argv[]) {
 	    { "username", required_argument, NULL, 'u' },
 	    { "password", required_argument, NULL, 'p' },
 	    { "nic", required_argument, NULL, 'n' },
-	    { "auth-timeout", required_argument, NULL, 't' },
+	    { "stage-timeout", required_argument, NULL, 't' },
 	    { "wait-after-fail", required_argument, NULL, 'r' },
 	    { "max-fail", required_argument, NULL, 'l' },
-	    { "no-auto-reauth", required_argument, NULL, 'x' },
+	    { "no-auto-reauth", no_argument, NULL, 'x' },
 	    { "daemonize", required_argument, NULL, 'b' },
 	    { "run-on-success", required_argument, NULL, 'c' }, /* They are */
 	    { "dhcp-script", required_argument, NULL, 'c' },    /* both 'c' */
 	    { "proxy-lan-iface", required_argument, NULL, 'z' },
 	    { "auth-round", required_argument, NULL, 'j' },
-	    { "decode-config", required_argument, NULL, 'q' },
 	    { "max-retries", required_argument, NULL, 0},
 	    { "pid-file", required_argument, NULL, 0},
 	    { "if-impl", required_argument, NULL, 0},
@@ -117,7 +151,8 @@ RESULT parse_cmdline_opts(int argc, char* argv[]) {
     while (opt != -1) {
         switch (opt) {
             case 'h':
-                //print_help(argv[0]); /* 调用本函数将退出程序 */
+                print_cmdline_help(); /* 调用本函数将退出程序 */
+                break;
             case 'k':
                 if (optarg == NULL)
                     g_prog_config.kill_type = KILL_ONLY; /* 结束其他实例并退出 */
@@ -137,7 +172,7 @@ RESULT parse_cmdline_opts(int argc, char* argv[]) {
                 COPY_N_ARG_TO(g_prog_config.ifname, IFNAMSIZ);
                 break;
             case 't':
-                g_prog_config.stage_timeout = atoi(optarg); /* 此处不设置限制，但原始的代码中有最大99秒的限制 */
+                g_prog_config.stage_timeout = atoi(optarg); /* 此处不设置限制，但原始的代码中有最大99秒的限制 */ //TODO
                 break;
             case 'r':
                 g_prog_config.wait_after_fail_secs = atoi(optarg); /* 同上 */
@@ -146,7 +181,7 @@ RESULT parse_cmdline_opts(int argc, char* argv[]) {
                 g_prog_config.max_failures = atoi(optarg);
                 break;
             case 'x':
-                g_prog_config.restart_on_logoff = atoi(optarg);
+                g_prog_config.restart_on_logoff = 1;
                 break;
             case 'b':
                 daemon_mode = atoi(optarg) % 4;

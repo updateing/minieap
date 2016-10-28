@@ -26,7 +26,8 @@ int init_packet_plugin_list() {
     int i = 0;
     for (; i < sizeof(list) / sizeof(PACKET_PLUGIN*); ++i) {
         PACKET_PLUGIN* (*func)() = list[i];
-        insert_data(&g_packet_plugin_list, func());
+        PACKET_PLUGIN* instance = func();
+        insert_data(&g_packet_plugin_list, instance);
     }
     return i;
 }
@@ -148,5 +149,14 @@ void packet_plugin_set_auth_round(int round) {
     do {
         CHK_FUNC(PLUGIN->set_auth_round);
         PLUGIN->set_auth_round(PLUGIN, round);
+    } while ((plugin_info = plugin_info->next));
+}
+
+void packet_plugin_print_banner() {
+    LIST_ELEMENT *plugin_info = g_active_packet_plugin_list;
+    if (g_active_packet_plugin_list == NULL) return;
+    do {
+        CHK_FUNC(PLUGIN->print_banner);
+        PLUGIN->print_banner(PLUGIN);
     } while ((plugin_info = plugin_info->next));
 }

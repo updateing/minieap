@@ -97,7 +97,7 @@ typedef struct _prog_config {
      * and timed access control.
      */
     int restart_on_logoff;
-    #define DEFAULT_RESTART_ON_LOGOFF FALSE
+    #define DEFAULT_RESTART_ON_LOGOFF TRUE
 
     /*
      * Wait seconds after failure before next try.

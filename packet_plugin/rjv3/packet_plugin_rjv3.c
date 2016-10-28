@@ -222,6 +222,12 @@ RESULT rjv3_process_config_file(struct _packet_plugin* this, const char* filepat
     return SUCCESS; // TODO
 }
 
+static void packet_plugin_rjv3_print_banner() {
+    PR_INFO("\nRJv3 for MiniEAP " VERSION "\n"
+            "V3 校验算法来自 hyrathb@GitHub\n"
+            "Hamster Tian, 2016\n\n");
+}
+
 PACKET_PLUGIN* packet_plugin_rjv3_new() {
     PACKET_PLUGIN* this = (PACKET_PLUGIN*)malloc(sizeof(PACKET_PLUGIN));
     if (this < 0) {
@@ -240,8 +246,10 @@ PACKET_PLUGIN* packet_plugin_rjv3_new() {
 
     this->name = "rjv3";
     this->description = "来自 hyrathb@GitHub 的 Ruijie V3 验证算法";
+    this->version = PACKET_PLUGIN_RJV3_VER_STR;
     this->destroy = rjv3_destroy;
     this->process_cmdline_opts = rjv3_process_cmdline_opts;
+    this->print_banner = packet_plugin_rjv3_print_banner;
     this->load_default_params = rjv3_load_default_params;
     this->print_cmdline_help = rjv3_print_cmdline_help;
     this->prepare_frame = rjv3_prepare_frame;

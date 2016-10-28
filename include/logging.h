@@ -33,6 +33,9 @@
 #define PR_DBG(...) \
     print_log("D", FUNC_NAME, __VA_ARGS__);
 
+#define PR_RAW(...) \
+    print_log_raw(__VA_ARGS__)
+
 typedef enum _LOG_DESTINATION {
 	LOG_TO_FILE,
 	LOG_TO_CONSOLE

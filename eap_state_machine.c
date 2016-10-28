@@ -213,6 +213,7 @@ static RESULT state_mach_process_failure(ETH_EAP_FRAME* frame) {
 }
 
 void eap_state_machine_recv_handler(ETH_EAP_FRAME* frame) {
+    /* Keep a copy of the frame, since if_impl may not hold it */
     if (PRIV->last_recv_frame != NULL) {
         free_frame(&PRIV->last_recv_frame);
     }
@@ -246,7 +247,7 @@ void eap_state_machine_recv_handler(ETH_EAP_FRAME* frame) {
                 break;
         }
     }
-    packet_plugin_on_frame_received(frame);
+    packet_plugin_on_frame_received(PRIV->last_recv_frame);
 }
 
 static void state_watchdog(void* frame) {
@@ -255,6 +256,7 @@ static void state_watchdog(void* frame) {
 }
 
 static RESULT trans_to_preparing(ETH_EAP_FRAME* frame) {
+    PR_INFO("MiniEAP " VERSION "已启动");
     IF_IMPL* _if_impl = get_if_impl();
     RESULT ret = switch_to_state(EAP_STATE_START_SENT, frame);
     _if_impl->start_capture(_if_impl); // Blocking...

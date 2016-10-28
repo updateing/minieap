@@ -10,7 +10,7 @@ typedef struct _packet_plugin {
      * Can be used to free memory.
      */
     void (*destroy)(struct _packet_plugin* this);
-    
+
     /*
      * Called by main program when command line options are available.
      * Can be used to initialize custom options.
@@ -18,7 +18,7 @@ typedef struct _packet_plugin {
      * Return: if there is any error during the process (malformed value, etc)
      */
     RESULT (*process_cmdline_opts)(struct _packet_plugin* this, int argc, char* argv[]);
-    
+
     /*
      * Called by main program when it knows the config file path.
      * Can be used to read from config file.
@@ -30,26 +30,31 @@ typedef struct _packet_plugin {
      * Return: if there is any error during the process (malformed value, etc)
      */
     RESULT (*process_config_file)(struct _packet_plugin* this, const char* filepath);
-    
+
     /*
      * Validate the parameters (from config file or overriden by cmdline)
      *
      * Return: if all mandatory params are valid/not null
      */
     RESULT (*validate_params)(struct _packet_plugin* this);
-    
+
+    /*
+     * Print credit / version info
+     */
+    void  (*print_banner)(struct _packet_plugin* this);
+
     /*
      * Load the defaults
      *
      * Return: if all mandatory params are valid/not null
      */
     void (*load_default_params)(struct _packet_plugin* this);
-    
+
     /*
      * Called by main program when printing help for command line options.
      */
     void (*print_cmdline_help)(struct _packet_plugin* this);
-    
+
     /*
      * Called by main program when the main program finishes filling
      * the standard ethernet and EAP(OL) fields in a ready-to-send frame.
@@ -66,24 +71,29 @@ typedef struct _packet_plugin {
      * Return: if the frame is processed successfully
      */
     RESULT (*on_frame_received)(struct _packet_plugin* this, ETH_EAP_FRAME* frame);
-    
+
     /*
      * Sets the round number we are currently in.
      * This is useful in double authentication, where frames in round 1 and round 2
      * require different fields.
      */
     void (*set_auth_round)(struct _packet_plugin* this, int round);
-    
+
     /*
      * Plugin name, to be selected by user
      */
     char* name;
-    
+
     /*
      * Description, displayed to user
      */
     char* description;
-    
+
+    /*
+     * Version string, displayed to user
+     */
+    char* version;
+
     /*
      * Packet plugin internal use
      */
@@ -100,6 +110,7 @@ RESULT select_packet_plugin(const char* name);
 void packet_plugin_destroy();
 RESULT packet_plugin_process_cmdline_opts(int argc, char* argv[]);
 RESULT packet_plugin_validate_params();
+void packet_plugin_print_banner();
 void packet_plugin_load_default_params();
 RESULT packet_plugin_process_config_file(char* filepath);
 void packet_plugin_print_cmdline_help();
