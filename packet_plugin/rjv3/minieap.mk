@@ -3,7 +3,7 @@
 LOCAL_PATH := $(call my-dir)
 
 LOCAL_SRC_FILES := \
-    $(call all-c-files-under,.) \
+    $(call all-c-files-under,) \
     $(call all-c-files-under,rjv3_hashes)
 LOCAL_C_INCLUDES := rjv3_hashes
 LOCAL_CFLAGS :=

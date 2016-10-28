@@ -1,4 +1,5 @@
 *.o
+*.d
 .*
 minieap
 ifaddrs.c
