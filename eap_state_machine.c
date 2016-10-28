@@ -250,9 +250,10 @@ void eap_state_machine_recv_handler(ETH_EAP_FRAME* frame) {
     packet_plugin_on_frame_received(PRIV->last_recv_frame);
 }
 
+#define CFG_STAGE_TIMEOUT ((get_program_config())->stage_timeout)
 static void state_watchdog(void* frame) {
     switch_to_state(PRIV->state, PRIV->last_recv_frame);
-    PRIV->state_alarm_id = schedule_alarm(5, state_watchdog, NULL);
+    PRIV->state_alarm_id = schedule_alarm(CFG_STAGE_TIMEOUT, state_watchdog, NULL);
 }
 
 static RESULT trans_to_preparing(ETH_EAP_FRAME* frame) {
@@ -266,7 +267,7 @@ static RESULT trans_to_preparing(ETH_EAP_FRAME* frame) {
 static RESULT trans_to_start_sent(ETH_EAP_FRAME* frame) {
     PR_INFO("正在查找认证服务器");
     if (PRIV->state_alarm_id <= 0) {
-        PRIV->state_alarm_id = schedule_alarm(5, state_watchdog, NULL);
+        PRIV->state_alarm_id = schedule_alarm(CFG_STAGE_TIMEOUT, state_watchdog, NULL);
     }
     return state_mach_send_eapol_simple(EAPOL_START);
 }
@@ -274,7 +275,7 @@ static RESULT trans_to_start_sent(ETH_EAP_FRAME* frame) {
 static RESULT trans_to_identity_sent(ETH_EAP_FRAME* frame) {
     PR_INFO("正在回应用户名请求");
     if (PRIV->state_alarm_id <= 0) {
-        PRIV->state_alarm_id = schedule_alarm(5, state_watchdog, NULL);
+        PRIV->state_alarm_id = schedule_alarm(CFG_STAGE_TIMEOUT, state_watchdog, NULL);
     }
     return state_mach_send_identity_response(frame);
 }
@@ -282,7 +283,7 @@ static RESULT trans_to_identity_sent(ETH_EAP_FRAME* frame) {
 static RESULT trans_to_challenge_sent(ETH_EAP_FRAME* frame) {
     PR_INFO("正在回应密码请求");
     if (PRIV->state_alarm_id <= 0) {
-        PRIV->state_alarm_id = schedule_alarm(5, state_watchdog, NULL);
+        PRIV->state_alarm_id = schedule_alarm(CFG_STAGE_TIMEOUT, state_watchdog, NULL);
     }
     return state_mach_send_challenge_response(frame);
 }

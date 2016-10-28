@@ -104,11 +104,11 @@ static void print_cmdline_help() {
         "\t--max-retries <num>\t最大超时重试的次数 [默认3]\n"
         "\t--pid-file <...>\tPID 文件路径，设为none可禁用 [默认" DEFAULT_PIDFILE "]\n"
         "\t--conf-file <...>\t配置文件路径 [默认" DEFAULT_CONFFILE "]\n"
-        "\t--if-impl <...>\t\t选择此网络操作抽象模块 [默认" DEFAULT_IF_IMPL "]\n"
-        "\t--pkt-plugin <...>\t启用此名称的数据包修改器 [默认无]\n"
+        "\t--if-impl <...>\t\t选择此网络操作抽象模块，仅允许选择一次 [默认" DEFAULT_IF_IMPL "]\n"
+        "\t--pkt-plugin <...>\t启用此名称的数据包修改器，可启用多次、多个 [默认无]\n"
         "\t--module <...>\t\t同上\n"
     );
-    
+
     packet_plugin_print_cmdline_help();
     exit(EXIT_SUCCESS);
 }
