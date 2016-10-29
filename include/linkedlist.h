@@ -20,6 +20,11 @@ void insert_data(LIST_ELEMENT** start, void* data);
 void* lookup_data(LIST_ELEMENT* start, void* elem_to_find, int(*cmpfunc)(void*, void*));
 
 /*
+ * Remove all nodes matching specific data using custom compartor, zeroing its reference
+ */
+void remove_data(LIST_ELEMENT** start, void* elem_to_remove, int(*cmpfunc)(void*, void*), int free_content);
+
+/*
  * user pointer is passed to func directly, for private use
  * Prototype of func: void func(void* current_data, void* user);
  */
@@ -31,7 +36,8 @@ void list_traverse(LIST_ELEMENT* start, void(*func)(void*, void*), void* user);
 void list_destroy(LIST_ELEMENT** start, int free_content);
 
 /*
- * Remove specific data using custom comprator, zeroing its reference
+ * Concatenate two lists. This will NOT duplicate the nodes in second list.
+ * So make sure they are always available.
  */
-void remove_data(LIST_ELEMENT** start, void* elem_to_remove, int(*cmpfunc)(void*, void*), int free_content);
+void list_concat(LIST_ELEMENT** org_list, LIST_ELEMENT* new_list);
 #endif

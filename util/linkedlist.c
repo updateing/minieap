@@ -47,6 +47,16 @@ void list_traverse(LIST_ELEMENT* start, void(*func)(void*, void*), void* user) {
     }
 }
 
+void list_concat(LIST_ELEMENT** org_list, LIST_ELEMENT* new_list) {
+    if (org_list == NULL) return;
+    if (*org_list == NULL) {
+        *org_list = new_list;
+        return;
+    }
+
+    (find_last_node(*org_list))->next = new_list;
+}
+
 void list_destroy(LIST_ELEMENT** ref, int free_content) {
     LIST_ELEMENT* curr = NULL, *next = *ref;
     while ((curr = next)) {
@@ -70,7 +80,7 @@ void remove_data(LIST_ELEMENT** start, void* elem_to_remove, int(*cmpfunc)(void*
                 free(curr->content);
             }
             free(curr);
-            return;
+            continue;
         }
         curr_ref = &curr->next;
     }
