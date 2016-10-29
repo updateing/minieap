@@ -58,6 +58,7 @@ static const uint8_t ETH_P_PAE_BYTES[2] = {0x88, 0x8e};
 #define PRIV (&g_priv) // I like pointers!
 
 static void eap_state_machine_clear_state() {
+    PRIV->state_alarm_id = 0;
     PRIV->state_last_count = 0;
     PRIV->state = EAP_STATE_UNKNOWN;
     PRIV->auth_round = 1;
@@ -205,7 +206,7 @@ static RESULT state_mach_process_failure(ETH_EAP_FRAME* frame) {
             PR_ERR("认证失败 %d 次，已达到指定次数，正在退出……", PRIV->fail_count);
             exit(EXIT_FAILURE);
         } else {
-            PR_ERR("认证失败 %d 次，将在 %d 秒或服务器请求后重试……", PRIV->fail_count, _cfg->wait_after_fail_secs);
+            PR_WARN("认证失败 %d 次，将在 %d 秒或服务器请求后重试……", PRIV->fail_count, _cfg->wait_after_fail_secs);
             schedule_alarm(_cfg->wait_after_fail_secs, restart_auth, NULL);
             return SUCCESS;
         }
@@ -251,12 +252,25 @@ void eap_state_machine_recv_handler(ETH_EAP_FRAME* frame) {
 }
 
 #define CFG_STAGE_TIMEOUT ((get_program_config())->stage_timeout)
-static void state_watchdog(void* frame) {
+/*
+ * Re-generate and send the same frame using last received frame as reference
+ */
+static void reset_state_watchdog();
+static void state_watchdog(void* unused) {
     switch_to_state(PRIV->state, PRIV->last_recv_frame);
+    reset_state_watchdog();
+}
+
+/*
+ * Start a new timer for current state
+ */
+static void reset_state_watchdog() {
+    unschedule_alarm(PRIV->state_alarm_id);
     PRIV->state_alarm_id = schedule_alarm(CFG_STAGE_TIMEOUT, state_watchdog, NULL);
 }
 
 static RESULT trans_to_preparing(ETH_EAP_FRAME* frame) {
+    PR_INFO("========================");
     PR_INFO("MiniEAP " VERSION "已启动");
     IF_IMPL* _if_impl = get_if_impl();
     RESULT ret = switch_to_state(EAP_STATE_START_SENT, frame);
@@ -266,25 +280,16 @@ static RESULT trans_to_preparing(ETH_EAP_FRAME* frame) {
 
 static RESULT trans_to_start_sent(ETH_EAP_FRAME* frame) {
     PR_INFO("正在查找认证服务器");
-    if (PRIV->state_alarm_id <= 0) {
-        PRIV->state_alarm_id = schedule_alarm(CFG_STAGE_TIMEOUT, state_watchdog, NULL);
-    }
     return state_mach_send_eapol_simple(EAPOL_START);
 }
 
 static RESULT trans_to_identity_sent(ETH_EAP_FRAME* frame) {
     PR_INFO("正在回应用户名请求");
-    if (PRIV->state_alarm_id <= 0) {
-        PRIV->state_alarm_id = schedule_alarm(CFG_STAGE_TIMEOUT, state_watchdog, NULL);
-    }
     return state_mach_send_identity_response(frame);
 }
 
 static RESULT trans_to_challenge_sent(ETH_EAP_FRAME* frame) {
     PR_INFO("正在回应密码请求");
-    if (PRIV->state_alarm_id <= 0) {
-        PRIV->state_alarm_id = schedule_alarm(CFG_STAGE_TIMEOUT, state_watchdog, NULL);
-    }
     return state_mach_send_challenge_response(frame);
 }
 
@@ -314,8 +319,7 @@ RESULT switch_to_state(EAP_STATE state, ETH_EAP_FRAME* frame) {
             } else {
                 PRIV->state = state;
                 PRIV->state_last_count = 0;
-                unschedule_alarm(PRIV->state_alarm_id);
-                PRIV->state_alarm_id = 0;
+                reset_state_watchdog();
             }
             if (IS_FAIL(g_transition_table[i].trans_func(frame))) {
                 PR_ERR("从 %d 状态向 %d 状态的转化函数执行失败，正在退出……", PRIV->state, state);
