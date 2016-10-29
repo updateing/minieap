@@ -12,11 +12,13 @@
 typedef struct _alarm_event {
     int remaining;
     int id;
+    int marked_delete;
     void (*func)(void*);
     void* user;
 } ALARM_EVENT;
 
 static LIST_ELEMENT* g_alarm_list = NULL;
+static LIST_ELEMENT* g_alarm_list_add_temp = NULL;
 static int g_last_id = 0;
 static int g_ringing = 0;
 static int g_last_set_time = 0;
@@ -32,6 +34,7 @@ static void print_list(LIST_ELEMENT** list) {
         elem = (*ref)->content;
         PR_DBG("    remain %d", elem->remaining);
         PR_DBG("    id %d", elem->id);
+        PR_DBG("    marked delete %d", elem->marked_delete);
         PR_DBG("    func %p", elem->func);
         PR_DBG("    user %p", elem->user);
         ref = &(*ref)->next;
@@ -44,13 +47,6 @@ static void set_alarm(int time) {
     g_last_set_time = time;
 }
 
-static int alarm_event_id_node_cmpfunc(void* id, void* node) {
-    if (*(int*)id == ((ALARM_EVENT*)node)->id) {
-        return 0;
-    }
-    return 1;
-}
-
 static int find_min_remaining(LIST_ELEMENT* list) {
     LIST_ELEMENT* _curr;
     int _min = INT_MAX;
@@ -61,21 +57,23 @@ static int find_min_remaining(LIST_ELEMENT* list) {
             _min = CURR->remaining;
         }
     }
-
     return _min;
 }
 
-static void update_remaining_and_fire_single(void* alarm_event, void* secs) {
+static void update_remaining_single(void* alarm_event, void* secs) {
 #define EVENT ((ALARM_EVENT*)alarm_event)
     EVENT->remaining -= *(int*)secs;
+}
+
+static void fire_single(void* alarm_event, void* unused) {
     if (EVENT->remaining <= 0) {
         EVENT->func(EVENT->user);
-        unschedule_alarm(EVENT->id);
     }
 }
 
-static void update_remaining_and_fire(LIST_ELEMENT* alarm_list, int secs_elapsed_since_last_update) {
-    list_traverse(alarm_list, update_remaining_and_fire_single, &secs_elapsed_since_last_update);
+/* cmpfunc: 0 = match (should be cleaned / not valid), other = unmatch */
+static int alarm_valid_cmpfunc(void* unused, void* alarm_event) {
+    return EVENT->remaining > 0 && EVENT->marked_delete == FALSE;
 }
 
 void alarm_sig_handler(int sig) {
@@ -84,11 +82,28 @@ void alarm_sig_handler(int sig) {
     PR_DBG("RING!");
     print_list(&g_alarm_list);
 #endif
-    /* Must be nearest one that fired the alarm */
-    int _curr_remaining = find_min_remaining(g_alarm_list);
-    update_remaining_and_fire(g_alarm_list, _curr_remaining);
 
-    _curr_remaining = find_min_remaining(g_alarm_list);
+    /* We need to avoid maniputing the alarm list during traverse,so
+     * 1. Update all the remaining time fields before calling user func
+     *    to make sure schedule_alarm works.
+     *    Or find_min_remaining in user func may return some value that
+     *    will expire just in this triggered alarm.
+     * 2. Call user func, and prevent removing/adding nodes during this process.
+     *    This will ensure the list's integrity during traversing.
+     * 3. Apply deletion / insertion, clean up expired alarms.
+     */
+    list_traverse(g_alarm_list, update_remaining_single, &g_last_set_time);
+    list_traverse(g_alarm_list, fire_single, NULL);
+
+    /* Clean up expired and mark-as-delete alarms */
+    remove_data(&g_alarm_list, NULL, alarm_valid_cmpfunc, TRUE);
+
+    /* Append newly scheduled alarms */
+    list_concat(&g_alarm_list, g_alarm_list_add_temp);
+    /* Prepare for further new lists */
+    g_alarm_list_add_temp = NULL;
+
+    int _curr_remaining = find_min_remaining(g_alarm_list);
     set_alarm(_curr_remaining);
 
     g_ringing = FALSE;
@@ -104,12 +119,33 @@ void sched_alarm_destroy() {
     alarm(0);
 }
 
+static void alarm_mark_as_delete_single(void* alarm_event, void* id) {
+    if (EVENT->id == *(int*)id) {
+        EVENT->marked_delete = TRUE;
+    }
+}
+
+static int alarm_event_id_node_cmpfunc(void* id, void* node) {
+    if (*(int*)id == ((ALARM_EVENT*)node)->id) {
+        return 0;
+    }
+    return 1;
+}
+
 void unschedule_alarm(int id) {
-    remove_data(&g_alarm_list, &id, alarm_event_id_node_cmpfunc, TRUE);
+    if (g_ringing) {
+        list_traverse(g_alarm_list, alarm_mark_as_delete_single, &id);
 #ifdef DEBUG
-    PR_DBG("Removed event id = %d", id);
-    print_list(&g_alarm_list);
+        PR_DBG("Marked event id = %d as deletion", id);
+        print_list(&g_alarm_list);
 #endif
+    } else {
+        remove_data(&g_alarm_list, &id, alarm_event_id_node_cmpfunc, TRUE);
+#ifdef DEBUG
+        PR_DBG("Removed event id = %d", id);
+        print_list(&g_alarm_list);
+#endif
+    }
 }
 
 int schedule_alarm(int secs, void (*func)(void*), void* user) {
@@ -122,19 +158,27 @@ int schedule_alarm(int secs, void (*func)(void*), void* user) {
     _event->id = ++g_last_id;
     _event->func = func;
     _event->user = user;
+    _event->marked_delete = FALSE;
 
-    if (!g_ringing) {
-        int _curr_remaining = alarm(0);
-        update_remaining_and_fire(g_alarm_list, g_last_set_time - _curr_remaining);
-    }
-    int _curr_min = find_min_remaining(g_alarm_list);
-    set_alarm(_curr_min > secs ? secs : _curr_min);
-
-    insert_data(&g_alarm_list, _event);
-
+    if (g_ringing) {
+        /* It's ringing. Do not reset alarm here. The signal handler will do this */
+        insert_data(&g_alarm_list_add_temp, _event);
 #ifdef DEBUG
-    PR_DBG("New alarm event added");
-    print_list(&g_alarm_list);
+        PR_DBG("Pending new alarm event insertion");
+        print_list(&g_alarm_list_add_temp);
 #endif
+    } else {
+        /* Not ringing. Time to next alarm should be obtained by alarm(0) */
+        int _curr_remaining = alarm(0);
+        /* When there is no alarm set, alarm(0) would be 0. Fix to INT_MAX for comparsion */
+        if (_curr_remaining == 0) _curr_remaining = INT_MAX;
+        /* Reset since we stopped the alarm half way. */
+        set_alarm(_curr_remaining < secs ? _curr_remaining : secs);
+        insert_data(&g_alarm_list, _event);
+#ifdef DEBUG
+        PR_DBG("New alarm event added");
+        print_list(&g_alarm_list);
+#endif
+    }
     return _event->id;
 }
