@@ -8,9 +8,8 @@
 #include "logging.h"
 #include "minieap_common.h"
 
-//#define ICONV
-
-#ifdef ICONV
+// From cmdline
+#ifdef ENABLE_ICONV
 #include <iconv.h>
 #endif
 
@@ -44,7 +43,7 @@ uint8_t bit_reverse(uint8_t in) {
 }
 
 void gbk2utf8(char* in, size_t inlen, char* out, size_t outlen) {
-#ifdef ICONV
+#if defined(_ICONV_H) || defined(_LIBICONV_H)
     iconv_t _cd = iconv_open("utf-8", "gbk");
     if (_cd < 0) {
         PR_WARN("无法从 iconv 获取编码描述符，服务器消息可能会出现乱码");
@@ -60,7 +59,7 @@ legacy:
 }
 
 void pr_info_gbk(char* in, size_t inlen) {
-    size_t _utf8_size = (inlen >> 1) * 3;
+    size_t _utf8_size = inlen << 2;
     char* _utf8_buf = (char*)malloc(_utf8_size);
     memset(_utf8_buf, 0, _utf8_size);
     if (_utf8_buf > 0) {

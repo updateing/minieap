@@ -21,12 +21,14 @@ MiniEAP
 * 所有字段生成逻辑均采用结构体对缓冲区进行读写，拒绝 magic number 从我做起 x2！
 * 字段中所用到的常量都有宏定义来注明其含义，定长字段的长度也通过宏定义声明，拒绝 magic number 从我做起 x3！
 * 支持通过命令行来附加新的字段，也可覆盖内置字段。可以在不修改代码的情况下进行适配。
-* 整体程序的内存占用比 MentoHUST 小约 87% （在 256 MB 内存的 ARMv7 平台上测试）.
+* 整体程序的内存占用比 MentoHUST 小约 78% （在 256 MB 内存的 ARMv7 平台上测试）.
 
 ## 编译
 
-1. 编辑 `Makefile`，选择所需要的模块。在以 `if_impl` 开头的模块中，Linux 环境建议只选择 `if_impl_sockraw` 模块，其他平台建议只选择 `if_impl_libpcap` 模块并用 `LDFLAGS` 和 `CFLAGS` 指定 `libpcap` 的头文件及链接库位置。以 `packet_plugin` 开头的模块中请按需要选择。其他模块一般不需要改变。
-2. 执行 `make` 即可在根目录下编译出可执行文件。
+1. 编辑 `config.mk`，选择所需要的模块。在以 `if_impl` 开头的模块中，Linux 环境建议只选择 `if_impl_sockraw` 模块，其他平台建议只选择 `if_impl_libpcap` 模块并用 `COMMON_LDFLAGS` 和 `COMMON_CFLAGS` 指定 `libpcap` 的头文件及链接库位置。以 `packet_plugin` 开头的模块中请按需要选择。其他模块一般不需要改变。
+2. 本程序需要使用 `getifaddrs`。如果您的平台没有提供此函数，可自行寻找需要的实现，并在 `include/` 中添加 `ifaddrs.h`，在 `util/ifaddrs/` 目录中添加必要的 C 文件，最后在 `config.mk` 中选中 `ifaddrs` 模块即可。
+3. 如果服务器消息乱码，可将 `config.mk` 中的 `ENABLE_ICONV` 置为 1. 若平台未提供iconv相关函数，可在 `COMMON_CFLAGS` 中添加 `-I/path/to/your/libiconv-1.14/include`，在 `LIBS` 中添加 `/path/to/your/libiconv.a` （预先编译）。也可使用动态链接，即在 `COMMON_LDFLAGS` 中添加 `-liconv -L/path/to/libiconv/lib/`。
+4. 执行 `make` 即可在根目录下编译出可执行文件。
 
 注：如需要交叉编译，可自行增加一行 `CC := /path/to/your/cross/compiler/xxx-yyy-zzz-gcc`
 

@@ -2,4 +2,4 @@
 *.d
 .*
 minieap
-ifaddrs.c
+ifaddrs/

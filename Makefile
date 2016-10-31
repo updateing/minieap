@@ -1,18 +1,10 @@
-#### Choose/Add your modules here ####
-PLUGIN_MODULES := \
-	if_impl_sockraw \
-	packet_plugin_printer \
-	packet_plugin_rjv3
+include config.mk
 
-#PLUGIN_MODULES += if_impl_libpcap
-
-# If your platform does not provide ifaddrs, add your own implementation here
-#PLUGIN_MODULES += ifaddrs
+ifeq ($(ENABLE_ICONV),1)
+COMMON_CFLAGS += -DENABLE_ICONV
+endif
 
 #### Common bits ####
-# These two flags are inherited from environment
-COMMON_CFLAGS := $(CFLAGS) -Wall -g -DDEBUG -D_GNU_SOURCE
-COMMON_LDFLAGS := $(LDFLAGS)
 COMMON_C_INCLUDES := include
 COMMON_MODULES := \
 	util \
@@ -26,7 +18,8 @@ minieap: $(BUILD_MODULES)
 	$(CC) -o minieap \
         $(COMMON_LDFLAGS) \
         $(foreach objs,$(addsuffix _LDFLAGS,$(BUILD_MODULES)),$($(objs))) \
-        $(foreach objs,$(addsuffix _PRIV_OBJS,$(BUILD_MODULES)),$($(objs)))
+        $(foreach objs,$(addsuffix _PRIV_OBJS,$(BUILD_MODULES)),$($(objs))) \
+        $(LIBS)
 
 .PHONY: clean
 clean: $(addsuffix _clean,$(BUILD_MODULES))
