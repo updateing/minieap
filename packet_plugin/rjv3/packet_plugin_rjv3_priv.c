@@ -547,7 +547,7 @@ void rjv3_start_secondary_auth(void* vthis) {
 
     if (IS_FAIL(rjv3_override_priv_header(this))) {
         PRIV->dhcp_count++;
-        if (PRIV->dhcp_count > _cfg->max_failures) {
+        if (PRIV->dhcp_count > PRIV->max_dhcp_count) {
             PR_ERR("无法获取 IP 地址等信息，将不会进行第二次认证");
             schedule_alarm(1, rjv3_send_keepalive_timed, this);
         } else {

@@ -6,6 +6,7 @@
 #define PACKET_PLUGIN_RJV3_VER_STR  "0.90"
 
 #define DEFAULT_HEARTBEAT_INTERVAL  60
+#define DEFAULT_MAX_DHCP_COUNT      3
 #define DEFAULT_SERVICE_NAME        "internet"
 #define DEFAULT_VER_STR             "RG-SU For Linux V1.0"
 #define DEFAULT_EAP_BCAST_ADDR      BROADCAST_STANDARD

@@ -96,6 +96,7 @@ void rjv3_print_cmdline_help(struct _packet_plugin* this) {
 
 void rjv3_load_default_params(struct _packet_plugin* this) {
     PRIV->heartbeat_interval = DEFAULT_HEARTBEAT_INTERVAL;
+    PRIV->max_dhcp_count = DEFAULT_MAX_DHCP_COUNT;
     PRIV->service_name = strdup(DEFAULT_SERVICE_NAME);
     PRIV->ver_str = strdup(DEFAULT_VER_STR);
     PRIV->bcast_addr = DEFAULT_EAP_BCAST_ADDR;
@@ -117,6 +118,7 @@ RESULT rjv3_process_cmdline_opts(struct _packet_plugin* this, int argc, char* ar
 	    { "fake-dns1", required_argument, NULL, 0 },
 	    { "fake-dns2", required_argument, NULL, 0 },
 	    { "fake-serial", required_argument, NULL, 0 },
+	    { "max-dhcp-count", required_argument, NULL, 0 },
 	    { NULL, no_argument, NULL, 0 }
     };
 
@@ -156,6 +158,8 @@ RESULT rjv3_process_cmdline_opts(struct _packet_plugin* this, int argc, char* ar
                     COPY_N_ARG_TO(PRIV->fake_dns2, INET6_ADDRSTRLEN);
                 } else if (IF_ARG("fake-serial")) {
                     COPY_N_ARG_TO(PRIV->fake_serial, MAX_PROP_LEN);
+                } else if (IF_ARG("max-dhcp-count")) {
+                    PRIV->max_dhcp_count = atoi(optarg);
                 }
                 break;
             case ':':

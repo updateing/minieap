@@ -90,6 +90,7 @@ typedef struct _rj_prop {
 typedef struct _packet_plugin_rjv3_priv {
     struct { // Cmdline options
         int heartbeat_interval;
+        int max_dhcp_count;
         char* service_name; // All pointers can be freed since they are created by COPY_N_ARG_TO
         char* ver_str;
         char* fake_dns1;
