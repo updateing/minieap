@@ -3,6 +3,7 @@
  */
 
 #include <getopt.h>
+#include <unistd.h>
 #include <stdlib.h>
 #include <net/if.h>
 
@@ -110,7 +111,7 @@ static void print_cmdline_help() {
     );
 
     packet_plugin_print_cmdline_help();
-    exit(EXIT_SUCCESS);
+    _exit(EXIT_SUCCESS);
 }
 
 RESULT parse_cmdline_opts(int argc, char* argv[]) {

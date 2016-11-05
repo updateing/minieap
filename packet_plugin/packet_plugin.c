@@ -113,10 +113,11 @@ void packet_plugin_load_default_params() {
 }
 
 void packet_plugin_print_cmdline_help() {
-    LIST_ELEMENT *plugin_info = g_active_packet_plugin_list;
-    if (g_active_packet_plugin_list == NULL) return;
+    LIST_ELEMENT *plugin_info = g_packet_plugin_list;
+    if (g_packet_plugin_list == NULL) return;
     do {
         CHK_FUNC(PLUGIN->print_cmdline_help);
+        PR_RAW("\n插件帮助：\n插件 %s : %s\n", PLUGIN->name, PLUGIN->description);
         PLUGIN->print_cmdline_help(PLUGIN);
     } while ((plugin_info = plugin_info->next));
 }

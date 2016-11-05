@@ -91,7 +91,30 @@ fail:
     return FAILURE;
 }
 
+#define _STR(x) #x
+#define STR(x) _STR(x)
 void rjv3_print_cmdline_help(struct _packet_plugin* this) {
+    PR_RAW(
+        "\t--heartbeat, -e <num>\t\t心跳间隔秒数 [默认" STR(DEFAULT_HEARTBEAT_INTERVAL) "]\n"
+        "\t--eap-bcast-addr, -a <0-1>\tStart 包广播地址： [默认" STR(DEFAULT_EAP_BCAST_ADDR) "]\n"
+            "\t\t\t\t\t0 = 标准地址\n"
+            "\t\t\t\t\t1 = 锐捷私有地址\n"
+        "\t--dhcp-type, -d <0-3>\t\tDHCP 方式： [默认" STR(DEFAULT_DHCP_TYPE) "]\n"
+            "\t\t\t\t\t0 = 不使用 DHCP\n"
+            "\t\t\t\t\t1 = 二次认证\n"
+            "\t\t\t\t\t2 = 认证前 DHCP\n"
+            "\t\t\t\t\t3 = 认证后 DHCP\n"
+        "\t--rj-option <type>:<value>[:r]\t自定义认证字段，其中 type 和 value 必须为十六进制串\n"
+            "\t\t\t\t\t如 --rj-option 6a:000102 表示新增一条类型为 0x6a、内容为 0x00 0x01 0x02的字段\n"
+            "\t\t\t\t\t:r 表示替换内置生成的字段，如 --rj-option 6f:000102:r 表示将内置算法生成的类型为 0x6f 的字段内容替换为 0x00 0x12 0x02\n"
+        "\t--service <str>\t\t\t自定义服务名 [默认" DEFAULT_SERVICE_NAME "]\n"
+        "\t--version-str <str>\t\t自定义版本字符串 [默认" DEFAULT_VER_STR "]\n"
+        "\t--fake-dns1 <str>\t\t自定义主 DNS 地址（点分十进制 IPv4 格式） [默认自动获取]\n"
+        "\t--fake-dns2 <str>\t\t自定义次 DNS 地址（IPv4 / IPv6 不限） [默认自动获取]\n"
+        "\t--fake-serial <str>\t\t自定义硬盘序列号 [默认自动获取]\n"
+        "\t--max-dhcp-count <num>\t\t二次认证时等待 DHCP 结果的允许超时次数 [默认" STR(DEFAULT_MAX_DHCP_COUNT) "]\n"
+        "\t从 --service 到 --fake-serial（除 --fake-dns1）都是对应的 --rj-option 的简单形式，可直接使用 ASCII 字符串作为参数，不需转化为十六进制表示\n"
+        );
 }
 
 void rjv3_load_default_params(struct _packet_plugin* this) {
@@ -111,7 +134,7 @@ RESULT rjv3_process_cmdline_opts(struct _packet_plugin* this, int argc, char* ar
 	    { "heartbeat", required_argument, NULL, 'e' },
 	    { "eap-bcast-addr", required_argument, NULL, 'a' },
 	    { "dhcp-type", required_argument, NULL, 'd' },
-	    { "decode-config", required_argument, NULL, 'q' },
+	    //{ "decode-config", required_argument, NULL, 'q' },
 	    { "rj-option", required_argument, NULL, 0 },
 	    { "service", required_argument, NULL, 0 },
 	    { "version-str", required_argument, NULL, 0 },
