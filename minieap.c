@@ -25,6 +25,8 @@
  */
 static int init_program_config(int argc, char* argv[]) {
     PROG_CONFIG* cfg;
+
+    load_default_params();
     if (IS_FAIL(parse_cmdline_conf_file(argc, argv))) {
         PR_ERR("配置文件路径解析出错");
         goto err;
@@ -51,6 +53,8 @@ err:
  */
 static int init_plugin_config(int argc, char* argv[]) {
     PROG_CONFIG *cfg = get_program_config();
+
+    packet_plugin_load_default_params();
     if (IS_FAIL(packet_plugin_process_config_file(cfg->conffile))) {
         PR_ERR("插件配置文件内容解析出错");
         goto err;
@@ -84,7 +88,6 @@ static int init_cfg(int argc, char* argv[]) {
     PR_RAW("MiniEAP " VERSION "\n"
            "Hamster Tian, 2016\n\n");
 
-    load_default_params();
     if (IS_FAIL(init_program_config(argc, argv))) {
         PR_ERR("参数初始化错误");
         return FAILURE;
@@ -98,7 +101,7 @@ static int init_cfg(int argc, char* argv[]) {
     }
 
     packet_plugin_print_banner();
-    packet_plugin_load_default_params();
+
     if (IS_FAIL(init_plugin_config(argc, argv))) {
         PR_ERR("插件初始化错误");
         return FAILURE;

@@ -543,7 +543,6 @@ RESULT rjv3_process_result_prop(ETH_EAP_FRAME* frame) {
 
 void rjv3_start_secondary_auth(void* vthis) {
     PACKET_PLUGIN* this = (PACKET_PLUGIN*)vthis;
-    PROG_CONFIG* _cfg = get_program_config();
 
     if (IS_FAIL(rjv3_override_priv_header(this))) {
         PRIV->dhcp_count++;

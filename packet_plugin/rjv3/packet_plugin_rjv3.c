@@ -153,6 +153,9 @@ RESULT rjv3_process_cmdline_opts(struct _packet_plugin* this, int argc, char* ar
         switch (opt) {
             case 'e':
                 PRIV->heartbeat_interval = atoi(optarg);
+                if (PRIV->heartbeat_interval == 0) {
+                    PR_WARN("命令行参数将心跳间隔指定为 0，这将会禁止心跳！请确认参数格式正确。");
+                }
                 break;
             case 'a':
                 PRIV->bcast_addr = atoi(optarg) % 2; /* 一共2个选项 */ // Do not allow CER

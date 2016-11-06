@@ -28,4 +28,11 @@ void pr_info_gbk(char* in, size_t inlen);
  * on pthread_create() later.
  */
 RESULT go_background();
+
+/*
+ * Duplicate/Free/Print string array
+ */
+char** strarraydup(int count, char* array[]);
+void strarrayfree(int count, char* array[]);
+void strarrayprint(int count, char* array[]);
 #endif

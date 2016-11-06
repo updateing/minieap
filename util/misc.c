@@ -85,3 +85,37 @@ RESULT go_background() {
       return FAILURE;
    return SUCCESS;
 }
+
+char** strarraydup(int count, char* array[]) {
+    if (array == 0) return NULL;
+
+    char** _ret = (char**)malloc(count * sizeof(char*));
+    if (_ret < 0) {
+        PR_ERR("无法为命令行选项创建缓冲区");
+        return NULL;
+    }
+
+    int _curr_seq = 0;
+    for (;_curr_seq < count; _curr_seq++) {
+        _ret[_curr_seq] = array[_curr_seq] ? strdup(array[_curr_seq]) : NULL;
+    }
+    return _ret;
+}
+
+void strarrayfree(int count, char* array[]) {
+    if (array == 0) return;
+
+    int _curr_seq = 0;
+    for (;_curr_seq < count; _curr_seq++) {
+        free(array[_curr_seq]);
+    }
+}
+
+void strarrayprint(int count, char* array[]) {
+    if (array == 0) return;
+
+    int _curr_seq = 0;
+    for (;_curr_seq < count; _curr_seq++) {
+        PR_DBG("Element %d: %s", _curr_seq, array[_curr_seq]);
+    }
+}

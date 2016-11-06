@@ -75,6 +75,7 @@ RESULT packet_plugin_process_cmdline_opts(int argc, char* argv[]) {
     do {
         CHK_FUNC(PLUGIN->process_cmdline_opts);
         optind = 1; /* Reset the pointer to make getopt works from start */
+        opterr = 0; /* Do not warn about unsupported options */
         if (PLUGIN->process_cmdline_opts(PLUGIN, argc, argv) == FAILURE)
             return FAILURE;
     } while ((plugin_info = plugin_info->next));
