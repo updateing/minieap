@@ -112,7 +112,7 @@ static void print_cmdline_help() {
 
     packet_plugin_print_cmdline_help();
 
-    PR_RAW("注意：选项与参数之间必须用空格分开！");
+    PR_RAW("注意：选项与参数之间必须用空格分开！\n");
 
     _exit(EXIT_SUCCESS);
 }

@@ -191,7 +191,7 @@ static void restart_auth(void* unused) {
 static RESULT state_mach_process_failure(ETH_EAP_FRAME* frame) {
     PROG_CONFIG* _cfg = get_program_config();
     if (PRIV->state == EAP_STATE_SUCCESS) {
-        /* This is link dropping, not auth failing */
+        /* Server forced us offline, not auth failing */
         if (_cfg->restart_on_logoff != FALSE) {
             PR_ERR("认证掉线，正在退出……");
             exit(EXIT_FAILURE);
@@ -201,7 +201,7 @@ static RESULT state_mach_process_failure(ETH_EAP_FRAME* frame) {
             return SUCCESS;
         }
     } else {
-        /* Auth fail during process */
+        /* Fail during auth */
         if (++PRIV->fail_count == _cfg->max_failures) {
             PR_ERR("认证失败 %d 次，已达到指定次数，正在退出……", PRIV->fail_count);
             exit(EXIT_FAILURE);
@@ -219,6 +219,7 @@ void eap_state_machine_recv_handler(ETH_EAP_FRAME* frame) {
         free_frame(&PRIV->last_recv_frame);
     }
     PRIV->last_recv_frame = frame_duplicate(frame);
+    packet_plugin_on_frame_received(PRIV->last_recv_frame);
 
     EAPOL_TYPE _eapol_type = frame->header->eapol_hdr.type[0];
     if (_eapol_type == EAP_PACKET) {
@@ -248,7 +249,6 @@ void eap_state_machine_recv_handler(ETH_EAP_FRAME* frame) {
                 break;
         }
     }
-    packet_plugin_on_frame_received(PRIV->last_recv_frame);
 }
 
 #define CFG_STAGE_TIMEOUT ((get_program_config())->stage_timeout)
