@@ -211,7 +211,7 @@ static RESULT rjv3_process_success(struct _packet_plugin* this, ETH_EAP_FRAME* f
     }
     if (PRIV->dhcp_type == DHCP_DOUBLE_AUTH) {
         if (PRIV->succ_count < 2) {
-            PR_INFO("正在执行 DHCP 脚本以准备第二次认证");
+            PR_INFO("首次认证成功，正在执行 DHCP 脚本以准备第二次认证");
             system((get_program_config())->run_on_success); // TODO move this to plugin
 
             /* Try right after the script ends */

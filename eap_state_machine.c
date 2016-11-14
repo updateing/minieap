@@ -63,6 +63,7 @@ static void eap_state_machine_clear_state() {
     PRIV->state = EAP_STATE_UNKNOWN;
     PRIV->auth_round = 1;
     PRIV->fail_count = 0;
+    memmove(PRIV->server_mac, BCAST_ADDR, sizeof(BCAST_ADDR));
 }
 
 RESULT eap_state_machine_init() {
@@ -72,10 +73,9 @@ RESULT eap_state_machine_init() {
     _if_impl->get_ifname(_if_impl, buf, IFNAMSIZ);
     obtain_iface_mac(buf, PRIV->local_mac);
 
-    memmove(PRIV->server_mac, BCAST_ADDR, sizeof(BCAST_ADDR));
+    eap_state_machine_clear_state();
 
     PRIV->packet_builder = packet_builder_get();
-    eap_state_machine_clear_state();
 
     return PRIV->packet_builder == NULL ? FAILURE : SUCCESS;
 }
@@ -86,8 +86,8 @@ void eap_state_machine_destroy() {
     free_frame(&PRIV->last_recv_frame);
 }
 
-static inline void set_outgoing_eth_fields(PACKET_BUILDER* builder, uint8_t* dst_mac) {
-    builder->set_eth_field(builder, FIELD_DST_MAC, dst_mac);
+static inline void set_outgoing_eth_fields(PACKET_BUILDER* builder) {
+    builder->set_eth_field(builder, FIELD_DST_MAC, PRIV->server_mac);
     builder->set_eth_field(builder, FIELD_SRC_MAC, PRIV->local_mac);
     builder->set_eth_field(builder, FIELD_ETH_PROTO, ETH_P_PAE_BYTES);
 }
@@ -97,7 +97,7 @@ static RESULT state_mach_send_identity_response(ETH_EAP_FRAME* request) {
     ETH_EAP_FRAME _response;
     IF_IMPL* _if_impl = get_if_impl();
 
-    set_outgoing_eth_fields(PRIV->packet_builder, PRIV->server_mac);
+    set_outgoing_eth_fields(PRIV->packet_builder);
     PRIV->packet_builder->set_eap_fields(PRIV->packet_builder,
                                 EAP_PACKET, EAP_RESPONSE,
                                 IDENTITY, request->header->eap_hdr.id[0],
@@ -122,7 +122,7 @@ static RESULT state_mach_send_challenge_response(ETH_EAP_FRAME* request) {
     ETH_EAP_FRAME _response;
     IF_IMPL* _if_impl = get_if_impl();
 
-    set_outgoing_eth_fields(PRIV->packet_builder, PRIV->server_mac);
+    set_outgoing_eth_fields(PRIV->packet_builder);
     PRIV->packet_builder->set_eap_fields(PRIV->packet_builder,
                                 EAP_PACKET, EAP_RESPONSE,
                                 MD5_CHALLENGE, request->header->eap_hdr.id[0],
@@ -150,7 +150,7 @@ static RESULT state_mach_send_eapol_simple(EAPOL_TYPE eapol_type) {
     ETH_EAP_FRAME _response;
     IF_IMPL* _if_impl = get_if_impl();
 
-    set_outgoing_eth_fields(PRIV->packet_builder, PRIV->server_mac);
+    set_outgoing_eth_fields(PRIV->packet_builder);
     PRIV->packet_builder->set_eap_fields(PRIV->packet_builder,
                                 eapol_type, 0,
                                 0, 0,

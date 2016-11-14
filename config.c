@@ -82,6 +82,8 @@ RESULT parse_cmdline_conf_file(int argc, char* argv[]) {
 #define _STR(x) #x
 #define STR(x) _STR(x)
 static void print_cmdline_help() {
+    PR_RAW("这是一个允许私有扩展的 802.1x 客户端，可通过插件实现私有部分的认证。\n");
+    PR_RAW("\n以下选项中，[]表示可选参数，<>表示必选参数。\n\n");
     PR_RAW(
         "\t--help, -h\t显示本帮助\n"
         "\t--kill, -k [1]\t终止其他实例并退出。加任意非 0 参数表示终止其他实例后继续进行认证\n"
@@ -90,7 +92,7 @@ static void print_cmdline_help() {
         "\t--password, -p <...>\t密码\n"
         "\t--nic, -n <...>\t\t要使用的网络界面名\n"
         "\t--stage-timeout, -t <num>\t单个认证阶段的超时时间 [默认" STR(DEFAULT_STAGE_TIMEOUT) "]\n"
-        "\t--wait-after-fail, -r <num>\t认证失败后重新认证前的等待时间（注意当服务器要求重新认证时将直接开始认证）[默认" STR(DEFAULT_WAIT_AFTER_FAIL_SECS) "]\n"
+        "\t--wait-after-fail, -r <num>\t认证失败后重新认证前的等待时间（但当服务器要求重新认证时将直接开始认证）[默认" STR(DEFAULT_WAIT_AFTER_FAIL_SECS) "]\n"
         "\t--max-fail, -l <num>\t最大允许认证失败次数 [默认" STR(DEFAULT_MAX_FAILURES) "]\n"
         "\t--no-auto-reauth, -x\t认证掉线后不允许自动重连 [默认" STR(DEFAULT_RESTART_ON_LOGOFF) "]\n"
         "\t--daemonize, -b <0-3>\t后台运行方式： [默认0]\n"
@@ -112,7 +114,7 @@ static void print_cmdline_help() {
 
     packet_plugin_print_cmdline_help();
 
-    PR_RAW("注意：选项与参数之间必须用空格分开！\n");
+    PR_RAW("\n\033[1m注意：选项与参数之间必须用空格分开！\033[0m\n");
 
     _exit(EXIT_SUCCESS);
 }

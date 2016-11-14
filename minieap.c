@@ -107,8 +107,11 @@ static int init_cfg(int argc, char* argv[]) {
         return FAILURE;
     }
 
-    if (cfg->run_in_background && IS_FAIL(go_background())) {
-        PR_WARN("无法应用后台运行设置");
+    if (cfg->run_in_background) {
+        PR_INFO("正在转入后台运行……");
+        if (IS_FAIL(go_background())) {
+            PR_WARN("无法应用后台运行设置");
+        }
     }
 
     /* Apply log destination */
