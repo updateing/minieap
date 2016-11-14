@@ -57,10 +57,10 @@ static const uint8_t ETH_P_PAE_BYTES[2] = {0x88, 0x8e};
 
 #define PRIV (&g_priv) // I like pointers!
 
-static void eap_state_machine_clear_state() {
+static void eap_state_machine_reset() {
     PRIV->state_alarm_id = 0;
     PRIV->state_last_count = 0;
-    PRIV->state = EAP_STATE_UNKNOWN;
+    PRIV->state = EAP_STATE_UNKNOWN; // If called by a transition func, this won't take effect
     PRIV->auth_round = 1;
     PRIV->fail_count = 0;
     memmove(PRIV->server_mac, BCAST_ADDR, sizeof(BCAST_ADDR));
@@ -73,7 +73,7 @@ RESULT eap_state_machine_init() {
     _if_impl->get_ifname(_if_impl, buf, IFNAMSIZ);
     obtain_iface_mac(buf, PRIV->local_mac);
 
-    eap_state_machine_clear_state();
+    eap_state_machine_reset();
 
     PRIV->packet_builder = packet_builder_get();
 
@@ -172,14 +172,15 @@ static RESULT state_mach_send_eapol_simple(EAPOL_TYPE eapol_type) {
 
 static RESULT state_mach_process_success(ETH_EAP_FRAME* frame) {
     PROG_CONFIG* _cfg = get_program_config();
-    PRIV->fail_count = 0;
     if (PRIV->auth_round == _cfg->auth_round) {
         PR_INFO("认证成功");
+        eap_state_machine_reset(); // Prepare for further use (e.g. re-auth after offline)
         return SUCCESS;
     } else {
         PR_INFO("第 %d 次认证成功，正在执行下一次认证", PRIV->auth_round);
+        PRIV->fail_count = 0;
         packet_plugin_set_auth_round(++PRIV->auth_round);
-        switch_to_state(EAP_STATE_START_SENT, frame); // No need to prepare again
+        switch_to_state(EAP_STATE_START_SENT, frame); // Do not restart_auth or reset to keep auth_round
         return SUCCESS;
     }
 }
@@ -198,7 +199,6 @@ static RESULT state_mach_process_failure(ETH_EAP_FRAME* frame) {
         } else {
             PR_WARN("认证掉线，正在重新开始认证……");
             restart_auth(NULL);
-            return SUCCESS;
         }
     } else {
         /* Fail during auth */
@@ -208,9 +208,9 @@ static RESULT state_mach_process_failure(ETH_EAP_FRAME* frame) {
         } else {
             PR_WARN("认证失败 %d 次，将在 %d 秒或服务器请求后重试……", PRIV->fail_count, _cfg->wait_after_fail_secs);
             schedule_alarm(_cfg->wait_after_fail_secs, restart_auth, NULL);
-            return SUCCESS;
         }
     }
+    return SUCCESS;
 }
 
 void eap_state_machine_recv_handler(ETH_EAP_FRAME* frame) {
@@ -294,13 +294,13 @@ static RESULT trans_to_challenge_sent(ETH_EAP_FRAME* frame) {
 }
 
 static RESULT trans_to_success(ETH_EAP_FRAME* frame) {
-    sched_alarm_destroy(); // Remove all alarms
+    sched_alarm_destroy(); // Otherwise previous alarms may affect plugin (e.g. keepalive)
     PRIV->state_alarm_id = 0;
     return state_mach_process_success(frame);
 }
 
 static RESULT trans_to_failure(ETH_EAP_FRAME* frame) {
-    sched_alarm_destroy(); // Remove all alarms
+    sched_alarm_destroy(); // Need to schedule restart_auth later
     PRIV->state_alarm_id = 0;
     return state_mach_process_failure(frame);
 }
