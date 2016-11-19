@@ -39,6 +39,7 @@ static void print_list(LIST_ELEMENT** list) {
         PR_DBG("    user %p", elem->user);
         ref = &(*ref)->next;
     }
+    PR_DBG("List print end.");
 }
 #endif
 
@@ -106,6 +107,10 @@ void alarm_sig_handler(int sig) {
     int _curr_remaining = find_min_remaining(g_alarm_list);
     set_alarm(_curr_remaining);
 
+#ifdef DEBUG
+    PR_DBG("RING END!");
+    print_list(&g_alarm_list);
+#endif
     g_ringing = FALSE;
 }
 

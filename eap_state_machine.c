@@ -57,8 +57,10 @@ static const uint8_t ETH_P_PAE_BYTES[2] = {0x88, 0x8e};
 
 #define PRIV (&g_priv) // I like pointers!
 
+static void disable_state_watchdog();
+
 static void eap_state_machine_reset() {
-    PRIV->state_alarm_id = 0;
+    disable_state_watchdog();
     PRIV->state_last_count = 0;
     PRIV->state = EAP_STATE_UNKNOWN; // If called by a transition func, this won't take effect
     PRIV->auth_round = 1;
@@ -269,6 +271,11 @@ static void reset_state_watchdog() {
     PRIV->state_alarm_id = schedule_alarm(CFG_STAGE_TIMEOUT, state_watchdog, NULL);
 }
 
+static void disable_state_watchdog() {
+    unschedule_alarm(PRIV->state_alarm_id);
+    PRIV->state_alarm_id = 0;
+}
+
 static RESULT trans_to_preparing(ETH_EAP_FRAME* frame) {
     PR_INFO("========================");
     PR_INFO("MiniEAP " VERSION "已启动");
@@ -294,33 +301,37 @@ static RESULT trans_to_challenge_sent(ETH_EAP_FRAME* frame) {
 }
 
 static RESULT trans_to_success(ETH_EAP_FRAME* frame) {
-    sched_alarm_destroy(); // Otherwise previous alarms may affect plugin (e.g. keepalive)
-    PRIV->state_alarm_id = 0;
+    disable_state_watchdog(); // Session finished,do not wait for new packets.
     return state_mach_process_success(frame);
 }
 
 static RESULT trans_to_failure(ETH_EAP_FRAME* frame) {
-    sched_alarm_destroy(); // Need to schedule restart_auth later
-    PRIV->state_alarm_id = 0;
+    disable_state_watchdog(); // Same as above.
     return state_mach_process_failure(frame);
 }
 
 RESULT switch_to_state(EAP_STATE state, ETH_EAP_FRAME* frame) {
-    int i = 0;
-    for (; i < sizeof(g_transition_table) / sizeof(STATE_TRANSITION); ++i) {
-        if (state == g_transition_table[i].state) {
-            if (PRIV->state == state) {
-                PROG_CONFIG* _cfg = get_program_config();
-                PRIV->state_last_count++;
-                if (PRIV->state_last_count == _cfg->max_retries) {
-                    PR_ERR("在 %d 状态已经停留了 %d 次，达到指定次数，正在退出……", PRIV->state, _cfg->max_retries);
-                    exit(EXIT_FAILURE);
-                }
-            } else {
-                PRIV->state_last_count = 0;
-                reset_state_watchdog();
-            }
+    int i;
 
+    if (PRIV->state == state) {
+        PROG_CONFIG* _cfg = get_program_config();
+        PRIV->state_last_count++;
+        if (PRIV->state_last_count == _cfg->max_retries) {
+            PR_ERR("在 %d 状态已经停留了 %d 次，达到指定次数，正在退出……", PRIV->state, _cfg->max_retries);
+            exit(EXIT_FAILURE);
+        }
+    } else {
+        /*
+         * Reset watchdog before calling trans func
+         * in case we need to cancel it there.
+         * e.g. after success
+         */
+        PRIV->state_last_count = 0;
+        reset_state_watchdog();
+    }
+
+    for (i = 0; i < sizeof(g_transition_table) / sizeof(STATE_TRANSITION); ++i) {
+        if (state == g_transition_table[i].state) {
             if (IS_FAIL(g_transition_table[i].trans_func(frame))) {
                 PR_ERR("从 %d 状态向 %d 状态的转化函数执行失败，正在退出……", PRIV->state, state);
                 exit(EXIT_FAILURE);
