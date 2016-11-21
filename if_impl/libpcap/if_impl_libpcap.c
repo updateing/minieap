@@ -51,7 +51,7 @@ RESULT libpcap_setup_capture_params(struct _if_impl* this, short eth_protocol, i
 
 RESULT libpcap_prepare_interface(struct _if_impl* this) {
     char _err_buf[PCAP_ERRBUF_SIZE] = {0};
-    PRIV->pcapdev = pcap_open_live(PRIV->ifname, FRAME_BUF_SIZE, PRIV->promisc, 0, _err_buf);
+    PRIV->pcapdev = pcap_open_live(PRIV->ifname, FRAME_BUF_SIZE, PRIV->promisc, 100, _err_buf);
     if (PRIV->pcapdev == NULL) {
         PR_ERR("libpcap 打开设备失败： %s", _err_buf);
         return FAILURE;
