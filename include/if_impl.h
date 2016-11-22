@@ -1,3 +1,14 @@
+/*
+ * MiniEAP Network Interface Implementation
+ *
+ * The implementations provide unified functions to access network.
+ *
+ * Every implementation must implement ALL of the following functions,
+ * as well as a `new()` function which constructs its _if_impl structure (produce a new instance).
+ * Each memeber function takes the pointer to the structure/instance as first parameter.
+ *
+ * Take a look at if_impl/sockraw/if_impl_sockraw.c for example.
+ */
 #ifndef _MINIEAP_IF_IMPL_H
 #define _MINIEAP_IF_IMPL_H
 
@@ -14,15 +25,18 @@
  */
 typedef struct _if_impl {
     /*
-     * Called by main program when it's starting.
-     * Can be used to open the interface.
+     * Set the interface which we should operate on.
+     *
+     * Note: we are NOT ready for capturing nor sending frames now.
+     * Do not recv() or send() now, just store the name or get a handle.
      *
      * Return: if the initialization succeeds
      */
     RESULT (*set_ifname)(struct _if_impl* this, const char* ifname);
 
     /*
-     * Copy the interface which this instance is associated to to buffer.
+     * Copy specified interface name into given buffer.
+     * Better check buffer length before writing to the buffer.
      *
      * Return: if the operation succeeds
      */
@@ -30,94 +44,97 @@ typedef struct _if_impl {
 
 
     /*
-     * Called by main program when it's exiting.
-     * Can be used to free memory.
+     * Close the interface, free `this` and `this->priv` pointer, and
+     * everything allocated dynamically.
      */
     void (*destroy)(struct _if_impl* this);
 
      /*
-      * Called by main program when capturing parameters are ready.
-      * (Ethernet protocol number and promiscuous mode request)
-      * Can be used to set up packet filter or promiscuous mode.
+      * Set up packet filter and promiscuous mode (0 = disable, other=enable).
       *
-      * Note: protocol number should be in host's byte order.
+      * Note: protocol number should be in host byte order.
+      *
       * Return: if the setup was successful
       */
     RESULT (*setup_capture_params)(struct _if_impl* this, short eth_protocol, int promisc);
 
     /*
-     * Prepare the interface, using all the parameters given.
-     * (Params are confirmed complete)
+     * Prepare the interface, using all the parameters given before (name, proto, promisc etc).
      *
-     * Can be used to open interface.
+     * Can be used to actually initialize the interface.
+     * If you have done this in `set_ifname` and `setup_capture_params`, you can leave this empty.
      */
     RESULT (*prepare_interface)(struct _if_impl* this);
 
     /*
-     * Called by main program when the capturing start/stop.
-     * Can be used to launch/terminate the actual capturing process.
-     * Note: `start_capture` could be blocking.
+     * Can be used to launch/terminate the actual capturing loop.
+     * Note: `start_capture` should be blocking.
      *
-     * Return: if capturing started/stopped successfully
+     * Return: if capturing started/stopped successfully (no use in start_capture since it's blocking)
      */
     RESULT (*start_capture)(struct _if_impl* this);
     RESULT (*stop_capture)(struct _if_impl* this);
 
     /*
-     * Send a frame per request.
+     * Send a frame on request.
+     * Should send bytes starting at `frame->content` with `frame->content_len` bytes long.
      *
      * Return: if the frame was successfully sent
      */
     RESULT (*send_frame)(struct _if_impl* this, ETH_EAP_FRAME* frame);
 
     /*
-     * Called by main program when there is a frame handler.
-     * A frame handler is a function called when the filter receives
-     * a network frame.
-     * Can be used to obtain the callback function (and call it when
-     * a frame arrives)
+     * Set the frame handler.
+     * A frame handler is a function called on arrival of new frames.
      *
-     * Note: the frame object does not guarantee to be valid after this
-     * handler returns. If you want to use afterwards, make a copy yourselves.
+     * Note: the `frame` pointer does not guarantee to be valid after this
+     * handler returns. If you want to use it afterwards, make a copy yourselves.
      */
     void (*set_frame_handler)(struct _if_impl* this, void (*handler)(ETH_EAP_FRAME* frame));
 
     /*
-     * Implementation name, to be selected by user
+     * Implementation name, to be shown and selected by user
      */
     char* name;
 
     /*
-     * Description, displayed to user
+     * Description, shown to user
      */
     char* description;
 
     /*
-     * For plugin private use, a plugin can malloc and save data here.
-     * Main program should not touch this pointer.
+     * For plugin private use, a plugin can malloc and save data (such as interface handle) here.
+     * Other parts of the program should not access this field.
      */
     void* priv;
 } IF_IMPL;
 
 /*
- * Initialize the network interface plugin/driver list.
+ * Initialize the network interface implementation list.
  *
  * Return: number of plugins loaded
  */
 int init_if_impl_list();
 
 /*
+ * Prints names and description of all interface implementations
+ * Called when `--help` presents
+ */
+void print_if_impl_list();
+
+/*
  * Select one implementation with given name for usage.
+ * If name is NULL, return the first implementation.
  *
  * Return: if the specific implementation was found.
  */
 RESULT select_if_impl(const char* name);
 /*
- * Get selected implementation
+ * Get the instance of selected implementation
  */
 IF_IMPL* get_if_impl();
 /*
- * Free!
+ * Free everything!
  */
 void free_if_impl();
 #endif

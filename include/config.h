@@ -84,7 +84,7 @@ typedef struct _prog_config {
      * Selected interface implementation: how to drive network adapters?
      */
     char* if_impl;
-    #define DEFAULT_IF_IMPL "sockraw"
+    //define DEFAULT_IF_IMPL "sockraw"
 
     /*
      * Selected packet plugins: how you want to alter the packets?

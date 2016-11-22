@@ -94,6 +94,11 @@ static inline void set_outgoing_eth_fields(PACKET_BUILDER* builder) {
     builder->set_eth_field(builder, FIELD_ETH_PROTO, ETH_P_PAE_BYTES);
 }
 
+/*
+ * Packet senders
+ *
+ * Build the general response, call plugins to modify it, and send it.
+ */
 static RESULT state_mach_send_identity_response(ETH_EAP_FRAME* request) {
     uint8_t _buf[FRAME_BUF_SIZE] = {0};
     ETH_EAP_FRAME _response;
@@ -215,6 +220,13 @@ static RESULT state_mach_process_failure(ETH_EAP_FRAME* frame) {
     return SUCCESS;
 }
 
+/*
+ * This is the first function that will be notified on arrival of new frames.
+ *
+ * Dispatch the frame to plugins (to update their internal state,
+ * preparing to modify the upcoming response frame)
+ * and switch to next state (to send response)
+ */
 void eap_state_machine_recv_handler(ETH_EAP_FRAME* frame) {
     /* Keep a copy of the frame, since if_impl may not hold it */
     if (PRIV->last_recv_frame != NULL) {
@@ -255,7 +267,8 @@ void eap_state_machine_recv_handler(ETH_EAP_FRAME* frame) {
 
 #define CFG_STAGE_TIMEOUT ((get_program_config())->stage_timeout)
 /*
- * Re-generate and send the same frame using last received frame as reference
+ * Re-transmit the response to last frame, in case the authentication server
+ * stops responding.
  */
 static void reset_state_watchdog();
 static void state_watchdog(void* unused) {
@@ -264,7 +277,7 @@ static void state_watchdog(void* unused) {
 }
 
 /*
- * Start a new timer for current state
+ * Set a new watchdog for current state
  */
 static void reset_state_watchdog() {
     unschedule_alarm(PRIV->state_alarm_id);
@@ -276,6 +289,12 @@ static void disable_state_watchdog() {
     PRIV->state_alarm_id = 0;
 }
 
+/*
+ * The transition functions
+ *
+ * Send appropriate authentication frame for specific state.
+ * Besides that, deal with watchdog as well.
+ */
 static RESULT trans_to_preparing(ETH_EAP_FRAME* frame) {
     PR_INFO("========================");
     PR_INFO("MiniEAP " VERSION "已启动");
@@ -310,6 +329,14 @@ static RESULT trans_to_failure(ETH_EAP_FRAME* frame) {
     return state_mach_process_failure(frame);
 }
 
+/*
+ * Look up the transition function for specific state, call it
+ * and change the PRIV->state if it succeeds.
+ *
+ * Sets up watchdog when entering a new state (this watchdog will be
+ * fed/reload when it barks, do not worry about that here). One can cancel
+ * this watchdog in transition function if needed.
+ */
 RESULT switch_to_state(EAP_STATE state, ETH_EAP_FRAME* frame) {
     int i;
 

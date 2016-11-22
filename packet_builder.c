@@ -1,3 +1,11 @@
+/*
+ * Builder for EAP responses.
+ *
+ * It stores all mandatory information in a private structure,
+ * and form a general EAP packet upon request.
+ *
+ * See include/packet_builder.h for details.
+ */
 #include <stdlib.h>
 #include <arpa/inet.h>
 

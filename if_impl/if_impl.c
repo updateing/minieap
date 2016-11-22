@@ -1,5 +1,6 @@
 #include "linkedlist.h"
 #include "if_impl.h"
+#include "logging.h"
 #include <string.h>
 
 /* content of this list is IF_IMPL* */
@@ -23,8 +24,23 @@ int init_if_impl_list() {
     return i;
 }
 
+void print_if_impl_single(void* vimpl, void* unused) {
+#define IMPL ((IF_IMPL*)vimpl)
+    PR_RAW("    \033[1m%s\033[0m (%s)\n", IMPL->name, IMPL->description);
+}
+
+void print_if_impl_list() {
+    PR_RAW("\n以下是可用的网络操作模块：\n\n");
+    list_traverse(g_if_impl_list, print_if_impl_single, NULL);
+}
+
+/*
+ * Returns "matched" if to_find is NULL:
+ * this will select the first implementation
+ * if no name is specified.
+ */
 static int impl_name_cmp(void* to_find, void* curr) {
-    return memcmp(to_find, ((IF_IMPL*)curr)->name, strlen(to_find));
+    return to_find ? memcmp(to_find, ((IF_IMPL*)curr)->name, strlen(to_find)) : 0;
 }
 
 RESULT select_if_impl(const char* name) {
@@ -38,6 +54,9 @@ static void free_one_impl(void* impl, void* unused) {
     ((IF_IMPL*)impl)->destroy((IF_IMPL*)impl);
 }
 
+/*
+ * Destroy everything in the list, and the list itself
+ */
 void free_if_impl() {
     list_traverse(g_if_impl_list, free_one_impl, NULL);
     list_destroy(&g_if_impl_list, FALSE);

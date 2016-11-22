@@ -14,7 +14,7 @@ $(LOCAL_MODULE) : $($(LOCAL_MODULE)_PRIV_OBJS)
 
 $($(LOCAL_MODULE)_PRIV_OBJS) : LCFLAGS := $($(LOCAL_MODULE)_PRIV_C_FLAGS)
 $($(LOCAL_MODULE)_PRIV_OBJS) : ${@:.o=.c}
-	@$(CC) $(LCFLAGS) ${@:.o=.c} -c -o $@
+	$(CC) $(LCFLAGS) ${@:.o=.c} -c -o $@
 
 # sed: change everything before ":" to "${@:.d=.o} $@"
 $($(LOCAL_MODULE)_PRIV_DEPS) : LCFLAGS := $($(LOCAL_MODULE)_PRIV_C_FLAGS)

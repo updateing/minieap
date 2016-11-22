@@ -18,6 +18,7 @@ static PROXY_CONFIG g_proxy_config;
 static PROG_CONFIG g_prog_config;
 
 /*
+ * Configures daemon and log options according to cmdline.
  * We don't have a "daemon_mode" parameter, so translate
  * it to what we have.
  */
@@ -43,7 +44,6 @@ static void configure_daemon_log_param(int daemon_mode) {
 void load_default_params() {
 #define PCFG g_prog_config
     PCFG.pidfile = strdup(DEFAULT_PIDFILE);
-    PCFG.if_impl = strdup(DEFAULT_IF_IMPL);
     PCFG.logfile = strdup(DEFAULT_LOGFILE);
     PCFG.restart_on_logoff = DEFAULT_RESTART_ON_LOGOFF;
     PCFG.wait_after_fail_secs = DEFAULT_WAIT_AFTER_FAIL_SECS;
@@ -58,6 +58,9 @@ void load_default_params() {
     configure_daemon_log_param(0); // No run in bg + log to console
 }
 
+/*
+ * Loop on argv to find "--conf-file"
+ */
 RESULT parse_cmdline_conf_file(int argc, char* argv[]) {
     int i = 1;
     for (; i < argc; ++i) {
@@ -107,11 +110,12 @@ static void print_cmdline_help() {
         "\t--max-retries <num>\t最大超时重试的次数 [默认3]\n"
         "\t--pid-file <...>\tPID 文件路径，设为none可禁用 [默认" DEFAULT_PIDFILE "]\n"
         "\t--conf-file <...>\t配置文件路径 [默认" DEFAULT_CONFFILE "]\n"
-        "\t--if-impl <...>\t\t选择此网络操作抽象模块，仅允许选择一次 [默认" DEFAULT_IF_IMPL "]\n"
+        "\t--if-impl <...>\t\t选择此网络操作模块，仅允许选择一次 [默认为第一个可用的模块]\n"
         "\t--pkt-plugin <...>\t启用此名称的数据包修改器，可启用多次、多个 [默认无]\n"
         "\t--module <...>\t\t同上\n"
     );
 
+    print_if_impl_list();
     packet_plugin_print_cmdline_help();
 
     PR_RAW("\n\033[1m注意：选项与参数之间必须用空格分开！\033[0m\n");
@@ -234,6 +238,10 @@ RESULT parse_config_file(const char* filepath) {
     return SUCCESS; // TODO
 }
 
+/*
+ * Validate basic parameters (username, password, network interface).
+ * If more than one of them is missing, refuse to proceed.
+ */
 RESULT validate_params() {
 #define ASSERT_NOTIFY(x, msg) \
     if (x) { \
@@ -249,6 +257,10 @@ RESULT validate_params() {
     return SUCCESS;
 }
 
+/*
+ * Free everything we created for options,
+ * for e.g. char* produced by strdup() and lists by --module
+ */
 void free_config() {
     chk_free((void**)&g_prog_config.run_on_success);
     chk_free((void**)&g_prog_config.ifname);

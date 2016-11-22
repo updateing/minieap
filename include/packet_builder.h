@@ -12,9 +12,9 @@
  * A Packet Builder
  *
  * I don't want to make this pluggable since it's the standard EAP implementation.
- * This builder does not provide general manipulation for packets, either.
+ * This builder does not provide manipulation on packets either.
  *
- * If you want to alter things, make an auth_plugin.
+ * If you want to change the structure of packets, make an packet plugin instead.
  */
 typedef struct _packet_builder {
     #define FIELD_DST_MAC (1 << 0)
@@ -37,16 +37,16 @@ typedef struct _packet_builder {
      *   2. ID needs to match the corresponging EAP-Request packet
      */
     void (*set_eap_fields)(struct _packet_builder* this,
-                       EAPOL_TYPE eapol_type, EAP_CODE code, 
+                       EAPOL_TYPE eapol_type, EAP_CODE code,
                        EAP_TYPE eap_type, int id, EAP_CONFIG* config);
-                       
+
     /*
      * Sets the MD5 seed required for EAP-Response-MD5-Challenge
      *
      * MUST BE CALLED before building a challenge response!
      */
     void (*set_eap_md5_seed)(struct _packet_builder* this, uint8_t* md5_seed, int seed_len);
-                       
+
     /*
      * Build the packet into buffer based on information given previously
      *
@@ -63,7 +63,7 @@ typedef struct _packet_builder {
 } PACKET_BUILDER;
 
 /*
- * Get an instance of packet builder
+ * Get an instance of packet builder (singleton)
  *
  * Return: an instance of this struct, with all methods above set up
  */
