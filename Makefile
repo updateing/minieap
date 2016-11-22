@@ -1,7 +1,24 @@
 include config.mk
 
-ifeq ($(ENABLE_ICONV),1)
+#### Populate [C|LD]FLAGS ####
+COMMON_CFLAGS := $(CUSTOM_CFLAGS) $(CFLAGS) -Wall -D_GNU_SOURCE
+COMMON_LDFLAGS := $(CUSTOM_LDFLAGS) $(LDFLAGS) -T minieap_init_func.lds
+LIBS += $(CUSTOM_LIBS)
+
+ifeq ($(ENABLE_ICONV),true)
 COMMON_CFLAGS += -DENABLE_ICONV
+ifeq ($(LIBICONV_STANDALONE),true)
+COMMON_LDFLAGS += -liconv
+endif
+endif
+
+ifeq ($(ENABLE_DEBUG),true)
+COMMON_CFLAGS += -DDEBUG
+endif
+
+ifeq ($(STATIC_BUILD),true)
+COMMON_LDFLAGS += -static
+COMMON_LDFLAGS := $(filter-out -l%,$(COMMON_LDFLAGS))
 endif
 
 #### Common bits ####

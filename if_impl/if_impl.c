@@ -36,8 +36,8 @@ void print_if_impl_list() {
  * this will select the first implementation
  * if no name is specified.
  */
-static int impl_name_cmp(void* to_find, void* curr) {
-    return to_find ? memcmp(to_find, ((IF_IMPL*)curr)->name, strlen(to_find)) : 0;
+static int impl_name_cmp(void* to_find, void* vimpl) {
+    return to_find ? memcmp(to_find, IMPL->name, strlen(IMPL->name)) : 0;
 }
 
 RESULT select_if_impl(const char* name) {

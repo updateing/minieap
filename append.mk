@@ -5,7 +5,12 @@ $(LOCAL_MODULE)_PRIV_C_FLAGS := \
     $(COMMON_CFLAGS) \
     $(LOCAL_CFLAGS)
 
+ifeq ($(STATIC_BUILD),true)
+$(LOCAL_MODULE)_LDFLAGS := $(filter-out -l%,$(LOCAL_LDFLAGS))
+else
 $(LOCAL_MODULE)_LDFLAGS := $(LOCAL_LDFLAGS)
+endif
+
 $(LOCAL_MODULE)_PRIV_OBJS := $(addprefix $(LOCAL_PATH),$(LOCAL_SRC_FILES:.c=.o))
 $(LOCAL_MODULE)_PRIV_DEPS := $(addprefix $(LOCAL_PATH),$(LOCAL_SRC_FILES:.c=.d))
 
