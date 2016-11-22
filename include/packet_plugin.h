@@ -3,6 +3,9 @@
 
 #include "minieap_common.h"
 #include "eth_frame.h"
+#include "module_init.h"
+
+#define PACKET_PLUGIN_INIT(func) __define_in_init(func, ".pktplugininit")
 
 typedef struct _packet_plugin {
     /*

@@ -18,16 +18,12 @@ PACKET_PLUGIN* packet_plugin_rjv3_new();
 PACKET_PLUGIN* packet_plugin_printer_new();
 
 int init_packet_plugin_list() {
-    PACKET_PLUGIN* (*list[])() = {
-//#include "packet_pluginl_list_gen.h" TODO autogen
-        packet_plugin_rjv3_new,
-        packet_plugin_printer_new
-    };
+    extern PACKET_PLUGIN* (*__PACKET_PLUGIN_LIST_START__)(void);
+    extern PACKET_PLUGIN* (*__PACKET_PLUGIN_LIST_END__)(void);
+    PACKET_PLUGIN* (**func)();
     int i = 0;
-    for (; i < sizeof(list) / sizeof(PACKET_PLUGIN*); ++i) {
-        PACKET_PLUGIN* (*func)() = list[i];
-        PACKET_PLUGIN* instance = func();
-        insert_data(&g_packet_plugin_list, instance);
+    for (func = &__PACKET_PLUGIN_LIST_START__; func < &__PACKET_PLUGIN_LIST_END__; ++i, ++func) {
+        insert_data(&g_packet_plugin_list, (*func)());
     }
     return i;
 }

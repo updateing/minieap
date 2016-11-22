@@ -11,14 +11,11 @@ IF_IMPL* sockraw_new();
 IF_IMPL* libpcap_new();
 
 int init_if_impl_list() {
-    IF_IMPL* (*list[])() = {
-//#include "if_impl_list_gen.h" TODO autogen
-        sockraw_new,
-        //libpcap_new
-    };
+    extern IF_IMPL* (*__IF_IMPL_LIST_START__)();
+    extern IF_IMPL* (*__IF_IMPL_LIST_END__)(); // They are just location markers, do not care about their content
+    IF_IMPL* (**func)();
     int i = 0;
-    for (; i < sizeof(list) / sizeof(IF_IMPL*); ++i) {
-        IF_IMPL* (*func)() = list[i];
+    for (func = &__IF_IMPL_LIST_START__; func < &__IF_IMPL_LIST_END__; ++i, ++func) {
         insert_data(&g_if_impl_list, (*func)());
     }
     return i;

@@ -11,7 +11,7 @@ PLUGIN_MODULES := \
 ENABLE_ICONV := 1
 
 COMMON_CFLAGS := $(CFLAGS) -Wall -D_GNU_SOURCE
-COMMON_LDFLAGS := $(LDFLAGS) -static
+COMMON_LDFLAGS := $(LDFLAGS) -static -T minieap_init_func.lds
 LIBS := $(LIBS)
 
 # Example for cross-compiling

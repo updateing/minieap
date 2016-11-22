@@ -185,3 +185,4 @@ IF_IMPL* sockraw_new() {
     this->description = "采用RAW Socket进行通信的轻量网络接口模块";
     return this;
 }
+IF_IMPL_INIT(sockraw_new);

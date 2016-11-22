@@ -25,9 +25,9 @@ PACKET_PLUGIN* packet_plugin_printer_new() {
         return NULL;
     }
     memset(this, 0, sizeof(PACKET_PLUGIN));
-    
+
     this->priv = NULL;
-        
+
     this->name = "printer";
     this->description = "将流经此插件的数据包内容打印出来";
     this->prepare_frame = printer_prepare_frame;
@@ -35,3 +35,4 @@ PACKET_PLUGIN* packet_plugin_printer_new() {
     this->destroy = printer_destroy;
     return this;
 }
+PACKET_PLUGIN_INIT(packet_plugin_printer_new);

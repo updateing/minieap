@@ -134,3 +134,4 @@ IF_IMPL* libpcap_new() {
     this->description = "采用 libpcap 进行通信的可移植网络接口模块";
     return this;
 }
+IF_IMPL_INIT(libpcap_new);

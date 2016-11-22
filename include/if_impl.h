@@ -16,8 +16,11 @@
 #include "minieap_common.h"
 #include "eth_frame.h"
 #include "linkedlist.h"
+#include "module_init.h"
 
 #define FRAME_BUF_SIZE 1512
+
+#define IF_IMPL_INIT(func) __define_in_init(func, ".ifimplinit")
 
 /*
  * Representing an interface driver plugin.

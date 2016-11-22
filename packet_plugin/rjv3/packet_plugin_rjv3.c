@@ -287,3 +287,4 @@ PACKET_PLUGIN* packet_plugin_rjv3_new() {
     this->process_config_file = rjv3_process_config_file;
     return this;
 }
+PACKET_PLUGIN_INIT(packet_plugin_rjv3_new);
