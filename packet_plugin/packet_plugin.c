@@ -18,8 +18,13 @@ PACKET_PLUGIN* packet_plugin_rjv3_new();
 PACKET_PLUGIN* packet_plugin_printer_new();
 
 int init_packet_plugin_list() {
-    extern PACKET_PLUGIN* (*__PACKET_PLUGIN_LIST_START__)(void);
-    extern PACKET_PLUGIN* (*__PACKET_PLUGIN_LIST_END__)(void);
+#ifdef __linux__
+    extern PACKET_PLUGIN* (*__PACKET_PLUGIN_LIST_START__)();
+    extern PACKET_PLUGIN* (*__PACKET_PLUGIN_LIST_END__)();
+#else
+    extern PACKET_PLUGIN* (*__PACKET_PLUGIN_LIST_START__)() __asm("section$start$__DATA$__pktplugininit");
+    extern PACKET_PLUGIN* (*__PACKET_PLUGIN_LIST_END__)() __asm("section$end$__DATA$__pktplugininit");
+#endif
     PACKET_PLUGIN* (**func)();
     int i = 0;
     for (func = &__PACKET_PLUGIN_LIST_START__; func < &__PACKET_PLUGIN_LIST_END__; ++i, ++func) {

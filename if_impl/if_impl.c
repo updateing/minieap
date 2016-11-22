@@ -11,8 +11,13 @@ IF_IMPL* sockraw_new();
 IF_IMPL* libpcap_new();
 
 int init_if_impl_list() {
+#ifdef __linux__
     extern IF_IMPL* (*__IF_IMPL_LIST_START__)();
     extern IF_IMPL* (*__IF_IMPL_LIST_END__)(); // They are just location markers, do not care about their content
+#else
+    extern IF_IMPL* (*__IF_IMPL_LIST_START__)() __asm("section$start$__DATA$__ifimplinit");
+    extern IF_IMPL* (*__IF_IMPL_LIST_END__)() __asm("section$end$__DATA$__ifimplinit");
+#endif
     IF_IMPL* (**func)();
     int i = 0;
     for (func = &__IF_IMPL_LIST_START__; func < &__IF_IMPL_LIST_END__; ++i, ++func) {

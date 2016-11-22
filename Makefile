@@ -2,8 +2,13 @@ include config.mk
 
 #### Populate [C|LD]FLAGS ####
 COMMON_CFLAGS := $(CUSTOM_CFLAGS) $(CFLAGS) -Wall -D_GNU_SOURCE
-COMMON_LDFLAGS := $(CUSTOM_LDFLAGS) $(LDFLAGS) -T minieap_init_func.lds
+COMMON_LDFLAGS := $(CUSTOM_LDFLAGS) $(LDFLAGS)
 LIBS += $(CUSTOM_LIBS)
+
+# You are not cross-compiling for macOS on Linux, I guess?
+ifeq ($(shell uname -s),Linux)
+COMMON_LDFLAGS += -T minieap_init_func.lds
+endif
 
 ifeq ($(ENABLE_ICONV),true)
 COMMON_CFLAGS += -DENABLE_ICONV

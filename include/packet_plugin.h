@@ -5,7 +5,11 @@
 #include "eth_frame.h"
 #include "module_init.h"
 
+#ifdef __linux__
 #define PACKET_PLUGIN_INIT(func) __define_in_init(func, ".pktplugininit")
+#else
+#define PACKET_PLUGIN_INIT(func) __define_in_init(func, "__DATA,__pktplugininit")
+#endif
 
 typedef struct _packet_plugin {
     /*

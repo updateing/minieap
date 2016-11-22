@@ -20,7 +20,11 @@
 
 #define FRAME_BUF_SIZE 1512
 
+#ifdef __linux__
 #define IF_IMPL_INIT(func) __define_in_init(func, ".ifimplinit")
+#else
+#define IF_IMPL_INIT(func) __define_in_init(func, "__DATA,__ifimplinit")
+#endif
 
 /*
  * Representing an interface driver plugin.
