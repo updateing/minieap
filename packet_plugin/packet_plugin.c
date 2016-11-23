@@ -22,6 +22,7 @@ int init_packet_plugin_list() {
     extern PACKET_PLUGIN* (*__PACKET_PLUGIN_LIST_START__)();
     extern PACKET_PLUGIN* (*__PACKET_PLUGIN_LIST_END__)();
 #else
+    // __asm("alias for this variable in assembly");
     extern PACKET_PLUGIN* (*__PACKET_PLUGIN_LIST_START__)() __asm("section$start$__DATA$__pktplugininit");
     extern PACKET_PLUGIN* (*__PACKET_PLUGIN_LIST_END__)() __asm("section$end$__DATA$__pktplugininit");
 #endif
@@ -34,7 +35,7 @@ int init_packet_plugin_list() {
 }
 
 static int plugin_name_cmp(void* to_find, void* curr) {
-    return memcmp(to_find, ((PACKET_PLUGIN*)curr)->name, strlen(to_find));
+    return memcmp(to_find, ((PACKET_PLUGIN*)curr)->name, strlen(((PACKET_PLUGIN*)curr)->name));
 }
 
 RESULT select_packet_plugin(const char* name) {
@@ -48,19 +49,16 @@ RESULT select_packet_plugin(const char* name) {
 }
 
 /*
- * I know this is silly, but is there better way to do it
- * since list_traverse takes none extra parameters?
- * Even if it takes user-defined extra params, I'd make
- * lots of useless structs to pass variable number of actual params
- * via the extra param in list_traverse - it would take twice as many
- * functions as current implementation. This is more unacceptable.
+ * I know this is silly, but is there better way to do it?
+ * list_traverse can not handle varying number of params. I'd make
+ * lots of useless structs to pass params if we do need to use list_traverse.
  */
 #define PLUGIN ((PACKET_PLUGIN*)(plugin_info->content))
 #define CHK_FUNC(func) \
     if (func == NULL) continue;
 
 void packet_plugin_destroy() {
-    LIST_ELEMENT *plugin_info = g_packet_plugin_list; // Different from below
+    LIST_ELEMENT *plugin_info = g_packet_plugin_list; // Destroy everything, not just active ones
     if (g_packet_plugin_list == NULL) return;
     do {
         CHK_FUNC(PLUGIN->destroy);
@@ -83,7 +81,7 @@ RESULT packet_plugin_process_cmdline_opts(int argc, char* argv[]) {
     return SUCCESS;
 }
 
-RESULT packet_plugin_process_config_file(char* filepath) {
+RESULT packet_plugin_process_config_file(const char* filepath) {
     LIST_ELEMENT *plugin_info = g_active_packet_plugin_list;
     if (g_active_packet_plugin_list == NULL) return SUCCESS;
     do {

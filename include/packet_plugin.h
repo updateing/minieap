@@ -1,3 +1,17 @@
+/*
+ * MiniEAP Packet Modifiers / Plugins
+ *
+ * The packet plugins modify standard EAP packets before sending them, in order to
+ * authenticate with servers running proprietary protocol extensions.
+ *
+ * Every plugin must implement ALL of the following functions except noted,
+ * as well as a `new()` function which constructs its _packet_plugin structure (produce a new instance).
+ * The `new()` function must be registered by PACKET_PLUGIN_INIT() macro.
+ *
+ * Each memeber function takes the pointer to the structure/instance as first parameter.
+ *
+ * Take a look at packet_plugin/printer/packet_plugin_printer.c for example.
+ */
 #ifndef _MINIEAP_PACKET_PLUGIN_H
 #define _MINIEAP_PACKET_PLUGIN_H
 
@@ -6,31 +20,33 @@
 #include "module_init.h"
 
 #ifdef __linux__
-#define PACKET_PLUGIN_INIT(func) __define_in_init(func, ".pktplugininit")
+#define PACKET_PLUGIN_INIT(func) __define_in_section(func, ".pktplugininit")
 #else
-#define PACKET_PLUGIN_INIT(func) __define_in_init(func, "__DATA,__pktplugininit")
+#define PACKET_PLUGIN_INIT(func) __define_in_section(func, "__DATA,__pktplugininit")
 #endif
 
 typedef struct _packet_plugin {
     /*
-     * Called by main program when it's exiting.
-     * Can be used to free memory.
+     * Free `this`, `this->priv` and everything allocated dynamically.
      */
     void (*destroy)(struct _packet_plugin* this);
 
     /*
-     * Called by main program when command line options are available.
-     * Can be used to initialize custom options.
+     * Parse command line options.
+     *
+     * The `argc` and `argv` is the same as what `main()` receives.
+     * So be careful that there may be options for other plugins or main program.
+     * Ignore unrecognized options nicely!
      *
      * Return: if there is any error during the process (malformed value, etc)
      */
     RESULT (*process_cmdline_opts)(struct _packet_plugin* this, int argc, char* argv[]);
 
     /*
-     * Called by main program when it knows the config file path.
-     * Can be used to read from config file.
+     * Parse config from file.
+     *
      * The file is the same as main program's config file. Better use a prefix
-     * for plugin-specific options.
+     * for plugin-specific options, and skip everything unrecognized.
      *
      * Note: this file may not exist at the moment.
      *
@@ -52,34 +68,40 @@ typedef struct _packet_plugin {
 
     /*
      * Load the defaults
-     *
-     * Return: if all mandatory params are valid/not null
      */
     void (*load_default_params)(struct _packet_plugin* this);
 
     /*
-     * Called by main program when printing help for command line options.
+     * Print help for command line options provided by this plugin.
+     * Indent by a tab before each line.
      */
     void (*print_cmdline_help)(struct _packet_plugin* this);
 
     /*
-     * Called by main program when the main program finishes filling
-     * the standard ethernet and EAP(OL) fields in a ready-to-send frame.
-     * Can be used to append custom padding or alter standard fields.
+     * Called by main program when the a standard EAP(oL) frame is ready
+     * to be sent.
+     * The frame will be sent immediately when this function returns.
+     * Can be used to append proprietary fields or change target address, etc.
+     * This is where all the magic happens!
      *
-     * Return: if the maniputation completed successfully
+     * Return: if the operation completed successfully
      */
     RESULT (*prepare_frame)(struct _packet_plugin* this, ETH_EAP_FRAME* frame);
 
     /*
-     * Called by main program when we received a packet.
-     * Can be used to process proprietary field.
+     * Called by main program on arrival of new frames.
+     * Can be used to read proprietary fields and update internal state.
      *
      * Return: if the frame is processed successfully
      */
     RESULT (*on_frame_received)(struct _packet_plugin* this, ETH_EAP_FRAME* frame);
 
     /*
+     * Do not set this function since double authentication should be handled by RJv3
+     * plugin internally. EAP standard does not define this behavior.
+     * TODO This should be removed in the future.
+     *
+     * Old comment:
      * Sets the round number we are currently in.
      * This is useful in double authentication, where frames in round 1 and round 2
      * require different fields.
@@ -87,39 +109,42 @@ typedef struct _packet_plugin {
     void (*set_auth_round)(struct _packet_plugin* this, int round);
 
     /*
-     * Plugin name, to be selected by user
+     * Plugin name, to be shown to and selected by user
      */
     char* name;
 
     /*
-     * Description, displayed to user
+     * Description, shown to user
      */
     char* description;
 
     /*
-     * Version string, displayed to user
+     * Version string, shown to user
      */
     char* version;
 
     /*
-     * Packet plugin internal use
+     * Plugin internal use. Other parts of the program should not access this field.
      */
     void* priv;
 } PACKET_PLUGIN;
 
-/* Call the right start of program */
+/* Initialize list of available plugins */
 int init_packet_plugin_list();
-/* Add this plugin to the active plugin list. May add one plugin twice */
+/* Add this plugin to the active plugin list. May add the same plugin twice */
 RESULT select_packet_plugin(const char* name);
 /*
- * The event dispatchers! They will notify all active plugins about these events
+ * The event dispatchers!
+ * Normally they will notify all active plugins about these events,
+ * but a few of them work a bit differently. Take a look at `packet_plugin/packet_plugin.c`
+ * for details.
  */
 void packet_plugin_destroy();
 RESULT packet_plugin_process_cmdline_opts(int argc, char* argv[]);
 RESULT packet_plugin_validate_params();
 void packet_plugin_print_banner();
 void packet_plugin_load_default_params();
-RESULT packet_plugin_process_config_file(char* filepath);
+RESULT packet_plugin_process_config_file(const char* filepath);
 void packet_plugin_print_cmdline_help();
 RESULT packet_plugin_prepare_frame(ETH_EAP_FRAME* frame);
 RESULT packet_plugin_on_frame_received(ETH_EAP_FRAME* frame);

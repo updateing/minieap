@@ -5,6 +5,8 @@
  *
  * Every implementation must implement ALL of the following functions,
  * as well as a `new()` function which constructs its _if_impl structure (produce a new instance).
+ * The `new()` function must be registered by IF_IMPL_INIT() macro.
+ *
  * Each memeber function takes the pointer to the structure/instance as first parameter.
  *
  * Take a look at if_impl/sockraw/if_impl_sockraw.c for example.
@@ -21,9 +23,9 @@
 #define FRAME_BUF_SIZE 1512
 
 #ifdef __linux__
-#define IF_IMPL_INIT(func) __define_in_init(func, ".ifimplinit")
+#define IF_IMPL_INIT(func) __define_in_section(func, ".ifimplinit")
 #else
-#define IF_IMPL_INIT(func) __define_in_init(func, "__DATA,__ifimplinit")
+#define IF_IMPL_INIT(func) __define_in_section(func, "__DATA,__ifimplinit")
 #endif
 
 /*
