@@ -69,7 +69,9 @@ err:
 }
 
 static void packet_plugin_list_select(void* name, void* unused) {
-    select_packet_plugin((const char* )name);
+    if (IS_FAIL(select_packet_plugin((const char*)name))) {
+        PR_WARN("%s 插件未找到，请检查插件名称是否拼写正确", name);
+    }
 }
 
 /*
