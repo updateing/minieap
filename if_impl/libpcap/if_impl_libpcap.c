@@ -87,8 +87,7 @@ RESULT libpcap_stop_capture(struct _if_impl* this) {
 }
 
 RESULT libpcap_send_frame(struct _if_impl* this, ETH_EAP_FRAME* frame) {
-    int i;
-    if (!PRIV->pcapdev || (i=pcap_sendpacket(PRIV->pcapdev, frame->content, frame->actual_len)) < 0) {
+    if (!PRIV->pcapdev || pcap_sendpacket(PRIV->pcapdev, frame->content, frame->actual_len) < 0) {
         return FAILURE;
     }
     return SUCCESS;

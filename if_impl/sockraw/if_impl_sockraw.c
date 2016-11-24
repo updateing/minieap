@@ -141,7 +141,7 @@ RESULT sockraw_send_frame(struct _if_impl* this, ETH_EAP_FRAME* frame) {
     memmove(socket_address.sll_addr, frame->header->eth_hdr.dest_mac, 6);
 
     return sendto(PRIV->sockfd, frame->content, frame->actual_len, 0,
-                    (struct sockaddr*)&socket_address, sizeof(struct sockaddr_ll)) > 0;
+                (struct sockaddr*)&socket_address, sizeof(struct sockaddr_ll)) > 0 ? SUCCESS : FAILURE;
 }
 
 void sockraw_set_frame_handler(struct _if_impl* this, void (*handler)(ETH_EAP_FRAME* frame)) {

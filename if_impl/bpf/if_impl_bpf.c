@@ -153,7 +153,7 @@ RESULT bpf_stop_capture(struct _if_impl* this) {
 }
 
 RESULT bpf_send_frame(struct _if_impl* this, ETH_EAP_FRAME* frame) {
-    return write(PRIV->bpffd, frame->content, frame->actual_len);
+    return write(PRIV->bpffd, frame->content, frame->actual_len) > 0 ? SUCCESS : FAILURE;
 }
 
 void bpf_set_frame_handler(struct _if_impl* this, void (*handler)(ETH_EAP_FRAME* frame)) {
