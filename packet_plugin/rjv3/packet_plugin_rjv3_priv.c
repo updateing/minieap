@@ -302,7 +302,10 @@ static void rjv3_apply_bcast_addr(PACKET_PLUGIN* this, ETH_EAP_FRAME* frame) {
     static const uint8_t _rj_bcast[6] = {0x01,0xd0,0xf8,0x00,0x00,0x03};
     switch (PRIV->bcast_addr) {
         case BROADCAST_RJ:
-            memmove(frame->header->eth_hdr.dest_mac, _rj_bcast, sizeof(_rj_bcast));
+            if (frame->header->eapol_hdr.type[0] == EAPOL_START) {
+                /* Main program will take care of the MAC address when it's not START */
+                memmove(frame->header->eth_hdr.dest_mac, _rj_bcast, sizeof(_rj_bcast));
+            }
             break;
         case BROADCAST_CER:
         case BROADCAST_STANDARD:
@@ -535,6 +538,7 @@ RESULT rjv3_process_result_prop(ETH_EAP_FRAME* frame) {
             _echokey |= bit_reverse(~*(_msg->content + 9));
             rjv3_set_keepalive_echokey(_echokey);
             rjv3_set_keepalive_echono(rand() & 0xffff);
+            rjv3_set_keepalive_dest_mac(frame->header->eth_hdr.src_mac);
         }
     }
     destroy_rjv3_prop_list(&_srv_msg);

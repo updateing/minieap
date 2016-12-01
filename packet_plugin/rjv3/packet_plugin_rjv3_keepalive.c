@@ -10,6 +10,7 @@
 
 static uint32_t g_echokey;
 static uint32_t g_echono;
+static uint8_t g_dest_mac[6];
 
 #define PRIV ((rjv3_priv*)(this->priv))
 void rjv3_set_keepalive_echokey(uint32_t key) {
@@ -18,6 +19,10 @@ void rjv3_set_keepalive_echokey(uint32_t key) {
 
 void rjv3_set_keepalive_echono(uint32_t no) {
     g_echono = no;
+}
+
+void rjv3_set_keepalive_dest_mac(uint8_t* mac) {
+    memmove(g_dest_mac, mac, 6);
 }
 
 static RESULT send_echo_frame(struct _packet_plugin* this, uint8_t* content, int len) {
@@ -40,11 +45,9 @@ static RESULT send_echo_frame(struct _packet_plugin* this, uint8_t* content, int
         goto fail;
     }
 
-    uint8_t _std_bcast[] = {0x01,0x80,0xc2,0x00,0x00,0x03};
-    uint8_t _rj_bcast[] = {0x01,0xd0,0xf8,0x00,0x00,0x03};
     uint8_t _proto[] = {0x88, 0x8e};
-    uint8_t* _dst = PRIV->bcast_addr == BROADCAST_RJ ? _rj_bcast : _std_bcast;
-    _builder->set_eth_field(_builder, FIELD_DST_MAC, _dst);
+
+    _builder->set_eth_field(_builder, FIELD_DST_MAC, g_dest_mac);
     _builder->set_eth_field(_builder, FIELD_SRC_MAC, _src);
     _builder->set_eth_field(_builder, FIELD_ETH_PROTO, _proto);
     _builder->set_eap_fields(_builder, EAPOL_RJ_PROPRIETARY_KEEPALIVE, 0, 0, 0, NULL);
