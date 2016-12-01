@@ -61,6 +61,7 @@ static void disable_state_watchdog();
 
 static void eap_state_machine_reset() {
     disable_state_watchdog();
+    free_frame(&PRIV->last_recv_frame);
     PRIV->state_last_count = 0;
     PRIV->state = EAP_STATE_UNKNOWN; // If called by a transition func, this won't take effect
     PRIV->auth_round = 1;
@@ -193,6 +194,7 @@ static RESULT state_mach_process_success(ETH_EAP_FRAME* frame) {
 }
 
 static void restart_auth(void* unused) {
+    eap_state_machine_reset();
     switch_to_state(EAP_STATE_START_SENT, NULL);
 }
 
@@ -200,12 +202,13 @@ static RESULT state_mach_process_failure(ETH_EAP_FRAME* frame) {
     PROG_CONFIG* _cfg = get_program_config();
     if (PRIV->state == EAP_STATE_SUCCESS) {
         /* Server forced us offline, not auth failing */
-        if (_cfg->restart_on_logoff != FALSE) {
+        if (_cfg->restart_on_logoff) {
+            /* Wait for this state transition to FAILURE finish */
+            PR_WARN("认证掉线，稍后将重新开始认证……");
+            schedule_alarm(1, restart_auth, NULL);
+        } else {
             PR_ERR("认证掉线，正在退出……");
             exit(EXIT_FAILURE);
-        } else {
-            PR_WARN("认证掉线，正在重新开始认证……");
-            restart_auth(NULL);
         }
     } else {
         /* Fail during auth */
