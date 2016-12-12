@@ -109,12 +109,12 @@ static int init_cfg(int argc, char* argv[]) {
         return FAILURE;
     }
 
-    /* Parsed in parse_config_file(). This is no longer needed */
-    conf_parser_free();
-
     if (cfg->save_now) {
         save_config_file();
     }
+
+    /* Parsed in parse_config_file(). This is no longer needed */
+    conf_parser_free();
 
     if (cfg->run_in_background) {
         PR_INFO("正在转入后台运行……");

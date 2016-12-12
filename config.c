@@ -141,8 +141,6 @@ static void parse_one_opt(const char* option, const char* argument) {
         COPY_N_ARG_TO(g_prog_config.ifname, IFNAMSIZ);
     } else if (ISOPT("pkt-plugin") || ISOPT("module")) {
         insert_data(&g_prog_config.packet_plugin_list, (void*)argument);
-    } else if (ISOPT("daemonize")) {
-        configure_daemon_log_param(atoi(argument) % 4); /* Just call it here */
     } else if (ISOPT("run-on-success")) {
         COPY_N_ARG_TO(g_prog_config.run_on_success, MAX_PATH);
     } else if (ISOPT("if-impl")) {
@@ -182,6 +180,7 @@ RESULT parse_cmdline_opts(int argc, char* argv[]) {
     int opt = 0;
     int longIndex = 0;
     int cmd_module_list_reset = FALSE;
+    int daemon_mode; /* Delay processing util g_prog_config.logfile is ready */
     static const char* shortOpts = "-:hk::wu:p:n:t:r:l:x:b:c:z:j:";
     static const struct option longOpts[] = {
 	    { "help", no_argument, NULL, 'h' },
@@ -215,6 +214,9 @@ RESULT parse_cmdline_opts(int argc, char* argv[]) {
                 PR_ERR("缺少参数：%s", argv[optind - 1]);
                 return FAILURE;
                 break;
+            case 'b':
+                daemon_mode = atoi(optarg) % 4;
+                break; /* Ugly hack */
             case 0:
                 if ((strcmp(longOpts[longIndex].name, "module") == 0 ||
                     strcmp(longOpts[longIndex].name, "pkt-plugin") == 0)
@@ -240,7 +242,7 @@ RESULT parse_cmdline_opts(int argc, char* argv[]) {
         }
         opt = getopt_long(argc, argv, shortOpts, longOpts, &longIndex);
     }
-
+    configure_daemon_log_param(daemon_mode);
     return SUCCESS;
 }
 
@@ -261,7 +263,8 @@ RESULT parse_config_file(const char* filepath) {
 }
 
 RESULT save_config_file() {
-    char itoa_buf[10];
+    char itoa_buf[12]; /* -2147483647\0 */
+    conf_parser_free(); /* Save some meaningless lookup / free */
     conf_parser_add_value("username", g_eap_config.username);
     conf_parser_add_value("password", g_eap_config.password);
     conf_parser_add_value("nic", g_prog_config.ifname);
