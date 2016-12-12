@@ -50,6 +50,9 @@ typedef struct _packet_plugin {
      *
      * Note: this file may not exist at the moment.
      *
+     * conf_parser_traverse is preferred for better safety and performance. (Ignore
+     * `filepath` in this case, and do not open/parse here since main program handles this)
+     *
      * Return: if there is any error during the process (malformed value, etc)
      */
     RESULT (*process_config_file)(struct _packet_plugin* this, const char* filepath);
@@ -109,6 +112,13 @@ typedef struct _packet_plugin {
     void (*set_auth_round)(struct _packet_plugin* this, int round);
 
     /*
+     * Save parameters to config file.
+     * conf_parser_add_value() is preferred.
+     * No need to save here since main program will handle saving itself.
+     */
+    void (*save_config)(struct _packet_plugin* this);
+
+    /*
      * Plugin name, to be shown to and selected by user
      */
     char* name;
@@ -133,6 +143,8 @@ typedef struct _packet_plugin {
 int init_packet_plugin_list();
 /* Add this plugin to the active plugin list. May add the same plugin twice */
 RESULT select_packet_plugin(const char* name);
+/* Save all active plugins' name to file */
+void save_active_packet_plugin_list();
 /*
  * The event dispatchers!
  * Normally they will notify all active plugins about these events,
@@ -149,4 +161,5 @@ void packet_plugin_print_cmdline_help();
 RESULT packet_plugin_prepare_frame(ETH_EAP_FRAME* frame);
 RESULT packet_plugin_on_frame_received(ETH_EAP_FRAME* frame);
 void packet_plugin_set_auth_round(int round);
+void packet_plugin_save_config();
 #endif

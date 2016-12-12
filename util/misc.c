@@ -33,6 +33,12 @@ uint8_t char2hex(const char* str) {
     return 16 * LOWER2HEX(digit0) + LOWER2HEX(digit1);
 }
 
+void hex2char(uint8_t hex, char* out) {
+#define HEX2LOWER(digit) ((digit >= 0xa) ? (digit - 0xa + 'a') : (digit + '0'))
+    out[0] = HEX2LOWER(hex & 0xf);
+    out[1] = HEX2LOWER((hex & 0xf0) >> 4);
+}
+
 uint8_t bit_reverse(uint8_t in) {
     static const uint8_t half_reverse_table[] = {
         0x0, 0x8, 0x4, 0xc, 0x2, 0xa, 0x6, 0xe,

@@ -68,14 +68,14 @@ typedef enum _rj_dhcp_type {
 } DHCP_TYPE;
 
 typedef struct _rj_prop_header1 {
-    uint8_t header_type;
-    uint8_t header_len;
+    uint8_t header_type; /* 1a for example */
+    uint8_t header_len; /* content len + header2 + header1 */
 } RJ_PROP_HEADER1;
 
 typedef struct _rj_prop_header2 {
-    uint8_t magic[4];
+    uint8_t magic[4]; /* 00 00 13 11 */
     uint8_t type;
-    uint8_t len;
+    uint8_t len; /* content len + sizeof(this.type + this.len) */
 } RJ_PROP_HEADER2;
 
 #define HEADER2_SIZE_NO_MAGIC(x) (sizeof(RJ_PROP_HEADER2) - sizeof(x->header2.magic))

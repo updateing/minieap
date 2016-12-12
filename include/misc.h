@@ -16,6 +16,12 @@ void chk_free(void** pptr);
  */
 uint8_t char2hex(const char* str);
 
+/*
+ * Convert one byte to its ASCII hex representation.
+ * 0xff -> "ff", written directly to `out`
+ */
+void hex2char(uint8_t hex, char* out);
+
 /* 10110001b -> 10001101b */
 uint8_t bit_reverse(uint8_t in);
 

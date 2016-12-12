@@ -34,8 +34,7 @@ static int init_program_config(int argc, char* argv[]) {
 
     cfg = get_program_config();
     if (IS_FAIL(parse_config_file(cfg->conffile))) {
-        PR_ERR("配置文件内容解析出错");
-        goto err;
+        PR_WARN("配置文件解析出错，请注意命令行参数是否完整");
     }
     if (IS_FAIL(parse_cmdline_opts(argc, argv))) {
         PR_ERR("命令行参数解析出错");
@@ -108,6 +107,9 @@ static int init_cfg(int argc, char* argv[]) {
         PR_ERR("插件初始化错误");
         return FAILURE;
     }
+
+    /* Parsed in parse_config_file(). This is no longer needed */
+    conf_parser_free();
 
     if (cfg->run_in_background) {
         PR_INFO("正在转入后台运行……");

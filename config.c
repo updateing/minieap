@@ -12,6 +12,7 @@
 #include "misc.h"
 #include "if_impl.h"
 #include "packet_plugin.h"
+#include "conf_parser.h"
 
 static EAP_CONFIG g_eap_config;
 static PROXY_CONFIG g_proxy_config;
@@ -123,6 +124,59 @@ static void print_cmdline_help() {
     _exit(EXIT_SUCCESS);
 }
 
+static void parse_one_opt(const char* option, const char* argument) {
+#define ISOPT(x) (strcmp(option, x) == 0)
+
+#define COPY_N_ARG_TO(buf, maxlen) \
+        chk_free((void**)&buf); \
+        buf = strndup(argument, maxlen);
+
+    /* Sort by frequency of usage */
+    if (ISOPT("username")) {
+        COPY_N_ARG_TO(g_eap_config.username, USERNAME_MAX_LEN);
+    } else if (ISOPT("password")) {
+        COPY_N_ARG_TO(g_eap_config.password, PASSWORD_MAX_LEN);
+    } else if (ISOPT("nic")) {
+        COPY_N_ARG_TO(g_prog_config.ifname, IFNAMSIZ);
+    } else if (ISOPT("pkt-plugin") || ISOPT("module")) {
+        insert_data(&g_prog_config.packet_plugin_list, argument);
+    } else if (ISOPT("daemonize")) {
+        configure_daemon_log_param(atoi(argument) % 4); /* Just call it here */
+    } else if (ISOPT("run-on-success")) {
+        COPY_N_ARG_TO(g_prog_config.run_on_success, MAX_PATH);
+    } else if (ISOPT("if-impl")) {
+        COPY_N_ARG_TO(g_prog_config.if_impl, IFNAMSIZ);
+    } else if (ISOPT("save")) {
+        g_prog_config.save_now = 1;
+    } else if (ISOPT("help")) {
+        print_cmdline_help(); /* 调用本函数将退出程序 */
+    } else if (ISOPT("max-fail")) {
+        g_prog_config.max_failures = atoi(argument);
+    } else if (ISOPT("max-retries")) {
+        g_prog_config.max_retries = atoi(argument);
+    } else if (ISOPT("no-auto-reauth") {
+        g_prog_config.restart_on_logoff = 1;
+    } else if (ISOPT("wait-after-fail")) {
+        g_prog_config.wait_after_fail_secs = atoi(argument);
+    } else if (ISOPT("stage-timeout")) {
+        g_prog_config.stage_timeout = atoi(argument);
+    } else if (ISOPT("kill")) {
+        if (argument == NULL)
+            g_prog_config.kill_type = KILL_ONLY; /* 结束其他实例并退出 */
+        else
+            g_prog_config.kill_type = KILL_AND_START; /* 结束其他实例，本实例继续运行 */
+    } else if (ISOPT("proxy-lan-iface")) {
+        g_proxy_config.proxy_on = 1;
+        COPY_N_ARG_TO(g_proxy_config.lan_ifname, IFNAMSIZ);
+    } else if (ISOPT("auth-round")) {
+        g_prog_config.auth_round = atoi(argument);
+    } else if (ISOPT("pid-file")) {
+        COPY_N_ARG_TO(g_prog_config.pidfile, MAX_PATH);
+    } else if (ISOPT("log-file")) {
+        COPY_N_ARG_TO(g_prog_config.logfile, MAX_PATH);
+    }
+}
+
 RESULT parse_cmdline_opts(int argc, char* argv[]) {
     int opt = 0;
     int longIndex = 0;
@@ -155,89 +209,57 @@ RESULT parse_cmdline_opts(int argc, char* argv[]) {
     };
 
     opt = getopt_long(argc, argv, shortOpts, longOpts, &longIndex);
-#define COPY_N_ARG_TO(buf, maxlen) \
-        chk_free((void**)&buf); \
-        buf = strndup(optarg, maxlen);
     while (opt != -1) {
         switch (opt) {
-            case 'h':
-                print_cmdline_help(); /* 调用本函数将退出程序 */
-                break;
-            case 'k':
-                if (optarg == NULL)
-                    g_prog_config.kill_type = KILL_ONLY; /* 结束其他实例并退出 */
-                else
-                    g_prog_config.kill_type = KILL_AND_START; /* 结束其他实例，本实例继续运行 */
-                break;
-            case 'w':
-                g_prog_config.save_now = 1;
-                break;
-            case 'u':
-                COPY_N_ARG_TO(g_eap_config.username, USERNAME_MAX_LEN);
-                break;
-            case 'p':
-                COPY_N_ARG_TO(g_eap_config.password, PASSWORD_MAX_LEN);
-                break;
-            case 'n':
-                COPY_N_ARG_TO(g_prog_config.ifname, IFNAMSIZ);
-                break;
-            case 't':
-                g_prog_config.stage_timeout = atoi(optarg); /* 此处不设置限制，但原始的代码中有最大99秒的限制 */ //TODO
-                break;
-            case 'r':
-                g_prog_config.wait_after_fail_secs = atoi(optarg); /* 同上 */
-                break;
-            case 'l':
-                g_prog_config.max_failures = atoi(optarg);
-                break;
-            case 'x':
-                g_prog_config.restart_on_logoff = 1;
-                break;
-            case 'b':
-                daemon_mode = atoi(optarg) % 4;
-                break;
-            case 'c':
-                COPY_N_ARG_TO(g_prog_config.run_on_success, MAX_PATH);
-                break;
-            case 'z':
-                g_proxy_config.proxy_on = 1;
-                COPY_N_ARG_TO(g_proxy_config.lan_ifname, IFNAMSIZ);
-                break;
-            case 'j':
-                g_prog_config.auth_round = atoi(optarg);
-                break;
-            case 0: /* 超出26个字母的选项，没有短选项与其对应 */
-#define IF_ARG(arg_name) (strcmp(longOpts[longIndex].name, arg_name) == 0)
-                if (IF_ARG("max-retries")) {
-                    g_prog_config.max_retries = atoi(optarg);
-                } else if (IF_ARG("pid-file")) {
-                    COPY_N_ARG_TO(g_prog_config.pidfile, MAX_PATH);
-                } else if (IF_ARG("if-impl")) {
-                    COPY_N_ARG_TO(g_prog_config.if_impl, IFNAMSIZ);
-                } else if (IF_ARG("pkt-plugin") || IF_ARG("module")) {
-                    insert_data(&g_prog_config.packet_plugin_list, optarg);
-                } else if (IF_ARG("log-file")) {
-                    COPY_N_ARG_TO(g_prog_config.logfile, MAX_PATH);
-                }
-                break;
             case ':':
                 PR_ERR("缺少参数：%s", argv[optind - 1]);
                 return FAILURE;
                 break;
             default:
+                parse_one_opt(longOpts[longIndex].name, optarg);
                 break;
         }
         opt = getopt_long(argc, argv, shortOpts, longOpts, &longIndex);
     }
 
-    configure_daemon_log_param(daemon_mode);
     return SUCCESS;
 }
 
-RESULT parse_config_file(const char* filepath) {
-    return SUCCESS; // TODO
+static void parser_traverser(CONFIG_PAIR* pair) {
+    if (pair->value[0] = 0) {
+        return; /* Refuse options without value. At least there should be no-auto-reauth=1 */
+    }
+    parse_one_opt(pair->key, pair->value);
 }
 
+RESULT parse_config_file(const char* filepath) {
+    conf_parser_set_file_path(filepath);
+    if (IS_FAIL(conf_parser_parse_now())) {
+        return FAILURE;
+    }
+    conf_parser_traverse(parser_traverser);
+    return SUCCESS;
+}
+
+RESULT save_config_file() {
+    conf_parser_add_value("username", g_eap_config.username);
+    conf_parser_add_value("password", g_eap_config.password)
+    conf_parser_add_value("nic", g_prog_config.ifname);
+    save_active_packet_plugin_list();
+    conf_parser_add_value("daemonize", g_prog_config.run_in_background ? "3" : "0"); /* Why is there a "2"? */
+    conf_parser_add_value("if-impl", g_prog_config.if_impl);
+    conf_parser_add_value("max-fail", itoa(g_prog_config.max_failures));
+    conf_parser_add_value("max-retries", itoa(g_prog_config.max_retries));
+    conf_parser_add_value("no-auto-reauth", g_prog_config.restart_on_logoff ? "1" : "0");
+    conf_parser_add_value("wait-after-fail", itoa(g_prog_config.wait_after_fail_secs));
+    conf_parser_add_value("stage-timeout", itoa(g_prog_config.stage_timeout));
+    conf_parser_add_value("proxy-lan-iface", g_proxy_config.lan_ifname);
+    conf_parser_add_value("auth-round", itoa(g_prog_config.auth_round));
+    conf_parser_add_value("pid-file", g_prog_config.pidfile);
+    conf_parser_add_value("log-file", g_prog_config.logfile);
+    packet_plugin_save_config();
+    return conf_parser_save_file();
+}
 /*
  * Validate basic parameters (username, password, network interface).
  * If more than one of them is missing, refuse to proceed.

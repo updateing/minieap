@@ -107,6 +107,7 @@ void rjv3_print_cmdline_help(struct _packet_plugin* this) {
         "\t--rj-option <type>:<value>[:r]\t自定义认证字段，其中 type 和 value 必须为十六进制串\n"
             "\t\t\t\t\t如 --rj-option 6a:000102 表示新增一条类型为 0x6a、内容为 0x00 0x01 0x02的字段\n"
             "\t\t\t\t\t:r 表示替换内置生成的字段，如 --rj-option 6f:000102:r 表示将内置算法生成的类型为 0x6f 的字段内容替换为 0x00 0x12 0x02\n"
+            "\t\t\t\t\t当命令行与配置文件中同时存在此选项时，两处的选项都将发挥作用。若认证失败，请检查配置文件中是否有错误的参数\n"
         "\t--service <str>\t\t\t自定义服务名 [默认" DEFAULT_SERVICE_NAME "]\n"
         "\t--version-str <str>\t\t自定义版本字符串 [默认" DEFAULT_VER_STR "]\n"
         "\t--fake-dns1 <str>\t\t自定义主 DNS 地址（点分十进制 IPv4 格式） [默认自动获取]\n"
@@ -126,6 +127,41 @@ void rjv3_load_default_params(struct _packet_plugin* this) {
     PRIV->dhcp_type = DEFAULT_DHCP_TYPE;
 }
 
+static void rjv3_parse_one_opt(struct _packet_plugin* this, const char* option, const char* argument) {
+#define COPY_N_ARG_TO(buf, maxlen) \
+    chk_free((void**)&buf); \
+    buf = strndup(argument, maxlen);
+
+#define ISOPT(arg_name) (strcmp(option, arg_name) == 0)
+    if (ISOPT("heartbeat")) {
+        PRIV->heartbeat_interval = atoi(argument);
+        if (PRIV->heartbeat_interval == 0) {
+            PR_WARN("心跳间隔指定为 0，这将会禁止心跳！请确认参数格式正确。");
+        }
+    } else if (ISOPT("eap-bcast-addr")) {
+        PRIV->bcast_addr = atoi(argument) % 2; /* 一共2个选项 */ // Do not allow CER
+    } else if (ISOPT("dhcp-type")) {
+        PRIV->dhcp_type = atoi(argument) % 4;
+    } else if (ISOPT("rj-option")) {
+        /* Allow mulitple rj-options */
+        if (IS_FAIL(append_rj_cmdline_opt(this, argument))) {
+            return FAILURE;
+        }
+    } else if (ISOPT("service")) {
+        COPY_N_ARG_TO(PRIV->service_name, RJV3_SIZE_SERVICE);
+    } else if (ISOPT("version-str")) {
+        COPY_N_ARG_TO(PRIV->ver_str, MAX_PROP_LEN);
+    } else if (ISOPT("fake-dns1")) {
+        COPY_N_ARG_TO(PRIV->fake_dns1, INET6_ADDRSTRLEN);
+    } else if (ISOPT("fake-dns2")) {
+        COPY_N_ARG_TO(PRIV->fake_dns2, INET6_ADDRSTRLEN);
+    } else if (ISOPT("fake-serial")) {
+        COPY_N_ARG_TO(PRIV->fake_serial, MAX_PROP_LEN);
+    } else if (ISOPT("max-dhcp-count")) {
+        PRIV->max_dhcp_count = atoi(argument);
+    }
+}
+
 RESULT rjv3_process_cmdline_opts(struct _packet_plugin* this, int argc, char* argv[]) {
     int opt = 0;
     int longIndex = 0;
@@ -134,7 +170,6 @@ RESULT rjv3_process_cmdline_opts(struct _packet_plugin* this, int argc, char* ar
 	    { "heartbeat", required_argument, NULL, 'e' },
 	    { "eap-bcast-addr", required_argument, NULL, 'a' },
 	    { "dhcp-type", required_argument, NULL, 'd' },
-	    //{ "decode-config", required_argument, NULL, 'q' },
 	    { "rj-option", required_argument, NULL, 0 },
 	    { "service", required_argument, NULL, 0 },
 	    { "version-str", required_argument, NULL, 0 },
@@ -146,52 +181,13 @@ RESULT rjv3_process_cmdline_opts(struct _packet_plugin* this, int argc, char* ar
     };
 
     opt = getopt_long(argc, argv, shortOpts, longOpts, &longIndex);
-#define COPY_N_ARG_TO(buf, maxlen) \
-        chk_free((void**)&buf); \
-        buf = strndup(optarg, maxlen);
     while (opt != -1) {
         switch (opt) {
-            case 'e':
-                PRIV->heartbeat_interval = atoi(optarg);
-                if (PRIV->heartbeat_interval == 0) {
-                    PR_WARN("命令行参数将心跳间隔指定为 0，这将会禁止心跳！请确认参数格式正确。");
-                }
-                break;
-            case 'a':
-                PRIV->bcast_addr = atoi(optarg) % 2; /* 一共2个选项 */ // Do not allow CER
-                break;
-            case 'd':
-                PRIV->dhcp_type = atoi(optarg) % 4;
-                break;
-            case 'q':
-                // printSuConfig(optarg); TODO
-                //exit(EXIT_SUCCESS);
-                break;
-            case 0:
-#define IF_ARG(arg_name) (strcmp(longOpts[longIndex].name, arg_name) == 0)
-                if (IF_ARG("rj-option")) {
-                    /* Allow mulitple rj-options */
-                    if (IS_FAIL(append_rj_cmdline_opt(this, optarg))) {
-                        return FAILURE;
-                    }
-                } else if (IF_ARG("service")) {
-                    COPY_N_ARG_TO(PRIV->service_name, RJV3_SIZE_SERVICE);
-                } else if (IF_ARG("version-str")) {
-                    COPY_N_ARG_TO(PRIV->ver_str, MAX_PROP_LEN);
-                } else if (IF_ARG("fake-dns1")) {
-                    COPY_N_ARG_TO(PRIV->fake_dns1, INET6_ADDRSTRLEN);
-                } else if (IF_ARG("fake-dns2")) {
-                    COPY_N_ARG_TO(PRIV->fake_dns2, INET6_ADDRSTRLEN);
-                } else if (IF_ARG("fake-serial")) {
-                    COPY_N_ARG_TO(PRIV->fake_serial, MAX_PROP_LEN);
-                } else if (IF_ARG("max-dhcp-count")) {
-                    PRIV->max_dhcp_count = atoi(optarg);
-                }
-                break;
             case ':':
                 PR_ERR("缺少参数：%s", argv[optind - 1]);
                 return FAILURE;
             default:
+                parse_one_opt(longOpts[longIndex].name, optarg);
                 break;
         }
         opt = getopt_long(argc, argv, shortOpts, longOpts, &longIndex);
@@ -248,8 +244,64 @@ RESULT rjv3_on_frame_received(struct _packet_plugin* this, ETH_EAP_FRAME* frame)
     return SUCCESS;
 }
 
+static void rjv3_parser_traverser(CONFIG_PAIR* pair) {
+    if (pair->value[0] = 0) {
+        return; /* Refuse options without value. At least there should be no-auto-reauth=1 */
+    }
+    rjv3_parse_one_opt(pair->key, pair->value);
+}
+
 RESULT rjv3_process_config_file(struct _packet_plugin* this, const char* filepath) {
-    return SUCCESS; // TODO
+    conf_parser_traverse(rjv3_parser_traverser);
+    return SUCCESS;
+}
+
+static void rjv3_save_one_prop(void* prop, void* is_mod) {
+#define TO_RJ_PROP(x) ((RJ_PROP*)x)
+                       /*       6f                                :   010203aabbccdd                    */
+    int prop_str_len = sizeof(TO_RJ_PROP(x)->header2->type) * 2 + 1 + TO_RJ_PROP(prop)->header2->len * 2
+                        + is_mod ? 2 : 0 + 1;
+                       /*         :r      \0 */
+    char* prop_str = (char*)malloc(prop_str_len);
+    if (prop_str <= 0) {
+        PR_ERRNO("无法保存 --rj-option 选项");
+        return;
+    }
+
+    char* curr_pos = prop_str;
+    hex2char(TO_RJ_PROP(x)->header2->type, curr_pos);
+    curr_pos += 2;
+    *curr_pos++ = ':';
+
+    for (int i = 0; i < PROP_TO_CONTENT_SIZE(TO_RJ_PROP(prop)); i++) {
+        hex2char(TO_RJ_PROP(prop)->content[i], curr_pos);
+        curr_pos += 2;
+    }
+
+    if (is_mod) {
+        *curr_pos++ = ':';
+        *curr_pos++ = 'r';
+    }
+
+    *curr_pos = 0;
+
+    conf_parser_add_value("rj-option", prop_str);
+    free(prop_str);
+}
+
+RESULT rjv3_save_config(struct _packet_plugin* this) {
+    conf_parser_add_value("heartbeat", itoa(PRIV->heartbeat_interval));
+    conf_parser_add_value("eap-bcast-addr", itoa(PRIV->bcast_addr));
+    conf_parser_add_value("dhcp-type", itoa(PRIV->dhcp_type));
+    list_traverse(PRIV->cmd_prop_list, rjv3_save_one_prop, FALSE);
+    list_traverse(PRIV->cmd_prop_mod_list, rjv3_save_one_prop, TRUE);
+    conf_parser_add_value("service", PRIV->service_name);
+    conf_parser_add_value("version-str", PRIV->ver_str);
+    conf_parser_add_value("fake-dns1", PRIV->fake_dns1);
+    conf_parser_add_value("fake-dns2", PRIV->fake_dns2);
+    conf_parser_add_value("fake-serial", PRIV->fake_serial);
+    conf_parser_add_value("max-dhcp-count", PRIV->max_dhcp_count);
+    return SUCCESS;
 }
 
 static void packet_plugin_rjv3_print_banner() {
@@ -285,6 +337,7 @@ PACKET_PLUGIN* packet_plugin_rjv3_new() {
     this->prepare_frame = rjv3_prepare_frame;
     this->on_frame_received = rjv3_on_frame_received;
     this->process_config_file = rjv3_process_config_file;
+    this->save_config = rjv3_save_config;
     return this;
 }
 PACKET_PLUGIN_INIT(packet_plugin_rjv3_new);

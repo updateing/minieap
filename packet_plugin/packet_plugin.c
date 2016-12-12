@@ -1,6 +1,7 @@
 #include "linkedlist.h"
 #include "packet_plugin.h"
 #include "logging.h"
+#include "conf_parser.h"
 
 #include <string.h>
 #include <stdlib.h>
@@ -13,9 +14,6 @@
 static LIST_ELEMENT* g_packet_plugin_list;
 /* We need to specify the order of plugins */
 static LIST_ELEMENT* g_active_packet_plugin_list;
-
-PACKET_PLUGIN* packet_plugin_rjv3_new();
-PACKET_PLUGIN* packet_plugin_printer_new();
 
 int init_packet_plugin_list() {
 #ifdef __linux__
@@ -46,6 +44,14 @@ RESULT select_packet_plugin(const char* name) {
         return SUCCESS;
     }
     return FAILURE;
+}
+
+static void save_one_packet_plugin(void* plugin, void* unused) {
+    conf_parser_add_value("module", ((PACKET_PLUGIN*)plugin)->name);
+}
+
+void save_active_packet_plugin_list() {
+    list_traverse(g_active_packet_plugin_list, save_one_packet_plugin, NULL);
 }
 
 /*
@@ -163,5 +169,14 @@ void packet_plugin_print_banner() {
     do {
         CHK_FUNC(PLUGIN->print_banner);
         PLUGIN->print_banner(PLUGIN);
+    } while ((plugin_info = plugin_info->next));
+}
+
+void packet_plugin_save_config() {
+    LIST_ELEMENT *plugin_info = g_active_packet_plugin_list;
+    if (g_active_packet_plugin_list == NULL) return;
+    do {
+        CHK_FUNC(PLUGIN->save_config);
+        PLUGIN->save_config(PLUGIN);
     } while ((plugin_info = plugin_info->next));
 }

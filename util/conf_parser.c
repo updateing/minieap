@@ -6,6 +6,7 @@
  * Comment lines must begin with #
  * No inline comments allowed.
  * Leading spaces are ignored.
+ * Multiple entries with same key are ALLOWED. (e.g. module=rjv3 module=printer)
  *
  * The parser will create a linked list for each key-value pair
  * in the file.
@@ -16,6 +17,7 @@
 #include <conf_parser.h>
 #include <logging.h>
 #include <misc.h>
+
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -47,8 +49,23 @@ static char* g_conf_file;
 		if (isspace(*(tmp + 1))) *(tmp + 1) = 0; \
 	} while (0);
 
+#define TO_CONFIG_PAIR(x) ((CONFIG_PAIR*)x)
+
 void conf_parser_set_file_path(char* path) {
 	g_conf_file = path;
+}
+
+RESULT conf_parser_add_value(const char* key, const char* value) {
+	CONFIG_PAIR* pair = (CONFIG_PAIR*)malloc(sizeof(CONFIG_PAIR));
+	if (pair <= 0) {
+		PR_ERRNO("无法为新的配置项分配内存空间");
+		return FAILURE;
+	}
+	pair->key = strdup(key);
+	pair->value = strdup(value);
+	insert_data(&g_conf_list, pair);
+
+	return SUCCESS;
 }
 
 RESULT conf_parser_parse_now() {
@@ -62,7 +79,7 @@ RESULT conf_parser_parse_now() {
 		return FAILURE;
 	}
 
-	char line_buf[MAX_LINE_LEN] = {0};
+	char line_buf[MAX_LINE_LEN + 1] = {0};
 	char* start_pos;
 	char* delim_pos;
 	CONFIG_PAIR* conf_pair;
@@ -74,18 +91,12 @@ RESULT conf_parser_parse_now() {
 		}
 		delim_pos = strchr(start_pos, '=');
 		if (delim_pos != NULL) {
-			// If delimiter is found
+			*delim_pos = 0; /* strtok lol */
 			RTRIM(delim_pos, line_len - (delim_pos - line_buf));
-
-			conf_pair = (CONFIG_PAIR*)malloc(sizeof(CONFIG_PAIR));
-			if (conf_pair <= 0) {
-				PR_ERRNO("无法为配置文件参数项分配内存");
+			if (IS_FAIL(conf_parser_add_value(start_pos, delim_pos + 1))) {
 				fclose(fp);
 				return FAILURE;
 			}
-			conf_pair->key = strndup(start_pos, delim_pos - start_pos);
-			conf_pair->value = strndup(delim_pos + 1, line_len - (delim_pos - line_buf) - 1); // Without '='
-			insert_data(&g_conf_list, conf_pair);
 		} else {
 			PR_WARN("配置文件行格式错误：%s", line_buf);
 		}
@@ -96,7 +107,6 @@ RESULT conf_parser_parse_now() {
 }
 
 static RESULT conf_pair_key_cmpfunc(void* to_find, void* node) {
-#define TO_CONFIG_PAIR(x) ((CONFIG_PAIR*)x)
 	return strcmp((char*)to_find, TO_CONFIG_PAIR(node)->key);
 }
 
@@ -119,18 +129,18 @@ RESULT conf_parser_set_value(const char* key, const char* value) {
 	if (pair) {
 		chk_free((void**)&pair->value);
 		pair->value = strdup(value);
+		return SUCCESS;
 	} else {
-		pair = (CONFIG_PAIR*)malloc(sizeof(CONFIG_PAIR));
-		if (pair <= 0) {
-			PR_ERRNO("无法为新的配置项分配内存空间");
-			return FAILURE;
-		}
-		pair->key = strdup(key);
-		pair->value = strdup(value);
-		insert_data(&g_conf_list, pair);
+		return conf_parser_add_value(key, value);
 	}
+}
 
-	return SUCCESS;
+static void conf_traverse_one_pair(void* node, void* userfunc) {
+	(void (*)(CONFIG_PAIR*))userfunc((CONFIG_PAIR*)node);
+}
+
+void conf_parser_traverse(void (*func)(CONFIG_PAIR*)) {
+	list_traverse(g_conf_list, conf_traverse_one_pair, func);
 }
 
 static void conf_write_one_pair(void* node, void* fp) {
