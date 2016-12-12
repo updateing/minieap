@@ -94,8 +94,8 @@ RESULT conf_parser_parse_now() {
 		}
 		delim_pos = strchr(start_pos, '=');
 		if (delim_pos != NULL) {
-			*delim_pos = 0; /* strtok lol */
 			RTRIM(delim_pos, line_len - (delim_pos - line_buf));
+			*delim_pos = 0; /* strtok lol (do this before RTRIM, otherwise strnlen fails) */
 			if (IS_FAIL(conf_parser_add_value(start_pos, delim_pos + 1))) {
 				fclose(fp);
 				return FAILURE;
