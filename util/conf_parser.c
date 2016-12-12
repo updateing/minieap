@@ -27,7 +27,7 @@
  * no need to use complex structure here.
  */
 static LIST_ELEMENT* g_conf_list;
-static char* g_conf_file;
+static const char* g_conf_file;
 
 /*
  * Find 1st non-space char, modify ptr if found
@@ -51,11 +51,15 @@ static char* g_conf_file;
 
 #define TO_CONFIG_PAIR(x) ((CONFIG_PAIR*)x)
 
-void conf_parser_set_file_path(char* path) {
+void conf_parser_set_file_path(const char* path) {
 	g_conf_file = path;
 }
 
 RESULT conf_parser_add_value(const char* key, const char* value) {
+	if (!(key && value)) {
+		return FAILURE;
+	}
+
 	CONFIG_PAIR* pair = (CONFIG_PAIR*)malloc(sizeof(CONFIG_PAIR));
 	if (pair <= 0) {
 		PR_ERRNO("无法为新的配置项分配内存空间");
@@ -69,7 +73,7 @@ RESULT conf_parser_add_value(const char* key, const char* value) {
 }
 
 RESULT conf_parser_parse_now() {
-	if (!g_conf_list) {
+	if (!g_conf_file) {
 		return FAILURE;
 	}
 
@@ -82,7 +86,6 @@ RESULT conf_parser_parse_now() {
 	char line_buf[MAX_LINE_LEN + 1] = {0};
 	char* start_pos;
 	char* delim_pos;
-	CONFIG_PAIR* conf_pair;
 	while (fgets(line_buf, MAX_LINE_LEN, fp)) {
 		int line_len = strnlen(line_buf, MAX_LINE_LEN);
 		LTRIM(line_buf, start_pos, line_len);
@@ -111,6 +114,10 @@ static RESULT conf_pair_key_cmpfunc(void* to_find, void* node) {
 }
 
 RESULT conf_parser_get_value(const char* key, char* buf, int buflen) {
+	if (!(key && buf)) {
+		return FAILURE;
+	}
+
 	CONFIG_PAIR* pair = lookup_data(g_conf_list, (void*)key, conf_pair_key_cmpfunc);
 	if (!pair) {
 		return FAILURE;
@@ -125,6 +132,10 @@ RESULT conf_parser_get_value(const char* key, char* buf, int buflen) {
 }
 
 RESULT conf_parser_set_value(const char* key, const char* value) {
+	if (!(key && value)) {
+		return FAILURE;
+	}
+
 	CONFIG_PAIR* pair = lookup_data(g_conf_list, (void*)key, conf_pair_key_cmpfunc);
 	if (pair) {
 		chk_free((void**)&pair->value);
@@ -135,12 +146,8 @@ RESULT conf_parser_set_value(const char* key, const char* value) {
 	}
 }
 
-static void conf_traverse_one_pair(void* node, void* userfunc) {
-	(void (*)(CONFIG_PAIR*))userfunc((CONFIG_PAIR*)node);
-}
-
-void conf_parser_traverse(void (*func)(CONFIG_PAIR*)) {
-	list_traverse(g_conf_list, conf_traverse_one_pair, func);
+void conf_parser_traverse(void (*func)(CONFIG_PAIR*, void*), void* user) {
+	list_traverse(g_conf_list, (void (*)(void*, void*))func, user);
 }
 
 static void conf_write_one_pair(void* node, void* fp) {
@@ -170,5 +177,5 @@ static void conf_free_one_pair(void* node, void* unused) {
 
 void conf_parser_free() {
 	list_traverse(g_conf_list, conf_free_one_pair, NULL);
-	list_destory(&g_conf_list, TRUE);
+	list_destroy(&g_conf_list, TRUE);
 }

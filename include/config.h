@@ -180,6 +180,11 @@ RESULT validate_params();
  */
 void free_config();
 
+/*
+ * Save to file
+ */
+RESULT save_config_file();
+
 PROG_CONFIG* get_program_config();
 EAP_CONFIG* get_eap_config();
 PROXY_CONFIG* get_proxy_config();

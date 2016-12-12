@@ -9,9 +9,11 @@
 #include "packet_plugin_rjv3.h"
 #include "sched_alarm.h"
 #include "config.h"
+#include "conf_parser.h"
 
 #include <arpa/inet.h>
 #include <getopt.h>
+#include <stdio.h>
 #include <stdlib.h>
 
 #define PRIV ((rjv3_priv*)(this->priv))
@@ -127,7 +129,7 @@ void rjv3_load_default_params(struct _packet_plugin* this) {
     PRIV->dhcp_type = DEFAULT_DHCP_TYPE;
 }
 
-static void rjv3_parse_one_opt(struct _packet_plugin* this, const char* option, const char* argument) {
+static RESULT rjv3_parse_one_opt(struct _packet_plugin* this, const char* option, const char* argument) {
 #define COPY_N_ARG_TO(buf, maxlen) \
     chk_free((void**)&buf); \
     buf = strndup(argument, maxlen);
@@ -160,6 +162,7 @@ static void rjv3_parse_one_opt(struct _packet_plugin* this, const char* option, 
     } else if (ISOPT("max-dhcp-count")) {
         PRIV->max_dhcp_count = atoi(argument);
     }
+    return SUCCESS;
 }
 
 RESULT rjv3_process_cmdline_opts(struct _packet_plugin* this, int argc, char* argv[]) {
@@ -187,7 +190,13 @@ RESULT rjv3_process_cmdline_opts(struct _packet_plugin* this, int argc, char* ar
                 PR_ERR("缺少参数：%s", argv[optind - 1]);
                 return FAILURE;
             default:
-                parse_one_opt(longOpts[longIndex].name, optarg);
+                if (opt > 0) {
+                    // Short options here. longIndex = 0 in this case.
+                    longIndex = shortopt2longindex(opt, longOpts, sizeof(longOpts) / sizeof(struct option));
+                }
+                if (longIndex >= 0 && IS_FAIL(rjv3_parse_one_opt(this, longOpts[longIndex].name, optarg))) {
+                    return FAILURE;
+                }
                 break;
         }
         opt = getopt_long(argc, argv, shortOpts, longOpts, &longIndex);
@@ -244,24 +253,26 @@ RESULT rjv3_on_frame_received(struct _packet_plugin* this, ETH_EAP_FRAME* frame)
     return SUCCESS;
 }
 
-static void rjv3_parser_traverser(CONFIG_PAIR* pair) {
-    if (pair->value[0] = 0) {
+static void rjv3_parser_traverser(CONFIG_PAIR* pair, void* this) {
+    if (pair->value[0] == 0) {
         return; /* Refuse options without value. At least there should be no-auto-reauth=1 */
     }
-    rjv3_parse_one_opt(pair->key, pair->value);
+    rjv3_parse_one_opt((struct _packet_plugin*)this, pair->key, pair->value);
 }
 
 RESULT rjv3_process_config_file(struct _packet_plugin* this, const char* filepath) {
-    conf_parser_traverse(rjv3_parser_traverser);
+    conf_parser_traverse(rjv3_parser_traverser, (void*)this);
     return SUCCESS;
 }
 
 static void rjv3_save_one_prop(void* prop, void* is_mod) {
 #define TO_RJ_PROP(x) ((RJ_PROP*)x)
-                       /*       6f                                :   010203aabbccdd                    */
-    int prop_str_len = sizeof(TO_RJ_PROP(x)->header2->type) * 2 + 1 + TO_RJ_PROP(prop)->header2->len * 2
-                        + is_mod ? 2 : 0 + 1;
-                       /*         :r      \0 */
+                       /*                                      6f   : */
+    int prop_str_len = sizeof(TO_RJ_PROP(prop)->header2.type) * 2 + 1
+                       /* 000102aabbcc */
+                        + TO_RJ_PROP(prop)->header2.len * 2
+                       /*           :r      \0 */
+                        + (is_mod ? 2 : 0) + 1;
     char* prop_str = (char*)malloc(prop_str_len);
     if (prop_str <= 0) {
         PR_ERRNO("无法保存 --rj-option 选项");
@@ -269,7 +280,7 @@ static void rjv3_save_one_prop(void* prop, void* is_mod) {
     }
 
     char* curr_pos = prop_str;
-    hex2char(TO_RJ_PROP(x)->header2->type, curr_pos);
+    hex2char(TO_RJ_PROP(prop)->header2.type, curr_pos);
     curr_pos += 2;
     *curr_pos++ = ':';
 
@@ -289,19 +300,19 @@ static void rjv3_save_one_prop(void* prop, void* is_mod) {
     free(prop_str);
 }
 
-RESULT rjv3_save_config(struct _packet_plugin* this) {
-    conf_parser_add_value("heartbeat", itoa(PRIV->heartbeat_interval));
-    conf_parser_add_value("eap-bcast-addr", itoa(PRIV->bcast_addr));
-    conf_parser_add_value("dhcp-type", itoa(PRIV->dhcp_type));
+void rjv3_save_config(struct _packet_plugin* this) {
+    char itoa_buf[10];
+    conf_parser_add_value("heartbeat", my_itoa(PRIV->heartbeat_interval, itoa_buf, 10));
+    conf_parser_add_value("eap-bcast-addr", my_itoa(PRIV->bcast_addr, itoa_buf, 10));
+    conf_parser_add_value("dhcp-type", my_itoa(PRIV->dhcp_type, itoa_buf, 10));
     list_traverse(PRIV->cmd_prop_list, rjv3_save_one_prop, FALSE);
-    list_traverse(PRIV->cmd_prop_mod_list, rjv3_save_one_prop, TRUE);
+    list_traverse(PRIV->cmd_prop_mod_list, rjv3_save_one_prop, (void*)TRUE); /* No warning! */
     conf_parser_add_value("service", PRIV->service_name);
     conf_parser_add_value("version-str", PRIV->ver_str);
     conf_parser_add_value("fake-dns1", PRIV->fake_dns1);
     conf_parser_add_value("fake-dns2", PRIV->fake_dns2);
     conf_parser_add_value("fake-serial", PRIV->fake_serial);
-    conf_parser_add_value("max-dhcp-count", PRIV->max_dhcp_count);
-    return SUCCESS;
+    conf_parser_add_value("max-dhcp-count", my_itoa(PRIV->max_dhcp_count, itoa_buf, 10));
 }
 
 static void packet_plugin_rjv3_print_banner() {

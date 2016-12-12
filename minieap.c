@@ -6,6 +6,7 @@
 #include "eap_state_machine.h"
 #include "sched_alarm.h"
 #include "misc.h"
+#include "conf_parser.h"
 
 #include <stdlib.h>
 #include <errno.h>
@@ -110,6 +111,10 @@ static int init_cfg(int argc, char* argv[]) {
 
     /* Parsed in parse_config_file(). This is no longer needed */
     conf_parser_free();
+
+    if (cfg->save_now) {
+        save_config_file();
+    }
 
     if (cfg->run_in_background) {
         PR_INFO("正在转入后台运行……");

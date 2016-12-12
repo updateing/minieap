@@ -4,6 +4,8 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/types.h>
+#include <getopt.h>
+
 #include "linkedlist.h"
 #include "logging.h"
 #include "minieap_common.h"
@@ -22,7 +24,7 @@ void chk_free(void** pptr) {
 }
 
 uint8_t char2hex(const char* str) {
-#define LOWER2HEX(digit) ((digit >= 'a') ? (10 + (digit - 'a')) : (digit - '0'))
+#define LOWER2HEX(digit) (((digit) >= 'a') ? (10 + ((digit) - 'a')) : ((digit) - '0'))
     const char digit0 = tolower(str[0]);
     const char digit1 = tolower(str[1]);
 
@@ -34,9 +36,44 @@ uint8_t char2hex(const char* str) {
 }
 
 void hex2char(uint8_t hex, char* out) {
-#define HEX2LOWER(digit) ((digit >= 0xa) ? (digit - 0xa + 'a') : (digit + '0'))
+#define HEX2LOWER(digit) (((digit) >= 0xa) ? ((digit) - 0xa + 'a') : ((digit) + '0'))
     out[0] = HEX2LOWER(hex & 0xf);
     out[1] = HEX2LOWER((hex & 0xf0) >> 4);
+}
+
+char* my_itoa(int val, char* buf, uint32_t radix) {
+    if (val < 0) {
+        buf[0] = '-';
+        val = -val; /* For easier dividing */
+    }
+
+    char* curr_pos = buf;
+    do { /* Fill it in reversed order */
+        *curr_pos++ = HEX2LOWER(val % radix);
+        val /= radix;
+    } while (val > 0);
+
+    *curr_pos-- = 0;
+
+    char tmp;
+    char* rev_pos = buf;
+    while (rev_pos < curr_pos) { /* Reverse the buffer to get normal order */
+        tmp = *curr_pos;
+        *curr_pos-- = *rev_pos;
+        *rev_pos++ = tmp;
+    };
+
+    return buf;
+}
+
+int shortopt2longindex(int opt, const struct option* longopts, int array_len) {
+    int index;
+    for (index = 0; index < array_len; index++) {
+        if (longopts[index].val == opt) {
+            return index;
+        }
+    }
+    return -1;
 }
 
 uint8_t bit_reverse(uint8_t in) {

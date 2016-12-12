@@ -52,7 +52,7 @@ void load_default_params() {
     PCFG.max_retries = DEFAULT_MAX_RETRIES;
     PCFG.max_failures = DEFAULT_MAX_FAILURES;
     PCFG.stage_timeout = DEFAULT_STAGE_TIMEOUT;
-    PCFG.save_now = DEFAULT_STAGE_TIMEOUT;
+    PCFG.save_now = DEFAULT_SAVE_NOW;
     PCFG.auth_round = DEFAULT_AUTH_ROUND;
     PCFG.kill_type = DEFAULT_KILL_TYPE;
 
@@ -139,7 +139,7 @@ static void parse_one_opt(const char* option, const char* argument) {
     } else if (ISOPT("nic")) {
         COPY_N_ARG_TO(g_prog_config.ifname, IFNAMSIZ);
     } else if (ISOPT("pkt-plugin") || ISOPT("module")) {
-        insert_data(&g_prog_config.packet_plugin_list, argument);
+        insert_data(&g_prog_config.packet_plugin_list, (void*)argument);
     } else if (ISOPT("daemonize")) {
         configure_daemon_log_param(atoi(argument) % 4); /* Just call it here */
     } else if (ISOPT("run-on-success")) {
@@ -154,7 +154,7 @@ static void parse_one_opt(const char* option, const char* argument) {
         g_prog_config.max_failures = atoi(argument);
     } else if (ISOPT("max-retries")) {
         g_prog_config.max_retries = atoi(argument);
-    } else if (ISOPT("no-auto-reauth") {
+    } else if (ISOPT("no-auto-reauth")) {
         g_prog_config.restart_on_logoff = 1;
     } else if (ISOPT("wait-after-fail")) {
         g_prog_config.wait_after_fail_secs = atoi(argument);
@@ -180,9 +180,7 @@ static void parse_one_opt(const char* option, const char* argument) {
 RESULT parse_cmdline_opts(int argc, char* argv[]) {
     int opt = 0;
     int longIndex = 0;
-    int daemon_mode = 0; /* 涉及日志文件路径设定，稍后处理 */
-    static const char* shortOpts = "-:hk::wu:p:n:t:e:r:l:x:a:d:b:"
-        "v:f:c:z:j:q:";
+    static const char* shortOpts = "-:hk::wu:p:n:t:r:l:x:b:c:z:j:";
     static const struct option longOpts[] = {
 	    { "help", no_argument, NULL, 'h' },
 	    { "kill", optional_argument, NULL, 'k' },
@@ -216,7 +214,13 @@ RESULT parse_cmdline_opts(int argc, char* argv[]) {
                 return FAILURE;
                 break;
             default:
-                parse_one_opt(longOpts[longIndex].name, optarg);
+                if (opt > 0) {
+                    // Short options here. longIndex = 0 in this case.
+                    longIndex = shortopt2longindex(opt, longOpts, sizeof(longOpts) / sizeof(struct option));
+                }
+                if (longIndex >= 0) {
+                    parse_one_opt(longOpts[longIndex].name, optarg);
+                }
                 break;
         }
         opt = getopt_long(argc, argv, shortOpts, longOpts, &longIndex);
@@ -225,8 +229,8 @@ RESULT parse_cmdline_opts(int argc, char* argv[]) {
     return SUCCESS;
 }
 
-static void parser_traverser(CONFIG_PAIR* pair) {
-    if (pair->value[0] = 0) {
+static void parser_traverser(CONFIG_PAIR* pair, void* unused) {
+    if (pair->value[0] == 0) {
         return; /* Refuse options without value. At least there should be no-auto-reauth=1 */
     }
     parse_one_opt(pair->key, pair->value);
@@ -237,24 +241,25 @@ RESULT parse_config_file(const char* filepath) {
     if (IS_FAIL(conf_parser_parse_now())) {
         return FAILURE;
     }
-    conf_parser_traverse(parser_traverser);
+    conf_parser_traverse(parser_traverser, NULL);
     return SUCCESS;
 }
 
 RESULT save_config_file() {
+    char itoa_buf[10];
     conf_parser_add_value("username", g_eap_config.username);
-    conf_parser_add_value("password", g_eap_config.password)
+    conf_parser_add_value("password", g_eap_config.password);
     conf_parser_add_value("nic", g_prog_config.ifname);
     save_active_packet_plugin_list();
     conf_parser_add_value("daemonize", g_prog_config.run_in_background ? "3" : "0"); /* Why is there a "2"? */
-    conf_parser_add_value("if-impl", g_prog_config.if_impl);
-    conf_parser_add_value("max-fail", itoa(g_prog_config.max_failures));
-    conf_parser_add_value("max-retries", itoa(g_prog_config.max_retries));
+    conf_parser_add_value("if-impl", get_if_impl()->name);
+    conf_parser_add_value("max-fail", my_itoa(g_prog_config.max_failures, itoa_buf, 10));
+    conf_parser_add_value("max-retries", my_itoa(g_prog_config.max_retries, itoa_buf, 10));
     conf_parser_add_value("no-auto-reauth", g_prog_config.restart_on_logoff ? "1" : "0");
-    conf_parser_add_value("wait-after-fail", itoa(g_prog_config.wait_after_fail_secs));
-    conf_parser_add_value("stage-timeout", itoa(g_prog_config.stage_timeout));
+    conf_parser_add_value("wait-after-fail", my_itoa(g_prog_config.wait_after_fail_secs, itoa_buf, 10));
+    conf_parser_add_value("stage-timeout", my_itoa(g_prog_config.stage_timeout, itoa_buf, 10));
     conf_parser_add_value("proxy-lan-iface", g_proxy_config.lan_ifname);
-    conf_parser_add_value("auth-round", itoa(g_prog_config.auth_round));
+    conf_parser_add_value("auth-round", my_itoa(g_prog_config.auth_round, itoa_buf, 10));
     conf_parser_add_value("pid-file", g_prog_config.pidfile);
     conf_parser_add_value("log-file", g_prog_config.logfile);
     packet_plugin_save_config();
