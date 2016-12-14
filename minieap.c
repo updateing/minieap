@@ -116,17 +116,6 @@ static int init_cfg(int argc, char* argv[]) {
     /* Parsed in parse_config_file(). This is no longer needed */
     conf_parser_free();
 
-    if (cfg->run_in_background) {
-        PR_INFO("正在转入后台运行……");
-        if (IS_FAIL(go_background())) {
-            PR_WARN("无法应用后台运行设置");
-        }
-    }
-
-    /* Apply log destination */
-    close_log();
-    start_log();
-
     return SUCCESS;
 }
 
@@ -153,6 +142,21 @@ static int init_if() {
     if_impl->set_frame_handler(if_impl, eap_state_machine_recv_handler);
 
     return SUCCESS;
+}
+
+static void apply_log_daemon_params() {
+    PROG_CONFIG* cfg = get_program_config();
+
+    if (cfg->run_in_background) {
+        PR_INFO("正在转入后台运行……");
+        if (IS_FAIL(go_background())) {
+            PR_WARN("无法应用后台运行设置");
+        }
+    }
+
+    /* Apply log destination */
+    close_log();
+    start_log();
 }
 
 static void exit_handler() {
@@ -194,6 +198,8 @@ int main(int argc, char* argv[]) {
     if (IS_FAIL(sched_alarm_init())) {
         return FAILURE;
     }
+
+    apply_log_daemon_params();
 
     switch_to_state(EAP_STATE_PREPARING, NULL);
 
