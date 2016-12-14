@@ -33,9 +33,11 @@ void rjv3_destroy(struct _packet_plugin* this) {
 static void rjv3_reset_state(PACKET_PLUGIN* this) {
     PRIV->dhcp_count = 0;
     PRIV->succ_count = 0;
+    PRIV->last_recv_packet = NULL;
     if (PRIV->dhcp_type == DHCP_DOUBLE_AUTH) {
         rjv3_reset_priv_header();
     }
+    rjv3_keepalive_reset();
 }
 
 static RESULT append_rj_cmdline_opt(struct _packet_plugin* this, const char* opt) {
@@ -211,9 +213,7 @@ RESULT rjv3_prepare_frame(struct _packet_plugin* this, ETH_EAP_FRAME* frame) {
 
 static RESULT rjv3_process_success(struct _packet_plugin* this, ETH_EAP_FRAME* frame) {
     PRIV->succ_count++;
-    if (IS_FAIL(rjv3_process_result_prop(frame))) {
-        return FAILURE;
-    }
+
     if (PRIV->dhcp_type == DHCP_DOUBLE_AUTH) {
         if (PRIV->succ_count < 2) {
             PR_INFO("首次认证成功，正在执行 DHCP 脚本以准备第二次认证");
@@ -222,6 +222,9 @@ static RESULT rjv3_process_success(struct _packet_plugin* this, ETH_EAP_FRAME* f
             /* Try right after the script ends */
             rjv3_start_secondary_auth(this);
 
+            /* Do not try to parse the server messages in this packet.
+             * It's meaningless and spamming.
+             */
             return SUCCESS;
         } else {
             /* Double success */
@@ -229,6 +232,11 @@ static RESULT rjv3_process_success(struct _packet_plugin* this, ETH_EAP_FRAME* f
             PR_INFO("二次认证成功");
         }
     }
+
+    if (IS_FAIL(rjv3_process_result_prop(frame))) {
+        return FAILURE;
+    }
+
     PR_INFO("正定时发送 Keep-Alive 报文以保持在线……");
     schedule_alarm(1, rjv3_send_keepalive_timed, this);
     return SUCCESS;

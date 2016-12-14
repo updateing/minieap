@@ -312,6 +312,7 @@ void free_config() {
     chk_free((void**)&g_prog_config.run_on_success);
     chk_free((void**)&g_prog_config.ifname);
     chk_free((void**)&g_prog_config.pidfile);
+    chk_free((void**)&g_prog_config.logfile);
     chk_free((void**)&g_prog_config.conffile);
     chk_free((void**)&g_prog_config.if_impl);
     list_destroy(&g_prog_config.packet_plugin_list, FALSE);

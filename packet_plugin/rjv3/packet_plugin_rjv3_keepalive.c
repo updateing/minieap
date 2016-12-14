@@ -5,9 +5,11 @@
 #include "packet_plugin_rjv3_priv.h"
 #include "sched_alarm.h"
 #include "misc.h"
+#include "packet_util.h"
 
 #include <stdlib.h>
 
+static int g_keepalive_alarm_id;
 static uint32_t g_echokey;
 static uint32_t g_echono;
 static uint8_t g_dest_mac[6];
@@ -23,6 +25,12 @@ void rjv3_set_keepalive_echono(uint32_t no) {
 
 void rjv3_set_keepalive_dest_mac(uint8_t* mac) {
     memmove(g_dest_mac, mac, 6);
+}
+
+void rjv3_keepalive_reset() {
+    unschedule_alarm(g_keepalive_alarm_id);
+    g_echokey = 0;
+    g_echono = 0;
 }
 
 static RESULT send_echo_frame(struct _packet_plugin* this, uint8_t* content, int len) {
@@ -66,9 +74,15 @@ static RESULT send_echo_frame(struct _packet_plugin* this, uint8_t* content, int
     memmove(frame.content + sizeof(ETHERNET_HEADER) + sizeof(EAPOL_HEADER), content, len);
     frame.actual_len += len;
 
-    return _if->send_frame(_if, &frame);
+    if (IS_FAIL(_if->send_frame(_if, &frame))) {
+        goto fail;
+    }
+
+    free(frame.content);
+    return SUCCESS;
 fail:
     PR_ERR("无法发送 Keep-Alive 报文");
+    free(frame.content);
     return FAILURE;
 }
 
@@ -99,5 +113,5 @@ void rjv3_send_keepalive_timed(void* vthis) {
     if (IS_FAIL(rjv3_send_new_keepalive_frame(this))) {
         PR_ERR("心跳包发送失败");
     }
-    schedule_alarm(PRIV->heartbeat_interval, rjv3_send_keepalive_timed, vthis);
+    g_keepalive_alarm_id = schedule_alarm(PRIV->heartbeat_interval, rjv3_send_keepalive_timed, vthis);
 }
