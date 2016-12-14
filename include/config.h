@@ -107,6 +107,11 @@ typedef struct _prog_config {
 
     /*
      * Whether to daemonize.
+     *
+     * Note: value of "-b, --daemonize" will be stored here during cmdline parsing.
+     * If you want to use this setting, be careful not to modify its value before
+     * parsing finishes. However you can always read this as 0 = run in foreground,
+     * anything else = go background.
      */
     int run_in_background;
     #define DEFAULT_RUN_IN_BACKGROUND FALSE

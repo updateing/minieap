@@ -34,6 +34,10 @@ static void configure_daemon_log_param(int daemon_mode) {
             set_log_destination(LOG_TO_CONSOLE);
             break;
         case 1:
+            g_prog_config.run_in_background = 1;
+            set_log_file_path("/dev/null");
+            set_log_destination(LOG_TO_FILE);
+            break;
         case 3:
             g_prog_config.run_in_background = 1;
             set_log_file_path(g_prog_config.logfile);
@@ -102,7 +106,7 @@ static void print_cmdline_help() {
         "\t--daemonize, -b <0-3>\t后台运行方式： [默认0]\n"
             "\t\t\t\t0 = 不后台\n"
             "\t\t\t\t1 = 后台运行，输出到当前控制台\n"
-            "\t\t\t\t2 = 同3，为保持兼容性而设\n"
+            "\t\t\t\t2 = 后台运行，关闭输出\n"
             "\t\t\t\t3 = 后台运行，输出到日志文件\n"
         "\t--run-on-success, -c <...>\t认证完成后运行此命令 [默认无]\n"
         "\t--dhcp-script <...>\t\t同上\n"
@@ -139,6 +143,8 @@ static void parse_one_opt(const char* option, const char* argument) {
         COPY_N_ARG_TO(g_eap_config.password, PASSWORD_MAX_LEN);
     } else if (ISOPT("nic")) {
         COPY_N_ARG_TO(g_prog_config.ifname, IFNAMSIZ);
+    } else if (ISOPT("daemonize")) {
+        g_prog_config.run_in_background = atoi(argument) % 4;
     } else if (ISOPT("pkt-plugin") || ISOPT("module")) {
         insert_data(&g_prog_config.packet_plugin_list, (void*)argument);
     } else if (ISOPT("run-on-success")) {
@@ -154,7 +160,7 @@ static void parse_one_opt(const char* option, const char* argument) {
     } else if (ISOPT("max-retries")) {
         g_prog_config.max_retries = atoi(argument);
     } else if (ISOPT("no-auto-reauth")) {
-        g_prog_config.restart_on_logoff = 1;
+        g_prog_config.restart_on_logoff = 0;
     } else if (ISOPT("wait-after-fail")) {
         g_prog_config.wait_after_fail_secs = atoi(argument);
     } else if (ISOPT("stage-timeout")) {
@@ -180,7 +186,6 @@ RESULT parse_cmdline_opts(int argc, char* argv[]) {
     int opt = 0;
     int longIndex = 0;
     int cmd_module_list_reset = FALSE;
-    int daemon_mode; /* Delay processing util g_prog_config.logfile is ready */
     static const char* shortOpts = "-:hk::wu:p:n:t:r:l:x:b:c:z:j:";
     static const struct option longOpts[] = {
 	    { "help", no_argument, NULL, 'h' },
@@ -214,9 +219,6 @@ RESULT parse_cmdline_opts(int argc, char* argv[]) {
                 PR_ERR("缺少参数：%s", argv[optind - 1]);
                 return FAILURE;
                 break;
-            case 'b':
-                daemon_mode = atoi(optarg) % 4;
-                break; /* Ugly hack */
             case 0:
                 if ((strcmp(longOpts[longIndex].name, "module") == 0 ||
                     strcmp(longOpts[longIndex].name, "pkt-plugin") == 0)
@@ -242,7 +244,7 @@ RESULT parse_cmdline_opts(int argc, char* argv[]) {
         }
         opt = getopt_long(argc, argv, shortOpts, longOpts, &longIndex);
     }
-    configure_daemon_log_param(daemon_mode);
+    configure_daemon_log_param(g_prog_config.run_in_background);
     return SUCCESS;
 }
 
