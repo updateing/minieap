@@ -10,6 +10,7 @@
 #include "sched_alarm.h"
 #include "config.h"
 #include "conf_parser.h"
+#include "packet_util.h"
 
 #include <arpa/inet.h>
 #include <getopt.h>
@@ -216,7 +217,17 @@ static RESULT rjv3_process_success(struct _packet_plugin* this, ETH_EAP_FRAME* f
 
     if (PRIV->dhcp_type == DHCP_DOUBLE_AUTH) {
         if (PRIV->succ_count < 2) {
+            /* This requires fine-grained control of authentication progress,
+             * so we can not use the logic of --auth-round.
+             */
             PR_INFO("首次认证成功，正在执行 DHCP 脚本以准备第二次认证");
+
+            /*
+             * PRIV->last_recv_packet == `frame`, but `frame` will be freed
+             * once the state transition is finished. We need to keep it
+             * in case DHCP fails and we need to start heartbeating.
+             */
+            PRIV->last_recv_packet = frame_duplicate(frame);
             system((get_program_config())->run_on_success); // TODO move this to plugin
 
             /* Try right after the script ends */
@@ -292,7 +303,8 @@ static void rjv3_save_one_prop(void* prop, void* is_mod) {
     curr_pos += 2;
     *curr_pos++ = ':';
 
-    for (int i = 0; i < PROP_TO_CONTENT_SIZE(TO_RJ_PROP(prop)); i++) {
+    int i;
+    for (i = 0; i < PROP_TO_CONTENT_SIZE(TO_RJ_PROP(prop)); i++) {
         hex2char(TO_RJ_PROP(prop)->content[i], curr_pos);
         curr_pos += 2;
     }

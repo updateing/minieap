@@ -254,14 +254,14 @@ static RESULT rjv3_override_priv_header(struct _packet_plugin* this) {
     if (IS_FAIL(obtain_iface_ip_mask(_ifname, &_ip_list))
             || (_ipv4 = find_ip_with_family(_ip_list, AF_INET)) == NULL) {
 
-        PR_ERR("IPv4 地址获取错误，将不能在数据包中展示 IPv4 地址");
+        PR_ERR("IPv4 地址获取错误");
         goto fail;
     }
 
     IP_ADDR _gw;
     _gw.family = AF_INET;
     if (IS_FAIL(obtain_iface_ipv4_gateway(_ifname, _gw.ip))) {
-        PR_ERR("IPv4 网关获取错误，将不能在数据包中展示 IPv4 网关地址");
+        PR_ERR("IPv4 网关获取错误");
         goto fail;
     }
 
@@ -480,7 +480,7 @@ RESULT rjv3_append_priv(struct _packet_plugin* this, ETH_EAP_FRAME* frame) {
     return SUCCESS;
 }
 
-static int rjv3_find_echokey_prop(void* unused, void* prop) {
+static int rjv3_is_echokey_prop(void* unused, void* prop) {
     RJ_PROP* _prop = (RJ_PROP*)prop;
 
     if (_prop->header2.type == 0x1 && PROP_TO_CONTENT_SIZE(_prop) != 0) {
@@ -526,7 +526,7 @@ RESULT rjv3_process_result_prop(ETH_EAP_FRAME* frame) {
         }
 
         _msg = NULL;
-        _msg = (RJ_PROP*)lookup_data(_srv_msg, NULL, rjv3_find_echokey_prop);
+        _msg = (RJ_PROP*)lookup_data(_srv_msg, NULL, rjv3_is_echokey_prop);
         if (_msg == NULL) {
             PR_ERR("无法找到 echo key 的位置，将不能进行心跳");
             return FAILURE;
@@ -551,15 +551,18 @@ void rjv3_start_secondary_auth(void* vthis) {
     if (IS_FAIL(rjv3_override_priv_header(this))) {
         PRIV->dhcp_count++;
         if (PRIV->dhcp_count > PRIV->max_dhcp_count) {
-            PR_ERR("无法获取 IP 地址等信息，将不会进行第二次认证");
+            rjv3_process_result_prop(PRIV->last_recv_packet); // Loads of texts
+            free_frame(&PRIV->last_recv_packet); // Duplicated in process_success
             schedule_alarm(1, rjv3_send_keepalive_timed, this);
+            PR_ERR("无法获取 IPv4 地址等信息，将不会进行第二次认证而直接开始心跳");
         } else {
             PR_WARN("DHCP 可能尚未完成，将继续等待……");
-            schedule_alarm(5, rjv3_start_secondary_auth, vthis);
+            schedule_alarm(5, rjv3_start_secondary_auth, this);
         }
         return;
     } else {
         PR_INFO("DHCP 完成，正在开始第二次认证");
+        free_frame(&PRIV->last_recv_packet); // Duplicated in process_success
         switch_to_state(EAP_STATE_START_SENT, NULL);
         return;
     }

@@ -84,8 +84,10 @@ typedef struct _packet_plugin {
      * Called by main program when the a standard EAP(oL) frame is ready
      * to be sent.
      * The frame will be sent immediately when this function returns.
-     * Can be used to append proprietary fields or change target address, etc.
+     * Can be used to append proprietary fields or change destination address, etc.
      * This is where all the magic happens!
+     *
+     * You may need to check if we are in proxy mode and go different routines.
      *
      * Return: if the operation completed successfully
      */
@@ -94,6 +96,8 @@ typedef struct _packet_plugin {
     /*
      * Called by main program on arrival of new frames.
      * Can be used to read proprietary fields and update internal state.
+     *
+     * You may need to check if we are in proxy mode and go different routines.
      *
      * Return: if the frame is processed successfully
      */
