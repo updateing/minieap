@@ -54,4 +54,9 @@ RESULT go_background();
 char** strarraydup(int count, char* array[]);
 void strarrayfree(int count, char* array[]);
 void strarrayprint(int count, char* array[]);
+
+/*
+ * Similar to strndup but without trailing 0
+ */
+void* memdup(const void* src, int n);
 #endif

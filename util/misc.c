@@ -162,3 +162,20 @@ void strarrayprint(int count, char* array[]) {
         PR_DBG("Element %d: %s", _curr_seq, array[_curr_seq]);
     }
 }
+
+void* memdup(const void* src, int n) {
+    if (n <= 0) {
+        // Make sure this is consistent
+        return NULL;
+    }
+
+    void* ret = malloc(n);
+
+    if (ret <= 0) {
+        // Suggest this is an error. THIS IS NON STANDARD
+        return (void*)-1;
+    }
+
+    memmove(ret, src, n);
+    return ret;
+}

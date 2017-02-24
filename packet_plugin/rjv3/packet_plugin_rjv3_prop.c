@@ -30,16 +30,10 @@ int append_rjv3_prop(LIST_ELEMENT** list, uint8_t type, uint8_t* content, int le
     RJ_PROP* _prop = new_rjv3_prop();
     if (_prop == NULL) return -1;
 
-    uint8_t* buf;
-    if (len > 0) {
-        buf = (uint8_t*)malloc(len);
-        if (buf < 0) {
-            free(_prop);
-            return -1;
-        }
-        memmove(buf, content, len);
-    } else {
-        buf = NULL;
+    uint8_t* buf = memdup(content, len);
+    if (buf < 0) {
+        free(_prop);
+        return -1;
     }
 
     _prop->header1.header_len = len + sizeof(RJ_PROP_HEADER1) + sizeof(RJ_PROP_HEADER2);
@@ -61,9 +55,15 @@ int modify_rjv3_prop(LIST_ELEMENT* list, uint8_t type, uint8_t* content, int len
     RJ_PROP* _prop = (RJ_PROP*)lookup_data(list, &type, rjv3_type_prop_compare);
     if (_prop == NULL) return 0; // Nothing modified
 
+    uint8_t* buf = memdup(content, len);
+    if (buf < 0) {
+        free(_prop);
+        return -1;
+    }
+
     int _org_header2_len = _prop->header2.len;
     chk_free((void**)&_prop->content);
-    _prop->content = content;
+    _prop->content = buf;
     _prop->header2.len = len + HEADER2_SIZE_NO_MAGIC(_prop);
     _prop->header1.header_len = len + sizeof(RJ_PROP_HEADER1) + sizeof(RJ_PROP_HEADER2);
     return _prop->header2.len - _org_header2_len;
