@@ -147,10 +147,10 @@ static int init_if() {
 static void apply_log_daemon_params() {
     PROG_CONFIG* cfg = get_program_config();
 
-    if (cfg->run_in_background) {
+    if (cfg->daemon_type != DAEMON_FOREGROUND) {
         PR_INFO("正在转入后台运行……");
         if (IS_FAIL(go_background())) {
-            PR_WARN("无法应用后台运行设置");
+            PR_WARN("无法转入后台运行");
         }
     }
 

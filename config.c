@@ -18,28 +18,19 @@ static EAP_CONFIG g_eap_config;
 static PROXY_CONFIG g_proxy_config;
 static PROG_CONFIG g_prog_config;
 
-/*
- * Configures daemon and log options according to cmdline.
- * We don't have a "daemon_mode" parameter, so translate
- * it to what we have.
- */
-static void configure_daemon_log_param(int daemon_mode) {
-    switch (daemon_mode) {
-        case 0:
-            g_prog_config.run_in_background = 0;
+static void configure_log_by_daemon_type(DAEMON_TYPE daemon_type) {
+    switch (daemon_type) {
+        case DAEMON_FOREGROUND:
             set_log_destination(LOG_TO_CONSOLE);
             break;
-        case 2:
-            g_prog_config.run_in_background = 1;
-            set_log_destination(LOG_TO_CONSOLE);
-            break;
-        case 1:
-            g_prog_config.run_in_background = 1;
+        case DAEMON_NO_LOG:
             set_log_file_path("/dev/null");
             set_log_destination(LOG_TO_FILE);
             break;
-        case 3:
-            g_prog_config.run_in_background = 1;
+        case DAEMON_CONSOLE_LOG:
+            set_log_destination(LOG_TO_CONSOLE);
+            break;
+        case DAEMON_FILE_LOG:
             set_log_file_path(g_prog_config.logfile);
             set_log_destination(LOG_TO_FILE);
             break;
@@ -52,7 +43,7 @@ void load_default_params() {
     PCFG.logfile = strdup(DEFAULT_LOGFILE);
     PCFG.restart_on_logoff = DEFAULT_RESTART_ON_LOGOFF;
     PCFG.wait_after_fail_secs = DEFAULT_WAIT_AFTER_FAIL_SECS;
-    PCFG.run_in_background = DEFAULT_RUN_IN_BACKGROUND;
+    PCFG.daemon_type = DEFAULT_DAEMON_TYPE;
     PCFG.max_retries = DEFAULT_MAX_RETRIES;
     PCFG.max_failures = DEFAULT_MAX_FAILURES;
     PCFG.stage_timeout = DEFAULT_STAGE_TIMEOUT;
@@ -60,7 +51,7 @@ void load_default_params() {
     PCFG.auth_round = DEFAULT_AUTH_ROUND;
     PCFG.kill_type = DEFAULT_KILL_TYPE;
 
-    configure_daemon_log_param(0); // No run in bg + log to console
+    configure_log_by_daemon_type(DEFAULT_DAEMON_TYPE);
 }
 
 /*
@@ -105,8 +96,8 @@ static void print_cmdline_help() {
         "\t--no-auto-reauth, -x\t认证掉线后不允许自动重连 [默认" STR(DEFAULT_RESTART_ON_LOGOFF) "]\n"
         "\t--daemonize, -b <0-3>\t后台运行方式： [默认0]\n"
             "\t\t\t\t0 = 不后台\n"
-            "\t\t\t\t1 = 后台运行，输出到当前控制台\n"
-            "\t\t\t\t2 = 后台运行，关闭输出\n"
+            "\t\t\t\t1 = 后台运行，关闭输出\n"
+            "\t\t\t\t2 = 后台运行，输出到当前控制台\n"
             "\t\t\t\t3 = 后台运行，输出到日志文件\n"
         "\t--run-on-success, -c <...>\t认证完成后运行此命令 [默认无]\n"
         "\t--dhcp-script <...>\t\t同上\n"
@@ -144,7 +135,7 @@ static void parse_one_opt(const char* option, const char* argument) {
     } else if (ISOPT("nic")) {
         COPY_N_ARG_TO(g_prog_config.ifname, IFNAMSIZ);
     } else if (ISOPT("daemonize")) {
-        g_prog_config.run_in_background = atoi(argument) % 4;
+        g_prog_config.daemon_type = atoi(argument) % 4;
     } else if (ISOPT("pkt-plugin") || ISOPT("module")) {
         insert_data(&g_prog_config.packet_plugin_list, (void*)argument);
     } else if (ISOPT("run-on-success")) {
@@ -244,7 +235,7 @@ RESULT parse_cmdline_opts(int argc, char* argv[]) {
         }
         opt = getopt_long(argc, argv, shortOpts, longOpts, &longIndex);
     }
-    configure_daemon_log_param(g_prog_config.run_in_background);
+    configure_log_by_daemon_type(g_prog_config.daemon_type);
     return SUCCESS;
 }
 
@@ -271,7 +262,7 @@ RESULT save_config_file() {
     conf_parser_add_value("password", g_eap_config.password);
     conf_parser_add_value("nic", g_prog_config.ifname);
     save_active_packet_plugin_list();
-    conf_parser_add_value("daemonize", g_prog_config.run_in_background ? "3" : "0"); /* Why is there a "2"? */
+    conf_parser_add_value("daemonize", my_itoa(g_prog_config.daemon_type, itoa_buf, 10));
     conf_parser_add_value("if-impl", get_if_impl()->name);
     conf_parser_add_value("max-fail", my_itoa(g_prog_config.max_failures, itoa_buf, 10));
     conf_parser_add_value("max-retries", my_itoa(g_prog_config.max_retries, itoa_buf, 10));
