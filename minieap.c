@@ -7,6 +7,7 @@
 #include "sched_alarm.h"
 #include "misc.h"
 #include "conf_parser.h"
+#include "pid_lock.h"
 
 #include <stdlib.h>
 #include <errno.h>
@@ -116,6 +117,10 @@ static int init_cfg(int argc, char* argv[]) {
     /* Parsed in parse_config_file(). This is no longer needed */
     conf_parser_free();
 
+    if (IS_FAIL(pid_lock_init(cfg->pidfile))) {
+        return FAILURE;
+    }
+
     return SUCCESS;
 }
 
@@ -165,6 +170,7 @@ static void exit_handler() {
     packet_plugin_destroy();
     eap_state_machine_destroy();
     sched_alarm_destroy();
+    pid_lock_destroy();
     PR_INFO("MiniEAP 已退出");
     close_log();
 };
@@ -200,6 +206,8 @@ int main(int argc, char* argv[]) {
     }
 
     apply_log_daemon_params();
+
+    pid_lock_lock();
 
     switch_to_state(EAP_STATE_PREPARING, NULL);
 
