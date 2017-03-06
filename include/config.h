@@ -39,6 +39,17 @@ typedef enum _kill_type {
     KILL_AND_START
 } KILL_TYPE;
 
+typedef enum _daemon_type {
+    /* Run in foreground and log to console */
+    DAEMON_FOREGROUND,
+    /* Run in background and disable logging */
+    DAEMON_NO_LOG,
+    /* Run in background and log to console */
+    DAEMON_CONSOLE_LOG,
+    /* Run in background and log to file (PROG_CONFIG.logfile) */
+    DAEMON_FILE_LOG
+} DAEMON_TYPE;
+
 /*
  * General program config
  */
@@ -106,15 +117,10 @@ typedef struct _prog_config {
     #define DEFAULT_WAIT_AFTER_FAIL_SECS 30
 
     /*
-     * Whether to daemonize.
-     *
-     * Note: value of "-b, --daemonize" will be stored here during cmdline parsing.
-     * If you want to use this setting, be careful not to modify its value before
-     * parsing finishes. However you can always read this as 0 = run in foreground,
-     * anything else = go background.
+     * Whether to daemonize and how to deal with logs
      */
-    int run_in_background;
-    #define DEFAULT_RUN_IN_BACKGROUND FALSE
+    DAEMON_TYPE daemon_type;
+    #define DEFAULT_DAEMON_TYPE DAEMON_FOREGROUND
 
     /*
      * Max number of retries(timeouts) before we have a result, success or failure.
