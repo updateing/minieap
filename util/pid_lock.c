@@ -10,12 +10,19 @@
 #include "misc.h"
 
 #define PID_STRING_BUFFER_SIZE 12
+#define PID_FILE_NONE "none"
 
-static int pid_lock_fd = 0;
+static int pid_lock_fd = 0; // 0 = uninitialized, -1 = disabled
 
 RESULT pid_lock_init(const char* pidfile) {
     if (pidfile == NULL) {
         return FAILURE;
+    }
+
+    if (strcmp(pidfile, PID_FILE_NONE) == 0) {
+        PR_WARN("PID 检查已禁用，请确保一个接口上只有一个认证进程")
+        pid_lock_fd = -1;
+        return SUCCESS;
     }
 
     pid_lock_fd = open(pidfile, O_RDWR | O_CREAT);
@@ -52,7 +59,15 @@ static RESULT pid_lock_handle_multiple_instance() {
 	}
 }
 
-static RESULT pid_lock_save_pid() {
+RESULT pid_lock_save_pid() {
+	if (pid_lock_fd == 0) {
+		PR_WARN("PID 文件尚未初始化");
+		return FAILURE;
+	} else if (pid_lock_fd < 0) {
+		// User disabled pid lock
+		return SUCCESS;
+	}
+
 	char writebuf[PID_STRING_BUFFER_SIZE];
 
 	my_itoa(getpid(), writebuf, 10);
@@ -66,15 +81,20 @@ static RESULT pid_lock_save_pid() {
 }
 
 RESULT pid_lock_lock() {
-	if (pid_lock_fd <= 0) {
-		PR_ERR("PID 文件尚未打开");
+	if (pid_lock_fd == 0) {
+		PR_WARN("PID 文件尚未初始化");
 		return FAILURE;
+	} else if (pid_lock_fd < 0) {
+		// User disabled pid lock
+		return SUCCESS;
 	}
 
 	int lock_result = flock(pid_lock_fd, LOCK_EX | LOCK_NB);
 	if (lock_result < 0) {
 		if (errno == EWOULDBLOCK) {
 			if (IS_FAIL(pid_lock_handle_multiple_instance())) {
+				close(pid_lock_fd);
+				pid_lock_fd = 0;
 				return FAILURE;
 			} // Continue if handled
 		} else {
@@ -83,7 +103,7 @@ RESULT pid_lock_lock() {
 		}
 	}
 
-	return pid_lock_save_pid(); // I don't quite prefer this kind of code...
+	return SUCCESS;
 }
 
 RESULT pid_lock_destroy() {

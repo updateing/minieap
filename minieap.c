@@ -205,9 +205,13 @@ int main(int argc, char* argv[]) {
         return FAILURE;
     }
 
+    if (IS_FAIL(pid_lock_lock())) {
+        return FAILURE;
+    }
+
     apply_log_daemon_params();
 
-    pid_lock_lock();
+    pid_lock_save_pid();
 
     switch_to_state(EAP_STATE_PREPARING, NULL);
 

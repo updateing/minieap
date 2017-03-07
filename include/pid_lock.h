@@ -3,6 +3,7 @@
 
 RESULT pid_lock_init(const char* pidfile);
 RESULT pid_lock_lock();
+RESULT pid_lock_save_pid();
 RESULT pid_lock_destroy();
 
 #endif
