@@ -165,12 +165,12 @@ static void apply_log_daemon_params() {
 }
 
 static void exit_handler() {
-    free_config();
     free_if_impl();
     packet_plugin_destroy();
     eap_state_machine_destroy();
     sched_alarm_destroy();
     pid_lock_destroy();
+    free_config();
     PR_INFO("MiniEAP 已退出");
     close_log();
 };
