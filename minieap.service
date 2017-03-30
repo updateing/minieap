@@ -1,0 +1,9 @@
+[Unit]
+Description=MiniEAP Service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/stdbuf -o0 /usr/bin/minieap --conf-file /etc/minieap.conf
+
+[Install]
+WantedBy=multi-user.target
