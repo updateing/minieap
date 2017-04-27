@@ -85,13 +85,6 @@ typedef struct _prog_config {
     #define DEFAULT_LOGFILE "/var/log/minieap.log"
 
     /*
-     * Run this after authentication succeeds.
-     * We have no other way to inform the system about the result...
-     */
-    char* run_on_success;
-    //#define DEFAULT_RUN_ON_SUCCESS NULL
-
-    /*
      * Selected interface implementation: how to drive network adapters?
      */
     char* if_impl;

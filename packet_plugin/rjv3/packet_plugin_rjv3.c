@@ -22,6 +22,7 @@
 void rjv3_destroy(struct _packet_plugin* this) {
     chk_free((void**)&PRIV->service_name);
     chk_free((void**)&PRIV->ver_str);
+    chk_free((void**)&PRIV->dhcp_script);
     chk_free((void**)&PRIV->fake_dns1);
     chk_free((void**)&PRIV->fake_dns2);
     chk_free((void**)&PRIV->fake_serial);
@@ -109,6 +110,7 @@ void rjv3_print_cmdline_help(struct _packet_plugin* this) {
             "\t\t\t\t\t1 = 二次认证\n"
             "\t\t\t\t\t2 = 认证前 DHCP\n"
             "\t\t\t\t\t3 = 认证后 DHCP\n"
+        "\t--dhcp-script, -c <...>\t\t二次认证之间及认证完成后运行此命令 [默认无]\n"
         "\t--rj-option <type>:<value>[:r]\t自定义认证字段，其中 type 和 value 必须为十六进制串\n"
             "\t\t\t\t\t如 --rj-option 6a:000102 表示新增一条类型为 0x6a、内容为 0x00 0x01 0x02的字段\n"
             "\t\t\t\t\t:r 表示替换内置生成的字段，如 --rj-option 6f:000102:r 表示将内置算法生成的类型为 0x6f 的字段内容替换为 0x00 0x12 0x02\n"
@@ -128,6 +130,7 @@ void rjv3_load_default_params(struct _packet_plugin* this) {
     PRIV->max_dhcp_count = DEFAULT_MAX_DHCP_COUNT;
     PRIV->service_name = strdup(DEFAULT_SERVICE_NAME);
     PRIV->ver_str = strdup(DEFAULT_VER_STR);
+    PRIV->dhcp_script = strdup(DEFAULT_DHCP_SCRIPT);
     PRIV->bcast_addr = DEFAULT_EAP_BCAST_ADDR;
     PRIV->dhcp_type = DEFAULT_DHCP_TYPE;
 }
@@ -147,6 +150,8 @@ static RESULT rjv3_parse_one_opt(struct _packet_plugin* this, const char* option
         PRIV->bcast_addr = atoi(argument) % 2; /* 一共2个选项 */ // Do not allow CER
     } else if (ISOPT("dhcp-type")) {
         PRIV->dhcp_type = atoi(argument) % 4;
+    } else if (ISOPT("dhcp-script")) {
+        COPY_N_ARG_TO(PRIV->dhcp_script, MAX_PATH);
     } else if (ISOPT("rj-option")) {
         /* Allow mulitple rj-options */
         if (IS_FAIL(append_rj_cmdline_opt(this, argument))) {
@@ -176,6 +181,7 @@ RESULT rjv3_process_cmdline_opts(struct _packet_plugin* this, int argc, char* ar
 	    { "heartbeat", required_argument, NULL, 'e' },
 	    { "eap-bcast-addr", required_argument, NULL, 'a' },
 	    { "dhcp-type", required_argument, NULL, 'd' },
+	    { "dhcp-script", required_argument, NULL, 'c' },
 	    { "rj-option", required_argument, NULL, 0 },
 	    { "service", required_argument, NULL, 0 },
 	    { "version-str", required_argument, NULL, 0 },
@@ -228,7 +234,7 @@ static RESULT rjv3_process_success(struct _packet_plugin* this, ETH_EAP_FRAME* f
              * in case DHCP fails and we need to start heartbeating.
              */
             PRIV->last_recv_packet = frame_duplicate(frame);
-            system((get_program_config())->run_on_success); // TODO move this to plugin
+            system(PRIV->dhcp_script);
 
             /* Try right after the script ends */
             rjv3_start_secondary_auth(this);
@@ -242,6 +248,9 @@ static RESULT rjv3_process_success(struct _packet_plugin* this, ETH_EAP_FRAME* f
             rjv3_reset_state(this);
             PR_INFO("二次认证成功");
         }
+    } else if (PRIV->dhcp_type == DHCP_AFTER_AUTH) {
+        /* Run script after one-pass authentication finishes */
+        system(PRIV->dhcp_script);
     }
 
     if (IS_FAIL(rjv3_process_result_prop(frame))) {
@@ -329,6 +338,7 @@ void rjv3_save_config(struct _packet_plugin* this) {
     list_traverse(PRIV->cmd_prop_mod_list, rjv3_save_one_prop, (void*)TRUE); /* No warning! */
     conf_parser_add_value("service", PRIV->service_name);
     conf_parser_add_value("version-str", PRIV->ver_str);
+    conf_parser_add_value("dhcp-script", PRIV->dhcp_script);
     conf_parser_add_value("fake-dns1", PRIV->fake_dns1);
     conf_parser_add_value("fake-dns2", PRIV->fake_dns2);
     conf_parser_add_value("fake-serial", PRIV->fake_serial);

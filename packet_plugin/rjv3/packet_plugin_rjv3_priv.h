@@ -93,6 +93,7 @@ typedef struct _packet_plugin_rjv3_priv {
         int max_dhcp_count;
         char* service_name; // All pointers can be freed since they are created by COPY_N_ARG_TO
         char* ver_str;
+        char* dhcp_script;
         char* fake_dns1;
         char* fake_dns2;
         char* fake_serial;

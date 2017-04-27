@@ -9,6 +9,7 @@
 #define DEFAULT_MAX_DHCP_COUNT      3
 #define DEFAULT_SERVICE_NAME        "internet"
 #define DEFAULT_VER_STR             "RG-SU For Linux V1.0"
+#define DEFAULT_DHCP_SCRIPT         ""
 #define DEFAULT_EAP_BCAST_ADDR      BROADCAST_STANDARD
 #define DEFAULT_DHCP_TYPE           DHCP_AFTER_AUTH
 

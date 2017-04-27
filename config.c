@@ -99,8 +99,6 @@ static void print_cmdline_help() {
             "\t\t\t\t1 = 后台运行，关闭输出\n"
             "\t\t\t\t2 = 后台运行，输出到当前控制台\n"
             "\t\t\t\t3 = 后台运行，输出到日志文件\n"
-        "\t--run-on-success, -c <...>\t认证完成后运行此命令 [默认无]\n"
-        "\t--dhcp-script <...>\t\t同上\n"
         "\t--proxy-lan-iface, -z <...>\t代理认证时的 LAN 网络界面名 [默认无]\n"
         "\t--auth-round, -j <num>\t需要认证的次数 [默认1]\n"
         "\t--max-retries <num>\t最大超时重试的次数 [默认3]\n"
@@ -138,8 +136,6 @@ static void parse_one_opt(const char* option, const char* argument) {
         g_prog_config.daemon_type = atoi(argument) % 4;
     } else if (ISOPT("pkt-plugin") || ISOPT("module")) {
         insert_data(&g_prog_config.packet_plugin_list, (void*)argument);
-    } else if (ISOPT("run-on-success")) {
-        COPY_N_ARG_TO(g_prog_config.run_on_success, MAX_PATH);
     } else if (ISOPT("if-impl")) {
         COPY_N_ARG_TO(g_prog_config.if_impl, IFNAMSIZ);
     } else if (ISOPT("save")) {
@@ -190,8 +186,6 @@ RESULT parse_cmdline_opts(int argc, char* argv[]) {
 	    { "max-fail", required_argument, NULL, 'l' },
 	    { "no-auto-reauth", no_argument, NULL, 'x' },
 	    { "daemonize", required_argument, NULL, 'b' },
-	    { "run-on-success", required_argument, NULL, 'c' }, /* They are */
-	    { "dhcp-script", required_argument, NULL, 'c' },    /* both 'c' */
 	    { "proxy-lan-iface", required_argument, NULL, 'z' },
 	    { "auth-round", required_argument, NULL, 'j' },
 	    { "max-retries", required_argument, NULL, 0},
@@ -300,7 +294,6 @@ RESULT validate_params() {
  * for e.g. char* produced by strdup() and lists by --module
  */
 void free_config() {
-    chk_free((void**)&g_prog_config.run_on_success);
     chk_free((void**)&g_prog_config.ifname);
     chk_free((void**)&g_prog_config.pidfile);
     chk_free((void**)&g_prog_config.logfile);
