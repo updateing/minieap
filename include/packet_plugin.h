@@ -8,7 +8,7 @@
  * as well as a `new()` function which constructs its _packet_plugin structure (produce a new instance).
  * The `new()` function must be registered by PACKET_PLUGIN_INIT() macro.
  *
- * Each memeber function takes the pointer to the structure/instance as first parameter.
+ * Each member function takes the pointer to the structure/instance as first parameter.
  *
  * Take a look at packet_plugin/printer/packet_plugin_printer.c for example.
  */

@@ -7,7 +7,7 @@
  * as well as a `new()` function which constructs its _if_impl structure (produce a new instance).
  * The `new()` function must be registered by IF_IMPL_INIT() macro.
  *
- * Each memeber function takes the pointer to the structure/instance as first parameter.
+ * Each member function takes the pointer to the structure/instance as first parameter.
  *
  * Take a look at if_impl/sockraw/if_impl_sockraw.c for example.
  */
