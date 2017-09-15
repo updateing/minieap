@@ -12,7 +12,10 @@
 
 // From cmdline
 #ifdef ENABLE_ICONV
-#include <iconv.h>
+#include <iconv.h> 
+#define USE_ICONV
+#else
+#include "gbconv.h"
 #endif
 
 void chk_free(void** pptr) {
@@ -86,7 +89,7 @@ uint8_t bit_reverse(uint8_t in) {
 }
 
 void gbk2utf8(char* in, size_t inlen, char* out, size_t outlen) {
-#if defined(_ICONV_H) || defined(_LIBICONV_H)
+#ifdef USE_ICONV
     iconv_t _cd = iconv_open("utf-8", "gbk");
     if (_cd < 0) {
         PR_WARN("无法从 iconv 获取编码描述符，服务器消息可能会出现乱码");
@@ -97,8 +100,10 @@ void gbk2utf8(char* in, size_t inlen, char* out, size_t outlen) {
         return;
     }
 legacy:
-#endif
     memmove(out, in, inlen);
+#else
+    gbconv8(in, out, outlen);
+#endif
 }
 
 void pr_info_gbk(char* in, size_t inlen) {
