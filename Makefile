@@ -17,6 +17,10 @@ COMMON_LDFLAGS += -liconv
 endif
 endif
 
+ifeq ($(ENABLE_GBCONV),true)
+COMMON_CFLAGS += -DENABLE_GBCONV
+endif
+
 ifeq ($(ENABLE_DEBUG),true)
 COMMON_CFLAGS += -DDEBUG
 endif

@@ -16,9 +16,10 @@ PLUGIN_MODULES += if_impl_sockraw
 # If you need it, add it yourselves.
 # PLUGIN_MODULES += ifaddrs
 
-ENABLE_DEBUG := false
-ENABLE_ICONV := true
-STATIC_BUILD := false
+ENABLE_DEBUG  := false
+ENABLE_ICONV  := true
+ENABLE_GBCONV := false
+STATIC_BUILD  := false
 
 # If your platform has iconv_* integrated into libc, change to false
 # Affects dynamic linking
