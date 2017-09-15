@@ -12,9 +12,8 @@
 
 // From cmdline
 #ifdef ENABLE_ICONV
-#include <iconv.h> 
-#define USE_ICONV
-#else
+#include <iconv.h>
+#elif ENABLE_GBCONV
 #include "gbconv.h"
 #endif
 
@@ -89,20 +88,19 @@ uint8_t bit_reverse(uint8_t in) {
 }
 
 void gbk2utf8(char* in, size_t inlen, char* out, size_t outlen) {
-#ifdef USE_ICONV
+#ifdef ENABLE_ICONV
     iconv_t _cd = iconv_open("utf-8", "gbk");
     if (_cd < 0) {
         PR_WARN("无法从 iconv 获取编码描述符，服务器消息可能会出现乱码");
-        goto legacy;
+        memmove(out, in, inlen);
     } else {
         iconv(_cd, &in, &inlen, &out, &outlen);
         iconv_close(_cd);
-        return;
     }
-legacy:
-    memmove(out, in, inlen);
-#else
+#elif defined(ENABLE_GBCONV)
     gbconv8(in, out, outlen);
+#else
+    memmove(out, in, inlen);
 #endif
 }
 
