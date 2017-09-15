@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include "gbconv.h"
 
+#ifdef ENABLE_GBCONV
 static uint16_t table[] = {
   0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
   0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
@@ -3174,3 +3175,4 @@ size_t gbconv8(const char *src, char *dst, size_t dstlen)
     return len;
 #undef gbconv8_FILL_DEST
 }
+#endif
