@@ -334,7 +334,7 @@ static int rjv3_append_common_fields(PACKET_PLUGIN* this, LIST_ELEMENT** list, i
     uint8_t _hdd_ser[RJV3_SIZE_HDD_SER] = {0};
     /* misc 6 */
     uint8_t _misc_7[RJV3_SIZE_MISC_7] = {0};
-    uint8_t _misc_8[RJV3_SIZE_MISC_8] = {0x40};
+    uint8_t _os_bits[RJV3_SIZE_OS_BITS] = {0x40};
     char* _ver_str = PRIV->ver_str;
 
     rjv3_set_dhcp_en(_dhcp_en, PRIV->dhcp_type);
@@ -380,7 +380,7 @@ static int rjv3_append_common_fields(PACKET_PLUGIN* this, LIST_ELEMENT** list, i
     CHK_ADD(append_rjv3_prop(list, RJV3_TYPE_HDD_SER,  _hdd_ser,               sizeof(_hdd_ser)));
     CHK_ADD(append_rjv3_prop(list, RJV3_TYPE_MISC_6,   NULL,                   0));
     CHK_ADD(append_rjv3_prop(list, RJV3_TYPE_MISC_7,   _misc_7,                sizeof(_misc_7)));
-    CHK_ADD(append_rjv3_prop(list, RJV3_TYPE_MISC_8,   _misc_8,                sizeof(_misc_8)));
+    CHK_ADD(append_rjv3_prop(list, RJV3_TYPE_OS_BITS,  _os_bits,               sizeof(_os_bits)));
     CHK_ADD(append_rjv3_prop(list, RJV3_TYPE_VER_STR,  (uint8_t*)_ver_str,    strlen(_ver_str) + 1)); // Zero terminated
 
     return _len;
