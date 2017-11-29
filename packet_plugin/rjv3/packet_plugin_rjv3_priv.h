@@ -54,6 +54,9 @@
 #define RJV3_TYPE_VER_STR   0x6f /* Client version string, zero terminated */
 /* Var size */
 
+#define RJV3_PROG_NAME      "8021x.exe" /* Program name in header */
+#define RJV3_SIZE_PROG_NAME 0x20
+
 typedef enum _rj_broadcast_addr {
     BROADCAST_STANDARD,
     BROADCAST_RJ,
@@ -87,6 +90,16 @@ typedef struct _rj_prop {
     uint8_t* content; /* Length is included in header */
 } RJ_PROP;
 
+typedef struct _dhcp_info {
+    uint8_t magic[4]; /* 00 00 13 11 */
+    uint8_t dhcp_type; /* dhcp_type == 1 */
+    uint8_t ip[4];
+    uint8_t netmask[4];
+    uint8_t gateway[4];
+    uint8_t dns[4];
+    uint8_t crc16_hash[2]; /* Network byte order */
+} DHCP_INFO;
+
 typedef struct _packet_plugin_rjv3_priv {
     struct { // Cmdline options
         int heartbeat_interval;
@@ -111,5 +124,4 @@ typedef struct _packet_plugin_rjv3_priv {
 RESULT rjv3_append_priv(struct _packet_plugin* this, ETH_EAP_FRAME* frame);
 RESULT rjv3_process_result_prop(ETH_EAP_FRAME* frame);
 void rjv3_start_secondary_auth(void* vthis);
-void rjv3_reset_priv_header();
 #endif

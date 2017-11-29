@@ -36,9 +36,6 @@ static void rjv3_reset_state(PACKET_PLUGIN* this) {
     PRIV->dhcp_count = 0;
     PRIV->succ_count = 0;
     PRIV->last_recv_packet = NULL;
-    if (PRIV->dhcp_type == DHCP_DOUBLE_AUTH) {
-        rjv3_reset_priv_header();
-    }
     rjv3_keepalive_reset();
 }
 
