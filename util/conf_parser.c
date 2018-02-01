@@ -61,7 +61,7 @@ RESULT conf_parser_add_value(const char* key, const char* value) {
 	}
 
 	CONFIG_PAIR* pair = (CONFIG_PAIR*)malloc(sizeof(CONFIG_PAIR));
-	if (pair <= 0) {
+	if (pair == NULL) {
 		PR_ERRNO("无法为新的配置项分配内存空间");
 		return FAILURE;
 	}
@@ -78,7 +78,7 @@ RESULT conf_parser_parse_now() {
 	}
 
 	FILE* fp = fopen(g_conf_file, "r");
-	if (fp <= 0) {
+	if (fp == NULL) {
 		PR_ERRNO("无法打开配置文件");
 		return FAILURE;
 	}
@@ -160,7 +160,7 @@ RESULT conf_parser_save_file() {
 	}
 
 	FILE* fp = fopen(g_conf_file, "w");
-	if (fp <= 0) {
+	if (fp == NULL) {
 		PR_ERRNO("无法打开配置文件");
 		return FAILURE;
 	}

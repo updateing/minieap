@@ -105,7 +105,7 @@ static void rjv3_set_v3_hash(uint8_t* hash_buf, ETH_EAP_FRAME* request) {
 
 static void rjv3_set_service_name(uint8_t* name_buf, char* cmd_opt) {
     memmove(name_buf, cmd_opt, strlen(cmd_opt));
-};
+}
 
 static void rjv3_set_secondary_dns(char* dns_ascii_buf, char* fake_dns) {
     if (fake_dns != NULL) {
@@ -139,7 +139,7 @@ static void rjv3_set_hdd_serial(uint8_t* serial_buf, char* fake_serial) {
     char* _root_dev = NULL;
     char* _ret;
 
-    if (_fp <= 0) {
+    if (_fp == NULL) {
         goto info_err;
     }
 
@@ -177,7 +177,7 @@ static void rjv3_set_hdd_serial(uint8_t* serial_buf, char* fake_serial) {
 info_err:
     PR_ERRNO("无法从 /etc/mtab 获取根分区挂载设备信息，请使用 --fake-serial 选项手动指定硬盘序列号");
 close_return:
-    if (_fp > 0) fclose(_fp);
+    if (_fp != NULL) fclose(_fp);
     if (_root_dev) free(_root_dev);
 #endif // TODO macOS ioreg?
     return;

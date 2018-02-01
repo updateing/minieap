@@ -20,7 +20,7 @@ void printer_destroy(struct _packet_plugin* this) {
 
 PACKET_PLUGIN* packet_plugin_printer_new() {
     PACKET_PLUGIN* this = (PACKET_PLUGIN*)malloc(sizeof(PACKET_PLUGIN));
-    if (this < 0) {
+    if (this == NULL) {
         PR_ERRNO("Printer 插件主结构内存分配失败");
         return NULL;
     }
@@ -35,4 +35,4 @@ PACKET_PLUGIN* packet_plugin_printer_new() {
     this->destroy = printer_destroy;
     return this;
 }
-PACKET_PLUGIN_INIT(packet_plugin_printer_new);
+PACKET_PLUGIN_INIT(packet_plugin_printer_new)
