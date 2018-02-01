@@ -173,7 +173,7 @@ static void exit_handler() {
     free_config();
     PR_INFO("MiniEAP 已退出");
     close_log();
-};
+}
 
 static void signal_handler(int signal) {
     exit(0);

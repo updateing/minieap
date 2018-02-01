@@ -43,7 +43,7 @@ RESULT libpcap_get_ifname(struct _if_impl* this, char* buf, int buflen) {
     return SUCCESS;
 }
 
-RESULT libpcap_setup_capture_params(struct _if_impl* this, short eth_protocol, int promisc) {
+RESULT libpcap_setup_capture_params(struct _if_impl* this, unsigned short eth_protocol, int promisc) {
     PRIV->proto = eth_protocol;
     PRIV->promisc = promisc;
     return SUCCESS;
@@ -105,7 +105,7 @@ void libpcap_destroy(IF_IMPL* this) {
 
 IF_IMPL* libpcap_new() {
     IF_IMPL* this = (IF_IMPL*)malloc(sizeof(IF_IMPL));
-    if (this < 0) {
+    if (this == NULL) {
         PR_ERRNO("libpcap 主结构内存分配失败");
         return NULL;
     }
@@ -113,7 +113,7 @@ IF_IMPL* libpcap_new() {
 
     /* The priv pointer in if_impl.h is a libpcap_priv* here */
     this->priv = (libpcap_priv*)malloc(sizeof(libpcap_priv));
-    if (this->priv < 0) {
+    if (this->priv == NULL) {
         PR_ERRNO("libpcap 私有结构内存分配失败");
         free(this);
         return NULL;

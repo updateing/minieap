@@ -66,7 +66,7 @@ RESULT sockraw_get_ifname(struct _if_impl* this, char* buf, int buflen) {
     return SUCCESS;
 }
 
-RESULT sockraw_setup_capture_params(struct _if_impl* this, short eth_protocol, int promisc) {
+RESULT sockraw_setup_capture_params(struct _if_impl* this, unsigned short eth_protocol, int promisc) {
     PRIV->proto = eth_protocol;
     PRIV->promisc = promisc;
 
@@ -163,7 +163,7 @@ void sockraw_destroy(IF_IMPL* this) {
 
 IF_IMPL* sockraw_new() {
     IF_IMPL* this = (IF_IMPL*)malloc(sizeof(IF_IMPL));
-    if (this < 0) {
+    if (this == NULL) {
         PR_ERRNO("SOCK_RAW 主结构内存分配失败");
         return NULL;
     }
@@ -171,7 +171,7 @@ IF_IMPL* sockraw_new() {
 
     /* The priv pointer in if_impl.h is a sockraw_priv* here */
     this->priv = (sockraw_priv*)malloc(sizeof(sockraw_priv));
-    if (this->priv < 0) {
+    if (this->priv == NULL) {
         PR_ERRNO("SOCK_RAW 私有结构内存分配失败");
         free(this);
         return NULL;
@@ -191,4 +191,4 @@ IF_IMPL* sockraw_new() {
     this->description = "采用RAW Socket进行通信的轻量网络接口模块";
     return this;
 }
-IF_IMPL_INIT(sockraw_new);
+IF_IMPL_INIT(sockraw_new)

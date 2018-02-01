@@ -65,7 +65,7 @@ typedef struct _if_impl {
       *
       * Return: if the setup was successful
       */
-    RESULT (*setup_capture_params)(struct _if_impl* this, short eth_protocol, int promisc);
+    RESULT (*setup_capture_params)(struct _if_impl* this, unsigned short eth_protocol, int promisc);
 
     /*
      * Prepare the interface, using all the parameters given before (name, proto, promisc etc).

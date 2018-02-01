@@ -100,7 +100,7 @@ RESULT obtain_dns_list(LIST_ELEMENT** list) {
     char _line_buf[MAX_LINE_LEN] = {0};
     char* _line_buf_1;
 
-    if (_fp <= 0) {
+    if (_fp == NULL) {
         PR_ERRNO("无法从 /etc/resolv.conf 获取 DNS 信息");
         return FAILURE;
     }

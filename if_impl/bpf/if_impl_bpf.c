@@ -70,7 +70,7 @@ RESULT bpf_get_ifname(struct _if_impl* this, char* buf, int buflen) {
     return SUCCESS;
 }
 
-RESULT bpf_setup_capture_params(struct _if_impl* this, short eth_protocol, int promisc) {
+RESULT bpf_setup_capture_params(struct _if_impl* this, unsigned short eth_protocol, int promisc) {
     PRIV->proto = eth_protocol;
     PRIV->promisc = promisc;
     return SUCCESS;
@@ -127,7 +127,7 @@ RESULT bpf_start_capture(struct _if_impl* this) {
     unsigned char* bpfbuf;
     ETH_EAP_FRAME frame;
 
-    if ((bpfbuf = (unsigned char*)malloc(BPF_BUFFER_SIZE)) < 0) {
+    if ((bpfbuf = (unsigned char*)malloc(BPF_BUFFER_SIZE)) == NULL) {
         PR_ERRNO("BPF 分配接收缓冲区失败");
         return FAILURE;
     }
@@ -169,7 +169,7 @@ void bpf_destroy(IF_IMPL* this) {
 
 IF_IMPL* bpf_new() {
     IF_IMPL* this = (IF_IMPL*)malloc(sizeof(IF_IMPL));
-    if (this < 0) {
+    if (this == NULL) {
         PR_ERRNO("BPF 主结构内存分配失败");
         return NULL;
     }
@@ -177,7 +177,7 @@ IF_IMPL* bpf_new() {
 
     /* The priv pointer in if_impl.h is a bpf_priv* here */
     this->priv = (bpf_priv*)malloc(sizeof(bpf_priv));
-    if (this->priv < 0) {
+    if (this->priv == NULL) {
         PR_ERRNO("BPF 私有结构内存分配失败");
         free(this);
         return NULL;

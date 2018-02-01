@@ -90,7 +90,7 @@ void builder_set_eap_md5_seed(struct _packet_builder* this, uint8_t* md5_seed, i
 
     free(PRIV->md5_seed);
     PRIV->md5_seed = (uint8_t*)malloc(seed_len);
-    if (PRIV->md5_seed < 0) {
+    if (PRIV->md5_seed == NULL) {
         PR_ERRNO("无法为 MD5 种子分配内存空间");
         return;
     }
@@ -145,7 +145,7 @@ int builder_build_packet(struct _packet_builder* this, uint8_t* buffer) {
 
 static PACKET_BUILDER* packet_builder_new() {
     PACKET_BUILDER* this = (PACKET_BUILDER*)malloc(sizeof(PACKET_BUILDER));
-    if (this < 0) {
+    if (this == NULL) {
         PR_ERRNO("数据包生成器主结构内存分配失败");
         return NULL;
     }
@@ -153,7 +153,7 @@ static PACKET_BUILDER* packet_builder_new() {
 
     /* The priv pointer in packet_builder.h is a packet_builder_priv* here */
     this->priv = (packet_builder_priv*)malloc(sizeof(packet_builder_priv));
-    if (this->priv < 0) {
+    if (this->priv == NULL) {
         PR_ERRNO("数据包生成器私有结构内存分配失败");
         return NULL;
     }

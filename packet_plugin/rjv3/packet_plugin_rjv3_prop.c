@@ -12,7 +12,7 @@
 
 RJ_PROP* new_rjv3_prop() {
     RJ_PROP* _prop = (RJ_PROP*)malloc(sizeof(RJ_PROP));
-    if (_prop < 0) {
+    if (_prop == NULL) {
         PR_ERRNO("RJv3 字段结构内存分配失败");
         return NULL;
     }
@@ -31,7 +31,7 @@ int append_rjv3_prop(LIST_ELEMENT** list, uint8_t type, uint8_t* content, int le
     if (_prop == NULL) return -1;
 
     uint8_t* buf = memdup(content, len);
-    if (buf < 0) {
+    if (buf == NULL) {
         free(_prop);
         return -1;
     }
@@ -56,7 +56,7 @@ int modify_rjv3_prop(LIST_ELEMENT* list, uint8_t type, uint8_t* content, int len
     if (_prop == NULL) return 0; // Nothing modified
 
     uint8_t* buf = memdup(content, len);
-    if (buf < 0) {
+    if (buf == NULL) {
         free(_prop);
         return -1;
     }

@@ -61,7 +61,7 @@ static RESULT send_echo_frame(struct _packet_plugin* this, uint8_t* content, int
     _builder->set_eap_fields(_builder, EAPOL_RJ_PROPRIETARY_KEEPALIVE, 0, 0, 0, NULL);
 
     ETH_EAP_FRAME frame;
-    if ((frame.content = (uint8_t*)malloc(100)) < 0) {
+    if ((frame.content = (uint8_t*)malloc(100)) == NULL) {
         PR_ERR("无法为 Keep-Alive 报文分配内存空间");
         goto fail;
     }

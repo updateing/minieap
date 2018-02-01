@@ -19,7 +19,7 @@ ETH_EAP_FRAME* frame_duplicate(const ETH_EAP_FRAME* frame) {
     _frame->actual_len = frame->actual_len;
     _frame->buffer_len = frame->buffer_len;
     _frame->content = (uint8_t*)malloc(_frame->actual_len);
-    if (_frame->content < 0) {
+    if (_frame->content == NULL) {
         return NULL;
     }
     memmove(_frame->content, frame->content, _frame->actual_len);

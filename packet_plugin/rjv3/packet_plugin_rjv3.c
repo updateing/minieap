@@ -299,7 +299,7 @@ static void rjv3_save_one_prop(void* prop, void* is_mod) {
                        /*           :r      \0 */
                         + (is_mod ? 2 : 0) + 1;
     char* prop_str = (char*)malloc(prop_str_len);
-    if (prop_str <= 0) {
+    if (prop_str == NULL) {
         PR_ERRNO("无法保存 --rj-option 选项");
         return;
     }
@@ -350,14 +350,14 @@ static void packet_plugin_rjv3_print_banner() {
 
 PACKET_PLUGIN* packet_plugin_rjv3_new() {
     PACKET_PLUGIN* this = (PACKET_PLUGIN*)malloc(sizeof(PACKET_PLUGIN));
-    if (this < 0) {
+    if (this == NULL) {
         PR_ERRNO("RJv3 插件主结构内存分配失败");
         return NULL;
     }
     memset(this, 0, sizeof(PACKET_PLUGIN));
 
     this->priv = (rjv3_priv*)malloc(sizeof(rjv3_priv));
-    if (this->priv < 0) {
+    if (this->priv == NULL) {
         PR_ERRNO("RJv3 插件私有结构内存分配失败");
         free(this);
         return NULL;
@@ -378,4 +378,4 @@ PACKET_PLUGIN* packet_plugin_rjv3_new() {
     this->save_config = rjv3_save_config;
     return this;
 }
-PACKET_PLUGIN_INIT(packet_plugin_rjv3_new);
+PACKET_PLUGIN_INIT(packet_plugin_rjv3_new)

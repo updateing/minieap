@@ -155,7 +155,7 @@ void unschedule_alarm(int id) {
 
 int schedule_alarm(int secs, void (*func)(void*), void* user) {
     ALARM_EVENT* _event = (ALARM_EVENT*)malloc(sizeof(ALARM_EVENT));
-    if (_event < 0) {
+    if (_event == NULL) {
         PR_ERR("无法为闹钟事件分配内存");
         return -1;
     }
