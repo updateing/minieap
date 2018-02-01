@@ -1,0 +1,12 @@
+[Unit]
+Description=MiniEAP Service
+Documentation=man:earlyoom(1) https://github.com/updateing/minieap
+After=network.target
+
+[Service]
+ExecStart=:TARGET:/minieap --conf-file :SYSCONFDIR:/minieap.conf
+StandardOutput=null
+StandardError=syslog
+
+[Install]
+WantedBy=multi-user.target
