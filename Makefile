@@ -48,7 +48,7 @@ minieap: $(BUILD_MODULES)
         $(LIBS)
 
 .PHONY: clean
-clean: $(addsuffix _clean,$(BUILD_MODULES))
+clean:
 	rm -f minieap.service minieap.1.gz
 
 define my-dir
@@ -56,7 +56,7 @@ $(dir $(lastword $(MAKEFILE_LIST)))
 endef
 
 define all-c-files-under
-$(subst $(LOCAL_PATH)/,,$(wildcard $(LOCAL_PATH)/$(1)/*.c))
+$(subst $(LOCAL_PATH)/,,$(wildcard $(LOCAL_PATH)/$(1)$(if $(1),/,)*.c))
 endef
 
 APPEND := $(shell pwd)/append.mk
