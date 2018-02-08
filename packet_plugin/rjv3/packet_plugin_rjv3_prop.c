@@ -30,10 +30,13 @@ int append_rjv3_prop(LIST_ELEMENT** list, uint8_t type, uint8_t* content, int le
     RJ_PROP* _prop = new_rjv3_prop();
     if (_prop == NULL) return -1;
 
-    uint8_t* buf = memdup(content, len);
-    if (buf == NULL) {
-        free(_prop);
-        return -1;
+    uint8_t* buf = NULL;
+    if (len > 0) {
+        buf = memdup(content, len);
+        if (buf == NULL) {
+            free(_prop);
+            return -1;
+        }
     }
 
     _prop->header1.header_len = len + sizeof(RJ_PROP_HEADER1) + sizeof(RJ_PROP_HEADER2);
@@ -55,10 +58,13 @@ int modify_rjv3_prop(LIST_ELEMENT* list, uint8_t type, uint8_t* content, int len
     RJ_PROP* _prop = (RJ_PROP*)lookup_data(list, &type, rjv3_type_prop_compare);
     if (_prop == NULL) return 0; // Nothing modified
 
-    uint8_t* buf = memdup(content, len);
-    if (buf == NULL) {
-        free(_prop);
-        return -1;
+    uint8_t* buf = NULL;
+    if (len > 0) {
+        buf = memdup(content, len);
+        if (buf == NULL) {
+            free(_prop);
+            return -1;
+        }
     }
 
     int _org_header2_len = _prop->header2.len;
@@ -105,8 +111,10 @@ int append_rjv3_prop_to_buffer(RJ_PROP* prop, uint8_t* buf, int buflen) {
     }
     memmove(buf, &prop->header1, sizeof(RJ_PROP_HEADER1));
     memmove(buf + sizeof(RJ_PROP_HEADER1), &prop->header2, sizeof(RJ_PROP_HEADER2));
-    memmove(buf + sizeof(RJ_PROP_HEADER1) + sizeof(RJ_PROP_HEADER2),
+    if (_content_len > 0) {
+        memmove(buf + sizeof(RJ_PROP_HEADER1) + sizeof(RJ_PROP_HEADER2),
                 prop->content, _content_len);
+    }
     return _full_len;
 }
 
