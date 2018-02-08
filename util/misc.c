@@ -175,8 +175,8 @@ void* memdup(const void* src, int n) {
     void* ret = malloc(n);
 
     if (ret == NULL) {
-        // Suggest this is an error. THIS IS NON STANDARD
-        return (void*)-1;
+        // Suggest this is an error.
+        return NULL;
     }
 
     memmove(ret, src, n);
