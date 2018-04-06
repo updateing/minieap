@@ -185,7 +185,7 @@ close_return:
 
 #define PRIV ((rjv3_priv*)(this->priv))
 
-static RESULT rjv3_get_dhcp_info(struct _packet_plugin* this, DHCP_INFO* dhcp_info) {
+static RESULT rjv3_get_dhcp_lease(struct _packet_plugin* this, DHCP_LEASE* lease) {
     IF_IMPL* _if = get_if_impl();
     if (_if == NULL) return FAILURE;
     char _ifname[IFNAMSIZ] = {0};
@@ -228,17 +228,10 @@ static RESULT rjv3_get_dhcp_info(struct _packet_plugin* this, DHCP_INFO* dhcp_in
             goto fail;
     }
 
-    dhcp_info->magic[0] = 0x00;
-    dhcp_info->magic[1] = 0x00;
-    dhcp_info->magic[2] = 0x13;
-    dhcp_info->magic[3] = 0x11;
-
-    dhcp_info->dhcp_type = PRIV->dhcp_type == 1;
-
-    *(uint32_t*)&dhcp_info->ip = *(uint32_t*)&_ipv4->ip;
-    *(uint32_t*)&dhcp_info->netmask = *(uint32_t*)&_ipv4->mask;
-    *(uint32_t*)&dhcp_info->gateway = *(uint32_t*)&_gw.ip;
-    *(uint32_t*)&dhcp_info->dns = *(uint32_t*)&_dns1.ip;
+    *(uint32_t*)&lease->ip = *(uint32_t*)&_ipv4->ip;
+    *(uint32_t*)&lease->netmask = *(uint32_t*)&_ipv4->mask;
+    *(uint32_t*)&lease->gateway = *(uint32_t*)&_gw.ip;
+    *(uint32_t*)&lease->dns = *(uint32_t*)&_dns1.ip;
 
     free_ip_list(&_ip_list);
     free_dns_list(&_dns_list);
@@ -339,15 +332,30 @@ static int rjv3_append_common_fields(PACKET_PLUGIN* this, LIST_ELEMENT** list, i
     return _len;
 }
 
+static int rjv3_should_fill_dhcp_prop(struct _packet_plugin* this) {
+    return (PRIV->dhcp_type == DHCP_BEFORE_AUTH) ||
+            (PRIV->dhcp_type == DHCP_DOUBLE_AUTH && PRIV->succ_count >= 2);
+}
+
 /* The bytes containing twisted IPv4 addresses */
 static void rjv3_append_priv_header(struct _packet_plugin* this, ETH_EAP_FRAME* frame) {
-    DHCP_INFO _dhcp_info = {0};
-    rjv3_get_dhcp_info(this, &_dhcp_info);
+    DHCP_INFO_PROP _dhcp_prop = {0};
 
-    *(uint16_t*)&_dhcp_info.crc16_hash = htons(crc16((uint8_t*)&_dhcp_info, 21));
+    _dhcp_prop.magic[0] = 0x00;
+    _dhcp_prop.magic[1] = 0x00;
+    _dhcp_prop.magic[2] = 0x13;
+    _dhcp_prop.magic[3] = 0x11;
 
-    rj_encode((uint8_t*)&_dhcp_info, sizeof(_dhcp_info));
-    append_to_frame(frame, (uint8_t*)&_dhcp_info, sizeof(_dhcp_info));
+    _dhcp_prop.dhcp_enabled = (PRIV->dhcp_type != DHCP_NONE);
+
+    if (rjv3_should_fill_dhcp_prop(this)) {
+        rjv3_get_dhcp_lease(this, &_dhcp_prop.lease);
+    }
+
+    *(uint16_t*)&_dhcp_prop.crc16_hash = htons(crc16((uint8_t*)&_dhcp_prop, 21));
+
+    rj_encode((uint8_t*)&_dhcp_prop, sizeof(_dhcp_prop));
+    append_to_frame(frame, (uint8_t*)&_dhcp_prop, sizeof(_dhcp_prop));
 
     uint8_t _magic[4] = {0x00, 0x00, 0x13, 0x11};
     append_to_frame(frame, _magic, sizeof(_magic));
@@ -488,8 +496,12 @@ RESULT rjv3_process_result_prop(ETH_EAP_FRAME* frame) {
 
 void rjv3_start_secondary_auth(void* vthis) {
     PACKET_PLUGIN* this = (PACKET_PLUGIN*)vthis;
+    DHCP_LEASE _tmp_dhcp_lease = {0};
 
-    /*if (IS_FAIL(rjv3_override_priv_header(this))) {
+    /* Try to fill out lease info to determine whether DHCP finished.
+     * The addresses in lease info are not used here.
+     */
+    if (IS_FAIL(rjv3_get_dhcp_lease(this, &_tmp_dhcp_lease))) {
         PRIV->dhcp_count++;
         if (PRIV->dhcp_count > PRIV->max_dhcp_count) {
             rjv3_process_result_prop(PRIV->last_recv_packet); // Loads of texts
@@ -501,10 +513,10 @@ void rjv3_start_secondary_auth(void* vthis) {
             schedule_alarm(5, rjv3_start_secondary_auth, this);
         }
         return;
-    } else {*/
+    } else {
         PR_INFO("DHCP 完成，正在开始第二次认证");
         free_frame(&PRIV->last_recv_packet); // Duplicated in process_success
         switch_to_state(EAP_STATE_START_SENT, NULL);
         return;
-    /*}*/
+    }
 }

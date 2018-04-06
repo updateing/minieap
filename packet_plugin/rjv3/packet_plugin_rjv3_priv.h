@@ -90,15 +90,19 @@ typedef struct _rj_prop {
     uint8_t* content; /* Length is included in header */
 } RJ_PROP;
 
-typedef struct _dhcp_info {
-    uint8_t magic[4]; /* 00 00 13 11 */
-    uint8_t dhcp_type; /* dhcp_type == 1 */
+typedef struct _dhcp_lease {
     uint8_t ip[4];
     uint8_t netmask[4];
     uint8_t gateway[4];
     uint8_t dns[4];
+} DHCP_LEASE;
+
+typedef struct _dhcp_info_prop {
+    uint8_t magic[4]; /* 00 00 13 11 */
+    uint8_t dhcp_enabled; /* dhcp_type == 1 */
+    DHCP_LEASE lease;
     uint8_t crc16_hash[2]; /* Network byte order */
-} DHCP_INFO;
+} DHCP_INFO_PROP;
 
 typedef struct _packet_plugin_rjv3_priv {
     struct { // Cmdline options
