@@ -21,6 +21,11 @@
 
 #ifdef __APPLE__
 #include <net/if_dl.h>
+#include <net/if.h>
+#include <net/route.h>
+#include <sys/param.h>
+#include <sys/sysctl.h>
+#include <netinet/in.h>
 #endif
 
 static int ip_addr_family_cmpfunc(void* family, void* ip_addr) {
@@ -272,8 +277,85 @@ err:
     return FAILURE;
 }
 #elif defined __APPLE__
-RESULT obtain_iface_ipv4_gateway(const char* ifname, uint8_t* buf) {
-    // TODO
+/* alignment constraint for routing socket */
+#define ROUNDUP(a) \
+       ((a) > 0 ? (1 + (((a) - 1) | (sizeof(uint32_t) - 1))) : sizeof(uint32_t))
+
+static void get_rtaddrs(int addrs, struct sockaddr *sa, struct sockaddr **rti_info) {
+    int i;
+
+    for (i = 0; i < RTAX_MAX; i++) {
+        if (addrs & (1 << i)) {
+            rti_info[i] = sa;
+            sa = (struct sockaddr *)(ROUNDUP(sa->sa_len) + (char *)sa);
+        } else {
+            rti_info[i] = NULL;
+        }
+    }
+}
+
+RESULT obtain_iface_ipv4_gateway(const char* ifname, uint8_t* _buf) {
+    size_t needed;
+    int mib[6];
+    char *buf, *next, *lim;
+    struct rt_msghdr2 *rtm;
+
+    mib[0] = CTL_NET;
+    mib[1] = PF_ROUTE;
+    mib[2] = 0;
+    mib[3] = 0;
+    mib[4] = NET_RT_DUMP2;
+    mib[5] = 0;
+    if (sysctl(mib, 6, NULL, &needed, NULL, 0) < 0) {
+        PR_ERR("sysctl: net.route.0.0.dump estimate");
+        return FAILURE;
+    }
+
+    if ((buf = malloc(needed)) == 0) {
+        PR_ERR("malloc(%lu)", (unsigned long)needed);
+        return FAILURE;
+    }
+    if (sysctl(mib, 6, buf, &needed, NULL, 0) < 0) {
+        PR_ERR("sysctl: net.route.0.0.dump");
+        free(buf);
+        return FAILURE;
+    }
+
+    lim  = buf + needed;
+    for (next = buf; next < lim; next += rtm->rtm_msglen) {
+        struct sockaddr *sa, *rti_info[RTAX_MAX];
+        char this_ifname[IFNAMSIZ + 1];
+
+        rtm = (struct rt_msghdr2 *)next;
+        sa = (struct sockaddr *)(rtm + 1);
+
+        /*
+        * Skip protocol-cloned routes.
+        */
+        if ((rtm->rtm_flags & RTF_WASCLONED) &&
+            (rtm->rtm_parentflags & RTF_PRCLONING)) {
+                continue;
+        }
+
+        if (sa->sa_family != AF_INET)
+            continue;
+
+        get_rtaddrs(rtm->rtm_addrs, sa, rti_info);
+        if ((rtm->rtm_addrs & RTA_DST)) {
+            struct sockaddr_in *dst_addr = (struct sockaddr_in *)rti_info[RTAX_DST],
+            *this_gateway = (struct sockaddr_in *)rti_info[RTAX_GATEWAY];
+
+            if_indextoname(rtm->rtm_index, this_ifname);
+
+            if (dst_addr->sin_addr.s_addr == 0 && strncmp(this_ifname, ifname, IFNAMSIZ) == 0) {
+                *(in_addr_t *)_buf = this_gateway->sin_addr.s_addr;
+                free(buf);
+                return SUCCESS;
+            }
+        }
+    }
+
+    free(buf);
     return FAILURE;
 }
 #endif
