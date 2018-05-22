@@ -28,9 +28,12 @@ $($(LOCAL_MODULE)_PRIV_DEPS) : ${@:.d=.c}
 	@sed -i -e 's|^.*:|${@:.d=.o} $@ : |g' $@
 
 # %.o %.d : *.c
-# This will cause regeneration of .d files. Do not do this when cleaning.
-ifneq "$(MAKECMDGOALS)" "clean"
+# This will cause regeneration of .d files and unselected targets.
+# Only include deps when building for selected modules.
+ifneq ("$(MAKECMDGOALS)","clean")
+ifneq ($(filter $(LOCAL_MODULE),$(BUILD_MODULES)),)
 -include $($(LOCAL_MODULE)_PRIV_DEPS)
+endif
 endif
 
 .PHONY: $(LOCAL_MODULE)_clean
