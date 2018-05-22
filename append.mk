@@ -25,7 +25,7 @@ $($(LOCAL_MODULE)_PRIV_OBJS) : ${@:.o=.c}
 $($(LOCAL_MODULE)_PRIV_DEPS) : LCFLAGS := $($(LOCAL_MODULE)_PRIV_C_FLAGS)
 $($(LOCAL_MODULE)_PRIV_DEPS) : ${@:.d=.c}
 	@$(CC) -MM ${@:.d=.c} $(LCFLAGS) > $@
-	@sed -i 's,^.*:,${@:.d=.o} $@ : ,g' $@
+	@sed -i -e 's|^.*:|${@:.d=.o} $@ : |g' $@
 
 # %.o %.d : *.c
 # This will cause regeneration of .d files. Do not do this when cleaning.
