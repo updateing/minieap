@@ -26,7 +26,7 @@ RESULT pid_lock_init(const char* pidfile) {
         return SUCCESS;
     }
 
-    pid_lock_fd = open(pidfile, O_RDWR | O_CREAT);
+    pid_lock_fd = open(pidfile, O_RDWR | O_CREAT, 0644);
     if (pid_lock_fd < 0) {
         PR_ERRNO("无法打开 PID 文件");
         return FAILURE;
