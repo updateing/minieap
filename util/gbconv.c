@@ -3096,7 +3096,7 @@ static uint16_t gbk_to_index(char byte1, char byte2)
     return result - 0x2000;
 }
 
-size_t gbconv8(const char *src, char *dst, size_t dstlen)
+size_t gbconv8(const char *src, size_t srclen, char *dst, size_t dstlen)
 {
 
 #define gbconv8_FILL_DEST(value) \
@@ -3108,12 +3108,13 @@ size_t gbconv8(const char *src, char *dst, size_t dstlen)
         remainbuf--;             \
     }
 
+    const char *endsrc = src + srclen;
     const char *cursrc = src;
     char *curdst = dst;
     size_t remainbuf = dstlen;
     size_t len = 0;
     char byte1, byte2;
-    while (*cursrc)
+    while (cursrc < endsrc && *cursrc)
     {
         byte1 = *cursrc;
         if ((byte1 & 0x80) == 0x00)
