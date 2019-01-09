@@ -98,7 +98,7 @@ void gbk2utf8(char* in, size_t inlen, char* out, size_t outlen) {
         iconv_close(_cd);
     }
 #elif defined(ENABLE_GBCONV)
-    gbconv8(in, out, outlen);
+    gbconv8(in, inlen, out, outlen);
 #else
     memmove(out, in, inlen);
 #endif
