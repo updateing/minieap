@@ -39,8 +39,8 @@ uint8_t char2hex(const char* str) {
 
 void hex2char(uint8_t hex, char* out) {
 #define HEX2LOWER(digit) (((digit) >= 0xa) ? ((digit) - 0xa + 'a') : ((digit) + '0'))
-    out[0] = HEX2LOWER(hex & 0xf);
-    out[1] = HEX2LOWER((hex & 0xf0) >> 4);
+    out[0] = HEX2LOWER((hex & 0xf0) >> 4);
+    out[1] = HEX2LOWER(hex & 0xf);
 }
 
 char* my_itoa(int val, char* buf, uint32_t radix) {
