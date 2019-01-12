@@ -108,6 +108,7 @@ static void print_cmdline_help() {
         "\t--pkt-plugin <...>\t启用此名称的数据包修改器，可启用多次、多个 [默认无]\n"
         "\t--module <...>\t\t同上\n"
             "\t\t\t\t当命令行选项中存在 --module 或 --pkt-plugin 时，配置文件中的所有 module= 行都将被忽略\n"
+        "\t--log-file <...>\t日志文件路径 [默认" DEFAULT_LOGFILE "]\n"
     );
 
     print_if_impl_list();
