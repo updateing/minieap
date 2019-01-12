@@ -260,7 +260,7 @@ RESULT save_config_file() {
     conf_parser_add_value("if-impl", get_if_impl()->name);
     conf_parser_add_value("max-fail", my_itoa(g_prog_config.max_failures, itoa_buf, 10));
     conf_parser_add_value("max-retries", my_itoa(g_prog_config.max_retries, itoa_buf, 10));
-    conf_parser_add_value("no-auto-reauth", g_prog_config.restart_on_logoff ? "1" : "0");
+    conf_parser_add_value("no-auto-reauth", g_prog_config.restart_on_logoff ? "0" : "1");
     conf_parser_add_value("wait-after-fail", my_itoa(g_prog_config.wait_after_fail_secs, itoa_buf, 10));
     conf_parser_add_value("stage-timeout", my_itoa(g_prog_config.stage_timeout, itoa_buf, 10));
     conf_parser_add_value("proxy-lan-iface", g_proxy_config.lan_ifname);
