@@ -110,6 +110,7 @@ static void print_cmdline_help() {
         "\t--module <...>\t\t同上\n"
             "\t\t\t\t当命令行选项中存在 --module 或 --pkt-plugin 时，配置文件中的所有 module= 行都将被忽略\n"
         "\t--log-file <...>\t日志文件路径 [默认" DEFAULT_LOGFILE "]\n"
+        "\t--script <...>\t事件脚本 认证成功后运行此命令[默认无]\n"
     );
 
     print_if_impl_list();
