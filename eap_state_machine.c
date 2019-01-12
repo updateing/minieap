@@ -183,6 +183,7 @@ static RESULT state_mach_process_success(ETH_EAP_FRAME* frame) {
     if (PRIV->auth_round == _cfg->auth_round) {
         PR_INFO("认证成功");
         eap_state_machine_reset(); // Prepare for further use (e.g. re-auth after offline)
+        system(_cfg->script);
         return SUCCESS;
     } else {
         PR_INFO("第 %d 次认证成功，正在执行下一次认证", PRIV->auth_round);
