@@ -165,7 +165,26 @@ static uint8_t* find_byte_pattern(uint8_t* pattern, int patlen, uint8_t* buf, in
     return NULL;
 }
 
-RESULT parse_rjv3_buf_to_prop_list(LIST_ELEMENT** list, uint8_t* buf, int buflen, int bare) {
+/* Does this prop has a reliable prop->header2.len?
+ * If not, we need to perform a pattern search for next header, instead of
+ * fast-forwarding header2.len bytes.
+ */
+static inline int rjv3_prop_length_field_ok(RJ_PROP *prop) {
+    /* These two types of property are known unreliable, see https://github.com/updateing/minieap/issues/18 */
+    if (prop->header2.type == 0 || prop->header2.type == 1) {
+        return 0;
+    }
+
+    /* header2.len needs to cover itself at least. If it's not, we won't be able to trust it. */
+    if (prop->header2.len < sizeof(RJ_PROP_HEADER2) - sizeof(prop->header2.magic)) {
+        PR_DBG("类型为 0x%02hhx 的字段中，长度信息未涵盖头部自身", prop->header2.type);
+        return 0;
+    }
+
+    return 1;
+}
+
+RESULT parse_rjv3_buf_to_prop_list(LIST_ELEMENT** list, uint8_t* buf, int buflen, int bare /* buf_has_header1 ? */) {
     int _read_len = 0, _content_len = 0;
     uint8_t _magic[] = {0x00, 0x00, 0x13, 0x11};
     RJ_PROP* _tmp_prop = new_rjv3_prop();
@@ -182,17 +201,12 @@ RESULT parse_rjv3_buf_to_prop_list(LIST_ELEMENT** list, uint8_t* buf, int buflen
 
             if (memcmp(_tmp_prop->header2.magic, _magic, sizeof(_magic)) == 0) {
                 /* Valid */
-                if (_tmp_prop->header2.type == 0) {
-                    /* 0x0 prop's len does not include HEADER2 */
-                    _content_len = _tmp_prop->header2.len;
-                } else if (_tmp_prop->header2.type == 1) {
-                    /* Type 0x1 means there is no length info, we have to search for next 00 00 13 11 */
+                if (rjv3_prop_length_field_ok(_tmp_prop)) {
+                    _content_len = _tmp_prop->header2.len - sizeof(RJ_PROP_HEADER2) + sizeof(_tmp_prop->header2.magic);
+                } else {
                     uint8_t* _next_magic = find_byte_pattern(_magic, sizeof(_magic),
                                                               buf + _read_len, buflen - _read_len);
                     _content_len = _next_magic ? (_next_magic - (buf + _read_len)) : buflen - _read_len;
-                } else {
-                    /* This is normal prop, len includes two bytes from HEADER2 */
-                    _content_len = _tmp_prop->header2.len - sizeof(RJ_PROP_HEADER2) + sizeof(_tmp_prop->header2.magic);
                 }
 
                 append_rjv3_prop(list,
