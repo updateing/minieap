@@ -452,6 +452,7 @@ RESULT rjv3_process_result_prop(ETH_EAP_FRAME* frame) {
                                     + sizeof(frame->header->eap_hdr.type),
                                 TRUE);
 
+    /* Assume this server message is the first property */
     if (_srv_msg != NULL) {
         _msg = (RJ_PROP*)_srv_msg->content;
         int _content_len = _msg->header2.len - HEADER2_SIZE_NO_MAGIC(_msg);
@@ -463,8 +464,7 @@ RESULT rjv3_process_result_prop(ETH_EAP_FRAME* frame) {
     }
     if (frame->header->eapol_hdr.type[0] == EAP_PACKET &&
             frame->header->eap_hdr.code[0] == EAP_SUCCESS) {
-        _msg = NULL;
-        _msg = find_rjv3_prop(_srv_msg, 0x3c);
+        _msg = find_rjv3_prop(_srv_msg, RJV3_TYPE_ACCOUNTING_MSG);
         if (_msg != NULL) {
             int _content_len = _msg->header2.len - HEADER2_SIZE_NO_MAGIC(_msg);
 

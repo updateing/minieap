@@ -28,6 +28,9 @@
 #define RJV3_TYPE_LL_IPV6_T 0x38 /* Link-local IPv6 in binary, temp addr */
 #define RJV3_SIZE_LL_IPV6_T 0x10
 
+#define RJV3_TYPE_ACCOUNTING_MSG 0x3c /* GBK, accounting messages from server */
+/* Var size */
+
 #define RJV3_TYPE_GLB_IPV6  0x4e /* Global IPv6 in binary */
 #define RJV3_SIZE_GLB_IPV6  0x10
 
