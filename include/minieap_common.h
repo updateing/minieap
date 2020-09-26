@@ -1,7 +1,7 @@
 #ifndef _MINIEAP_MINIEAP_COMMON_H
 #define _MINIEAP_MINIEAP_COMMON_H
 
-#define VERSION "0.92.1"
+#define VERSION "0.93"
 
 typedef enum _function_result {
     SUCCESS = 0,

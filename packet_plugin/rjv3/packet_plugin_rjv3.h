@@ -3,7 +3,7 @@
 
 #include "packet_plugin.h"
 
-#define PACKET_PLUGIN_RJV3_VER_STR  "0.92"
+#define PACKET_PLUGIN_RJV3_VER_STR  "0.93"
 
 #define DEFAULT_HEARTBEAT_INTERVAL  60
 #define DEFAULT_MAX_DHCP_COUNT      3
