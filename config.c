@@ -41,6 +41,7 @@ void load_default_params() {
 #define PCFG g_prog_config
     PCFG.pidfile = strdup(DEFAULT_PIDFILE);
     PCFG.logfile = strdup(DEFAULT_LOGFILE);
+    PCFG.script = strdup(DEFAULT_SCRIPT);
     PCFG.restart_on_logoff = DEFAULT_RESTART_ON_LOGOFF;
     PCFG.wait_after_fail_secs = DEFAULT_WAIT_AFTER_FAIL_SECS;
     PCFG.daemon_type = DEFAULT_DAEMON_TYPE;
@@ -108,6 +109,8 @@ static void print_cmdline_help() {
         "\t--pkt-plugin <...>\t启用此名称的数据包修改器，可启用多次、多个 [默认无]\n"
         "\t--module <...>\t\t同上\n"
             "\t\t\t\t当命令行选项中存在 --module 或 --pkt-plugin 时，配置文件中的所有 module= 行都将被忽略\n"
+        "\t--log-file <...>\t日志文件路径 [默认" DEFAULT_LOGFILE "]\n"
+        "\t--script <...>\t事件脚本 认证成功后运行此命令[默认无]\n"
     );
 
     print_if_impl_list();
@@ -166,6 +169,8 @@ static void parse_one_opt(const char* option, const char* argument) {
         COPY_N_ARG_TO(g_prog_config.pidfile, MAX_PATH);
     } else if (ISOPT("log-file")) {
         COPY_N_ARG_TO(g_prog_config.logfile, MAX_PATH);
+    } else if (ISOPT("script")) {
+        COPY_N_ARG_TO(g_prog_config.script, MAX_PATH);
     }
 }
 
@@ -194,6 +199,7 @@ RESULT parse_cmdline_opts(int argc, char* argv[]) {
 	    { "pkt-plugin", required_argument, NULL, 0},
 	    { "module", required_argument, NULL, 0},
 	    { "log-file", required_argument, NULL, 0},
+	    { "script", required_argument, NULL, 0},
 	    { NULL, no_argument, NULL, 0 }
     };
 
@@ -267,6 +273,7 @@ RESULT save_config_file() {
     conf_parser_add_value("auth-round", my_itoa(g_prog_config.auth_round, itoa_buf, 10));
     conf_parser_add_value("pid-file", g_prog_config.pidfile);
     conf_parser_add_value("log-file", g_prog_config.logfile);
+    conf_parser_add_value("script", g_prog_config.script);
     packet_plugin_save_config();
     return conf_parser_save_file();
 }
