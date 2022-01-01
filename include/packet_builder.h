@@ -70,7 +70,7 @@ typedef struct _packet_builder {
 PACKET_BUILDER* packet_builder_get();
 
 /*
- * Destory the instance
+ * Destroy the instance
  * Can be used to free memory
  */
 void packet_builder_destroy();
