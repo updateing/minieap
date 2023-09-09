@@ -504,8 +504,8 @@ void rjv3_start_secondary_auth(void* vthis) {
     if (IS_FAIL(rjv3_get_dhcp_lease(this, &_tmp_dhcp_lease))) {
         PRIV->dhcp_count++;
         if (PRIV->dhcp_count > PRIV->max_dhcp_count) {
-            rjv3_process_result_prop(PRIV->last_recv_packet); // Loads of texts
-            free_frame(&PRIV->last_recv_packet); // Duplicated in process_success
+            rjv3_process_result_prop(PRIV->duplicated_packet); // Loads of texts
+            free_frame(&PRIV->duplicated_packet); // Duplicated in process_success
             schedule_alarm(1, rjv3_send_keepalive_timed, this);
             PR_ERR("无法获取 IPv4 地址等信息，将不会进行第二次认证而直接开始心跳");
         } else {
@@ -515,7 +515,7 @@ void rjv3_start_secondary_auth(void* vthis) {
         return;
     } else {
         PR_INFO("DHCP 完成，正在开始第二次认证");
-        free_frame(&PRIV->last_recv_packet); // Duplicated in process_success
+        free_frame(&PRIV->duplicated_packet); // Duplicated in process_success
         switch_to_state(EAP_STATE_START_SENT, NULL);
         return;
     }

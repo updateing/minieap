@@ -126,6 +126,7 @@ typedef struct _packet_plugin_rjv3_priv {
     int succ_count;
     int dhcp_count; // Used in double auth
     ETH_EAP_FRAME* last_recv_packet;
+    ETH_EAP_FRAME* duplicated_packet; // Used in double auth
 } rjv3_priv;
 
 RESULT rjv3_append_priv(struct _packet_plugin* this, ETH_EAP_FRAME* frame);
