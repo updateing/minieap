@@ -230,6 +230,9 @@ static RESULT rjv3_process_success(struct _packet_plugin* this, ETH_EAP_FRAME* f
              * once the state transition is finished. We need to keep it
              * in case DHCP fails and we need to start heartbeating.
              */
+            if (PRIV->duplicated_packet != NULL) {
+                free_frame(&PRIV->duplicated_packet);
+            }
             PRIV->duplicated_packet = frame_duplicate(frame);
             system(PRIV->dhcp_script);
 

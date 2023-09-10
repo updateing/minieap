@@ -42,7 +42,7 @@ void print_if_impl_list() {
  * if no name is specified.
  */
 static int impl_name_cmp(void* to_find, void* vimpl) {
-    return to_find ? memcmp(to_find, IMPL->name, strlen(IMPL->name)) : 0;
+    return to_find ? strcmp(to_find, IMPL->name) : 0;
 }
 
 RESULT select_if_impl(const char* name) {
