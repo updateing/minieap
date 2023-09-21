@@ -67,7 +67,8 @@ RESULT parse_cmdline_conf_file(int argc, char* argv[]) {
             } else {
                 int _len = strnlen(argv[i + 1], MAX_PATH);
                 g_prog_config.conffile = (char*)malloc(_len + 1);
-                strncpy(g_prog_config.conffile, argv[i + 1], _len + 1);
+                strncpy(g_prog_config.conffile, argv[i + 1], _len);
+                g_prog_config.conffile[_len] = '\0';
             }
         }
     }
